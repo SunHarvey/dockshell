@@ -15,12 +15,19 @@ for script in release.sh notarize.sh audit-release.sh; do /bin/sh -n "$root/Scri
 expect_failure 'release mode required' sh "$root/Scripts/release.sh"
 expect_failure 'mutually exclusive signing modes' sh "$root/Scripts/release.sh" --local-preview --identity nonexistent
 expect_failure 'missing Developer ID identity stops before a build' sh "$root/Scripts/release.sh" --identity nonexistent
+expect_failure 'result-file argument needs a value' sh "$root/Scripts/release.sh" --local-preview --result-file
+expect_failure 'duplicate result-file arguments are rejected' sh "$root/Scripts/release.sh" --local-preview --result-file "$temporary/first" --result-file "$temporary/second"
+printf '%s\n' 'existing report' > "$temporary/existing"
+expect_failure 'an existing result file is not overwritten' sh "$root/Scripts/release.sh" --local-preview --result-file "$temporary/existing"
+[ "$(cat "$temporary/existing")" = 'existing report' ] || { printf '%s\n' 'Existing release report was changed.' >&2; exit 1; }
+ln -s "$temporary/missing-target" "$temporary/result-link"
+expect_failure 'a result-file symlink is rejected' sh "$root/Scripts/release.sh" --local-preview --result-file "$temporary/result-link"
 expect_failure 'explicit notarization action required' sh "$root/Scripts/notarize.sh"
 expect_failure 'raw account credentials are not accepted' sh "$root/Scripts/notarize.sh" --submit nowhere --profile test --password unsupported
 expect_failure 'resume requires UUID and app' sh "$root/Scripts/notarize.sh" --resume invalid --app nowhere --profile test
 expect_failure 'audit requires an actual app' sh "$root/Scripts/audit-release.sh" "$temporary/missing.app" --mode local-preview
 expect_failure 'preview cannot request a notary ticket' sh "$root/Scripts/audit-release.sh" "$temporary/missing.app" --mode local-preview --require-notarized
-printf '%s\n' 'PASS release script guards: required modes, identity, no raw credentials, resume UUID, missing artifact and preview limits'
+printf '%s\n' 'PASS release script guards: required modes, identity, result-file protection, no raw credentials, resume UUID, missing artifact and preview limits'
 if [ "$#" -eq 1 ]; then
     sh "$root/Scripts/audit-release.sh" "$1" --mode local-preview
     expect_failure 'ad-hoc preview cannot pass Developer ID verification' sh "$root/Scripts/audit-release.sh" "$1" --mode developer-id

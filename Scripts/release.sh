@@ -4,20 +4,27 @@ set -eu
 DOCKSHELL_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 export DOCKSHELL_ROOT
 usage() {
-    printf '%s\n' 'Usage: sh Scripts/release.sh --local-preview|--identity "Developer ID Application: NAME (TEAM)" [--universal]' >&2
+    printf '%s\n' 'Usage: sh Scripts/release.sh --local-preview|--identity "Developer ID Application: NAME (TEAM)" [--universal] [--result-file FILE]' >&2
     exit 2
 }
 fail() { printf 'Release preparation failed: %s\n' "$1" >&2; exit 1; }
-mode=; identity=; universal=0
+mode=; identity=; universal=0; result_file=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --local-preview) [ -z "$mode" ] || usage; mode=local-preview; shift ;;
         --identity) [ -z "$mode" ] && [ "$#" -ge 2 ] || usage; mode=developer-id; identity=$2; shift 2 ;;
         --universal) universal=1; shift ;;
+        --result-file) [ -z "$result_file" ] && [ "$#" -ge 2 ] && [ -n "$2" ] || usage; result_file=$2; shift 2 ;;
         *) usage ;;
     esac
 done
 [ -n "$mode" ] || usage
+if [ -n "$result_file" ]; then
+    # Machine-readable handoff for CI. Never overwrite an existing report or follow a symlink.
+    [ ! -e "$result_file" ] && [ ! -L "$result_file" ] || fail 'The result file must not already exist.'
+    result_parent=$(CDPATH= cd -- "$(dirname -- "$result_file")" && pwd) || fail 'The result-file directory must exist.'
+    result_file="$result_parent/$(basename -- "$result_file")"
+fi
 host_arch=$(/usr/bin/uname -m)
 case "$host_arch" in arm64|x86_64) ;; *) fail 'Unsupported build-host architecture.' ;; esac
 architectures=$host_arch
@@ -107,6 +114,9 @@ manifest="$result/ReleaseManifest.plist"
 /usr/bin/plutil -insert publiclyDistributable -bool NO "$manifest"
 /usr/bin/plutil -insert minimumSystem -string 14.0 "$manifest"
 (cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" > SHA256SUMS)
+if [ -n "$result_file" ]; then
+    (set -C; printf '%s\n' "$result" > "$result_file") || fail 'Could not write the release result file.'
+fi
 printf 'Prepared artifact: %s\n' "$result"
 if [ "$mode" = local-preview ]; then
     printf '%s\n' 'LOCAL PREVIEW ONLY: no Apple account used; not Developer ID signed or notarized.'

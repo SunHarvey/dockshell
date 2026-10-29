@@ -1,0 +1,164 @@
+name: Draft Release
+
+run-name: Draft arm64 preview for ${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag, for example v0.1.0-preview.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: draft-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Verify and package arm64 preview
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      RELEASE_TAG: ${{ inputs.tag }}
+      DOCKSHELL_APP_OUTPUT_ROOT: ${{ github.workspace }}/Build/ci-app
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      tag: ${{ steps.package.outputs.tag }}
+      version: ${{ steps.package.outputs.version }}
+      build: ${{ steps.package.outputs.build }}
+      commit: ${{ steps.package.outputs.commit }}
+    steps:
+      - name: Validate requested tag syntax
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            printf '%s\n' 'A version tag such as v0.1.0-preview.1 is required.' >&2
+            exit 1
+          fi
+
+      - name: Check out the existing version tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check pinned build environment and source version
+        run: |
+          set -euo pipefail
+          mkdir -p Build/ci-logs
+          test "$(uname -m)" = arm64
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version | tee Build/ci-logs/xcode.txt
+          grep -Fx 'Xcode 26.6' Build/ci-logs/xcode.txt
+          xcrun swift --version | tee Build/ci-logs/swift.txt
+          grep -E 'Apple Swift version 6\.' Build/ci-logs/swift.txt
+          sh Scripts/check-environment.sh 2>&1 | tee Build/ci-logs/environment.txt
+          sh Scripts/ci-release.sh validate "$RELEASE_TAG"
+
+      - name: Verify scripts and application
+        run: |
+          set -euo pipefail
+          sh Scripts/test-release-scripts.sh 2>&1 | tee Build/ci-logs/release-guards.txt
+          sh Scripts/test-ci-release.sh 2>&1 | tee Build/ci-logs/ci-release-guards.txt
+          sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
+
+      - name: Prepare ad-hoc signed preview assets
+        id: package
+        run: |
+          set -euo pipefail
+          sh Scripts/ci-release.sh prepare "$RELEASE_TAG" 2>&1 | tee Build/ci-logs/package.txt
+
+      - name: Upload reviewed preview assets
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: DockShell-arm64-preview-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.package.outputs.artifact_dir }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: draft-release-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Build/ci-logs/
+          if-no-files-found: warn
+          retention-days: 7
+
+  publish-draft:
+    name: Create an unpublished preview draft
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.build.outputs.tag }}
+      APP_VERSION: ${{ needs.build.outputs.version }}
+      APP_BUILD: ${{ needs.build.outputs.build }}
+      SOURCE_COMMIT: ${{ needs.build.outputs.commit }}
+    steps:
+      - name: Download this run's verified preview assets
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          path: preview
+          merge-multiple: true
+          digest-mismatch: error
+
+      - name: Verify assets and refuse an existing release
+        working-directory: preview
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]
+          [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$APP_BUILD" =~ ^[1-9][0-9]*$ ]]
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          test -f "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.zip"
+          test -f ReleaseManifest.plist
+          test -f ReleaseNotes.md
+          sha256sum --check --strict SHA256SUMS
+          ref_details=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '[.ref, .object.type, .object.sha] | @tsv')
+          read -r remote_ref object_type remote_commit <<< "$ref_details"
+          test "$remote_ref" = "refs/tags/$RELEASE_TAG"
+          depth=0
+          while [ "$object_type" = tag ]; do
+            depth=$((depth + 1))
+            test "$depth" -le 16
+            [[ "$remote_commit" =~ ^[0-9a-f]{40}$ ]]
+            object_details=$(gh api "repos/$GH_REPO/git/tags/$remote_commit" --jq '[.object.type, .object.sha] | @tsv')
+            read -r object_type remote_commit <<< "$object_details"
+          done
+          test "$object_type" = commit
+          test "$remote_commit" = "$SOURCE_COMMIT"
+          gh api --paginate "repos/$GH_REPO/releases?per_page=100" --jq '.[].tag_name' > "$RUNNER_TEMP/existing-release-tags"
+          if grep -Fxq -- "$RELEASE_TAG" "$RUNNER_TEMP/existing-release-tags"; then
+            printf '%s\n' 'A release for this tag already exists; no assets were overwritten.' >&2
+            exit 1
+          fi
+
+      - name: Create draft prerelease without publishing
+        working-directory: preview
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.zip" \
+            SHA256SUMS ReleaseManifest.plist \
+            --verify-tag --draft --prerelease --latest=false \
+            --title "DockShell $RELEASE_TAG (arm64 preview)" \
+            --notes-file ReleaseNotes.md

@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Test on Apple Silicon
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      DOCKSHELL_APP_OUTPUT_ROOT: ${{ github.workspace }}/Build/ci-app
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check pinned build environment
+        run: |
+          set -euo pipefail
+          mkdir -p Build/ci-logs
+          test "$(uname -m)" = arm64
+          test -d "$DEVELOPER_DIR"
+          xcodebuild -version | tee Build/ci-logs/xcode.txt
+          grep -Fx 'Xcode 26.6' Build/ci-logs/xcode.txt
+          xcrun swift --version | tee Build/ci-logs/swift.txt
+          grep -E 'Apple Swift version 6\.' Build/ci-logs/swift.txt
+          sh Scripts/check-environment.sh 2>&1 | tee Build/ci-logs/environment.txt
+
+      - name: Verify release script guards
+        run: |
+          set -euo pipefail
+          sh Scripts/test-release-scripts.sh 2>&1 | tee Build/ci-logs/release-guards.txt
+          sh Scripts/test-ci-release.sh 2>&1 | tee Build/ci-logs/ci-release-guards.txt
+
+      - name: Build and run regression checks
+        run: |
+          set -euo pipefail
+          sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-logs-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Build/ci-logs/
+          if-no-files-found: warn
+          retention-days: 7

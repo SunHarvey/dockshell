@@ -150,6 +150,10 @@ DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
 
 默认验证使用隔离的临时数据与合成连接，覆盖凭据隔离、真实本地 PTY、背压、生命周期、标签与分屏、资源打包和应用搬迁。真实服务器、性能及 Keychain 重启集成的专项入口见 [性能与交付记录](Docs/M6/性能与交付记录.md)。
 
+### GitHub Actions
+
+`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译和默认验证。`Draft Release` 可手动针对已推送的版本标签构建 **Apple Silicon / arm64** 预览包，上传 ZIP 与 SHA-256 校验文件，并创建未公开的草稿 Pre-release。目前产物仍采用 ad-hoc 签名，未经过 Apple 公证；工作流不自动公开发布。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与草稿发布](Docs/GitHub-Actions.md)。
+
 ### 项目结构
 
 ```text
@@ -176,6 +180,7 @@ M0 中的 Citadel / libssh2 探针与正式应用依赖相互独立。随应用�
 
 ## 更多文档
 
+- [GitHub Actions 构建与草稿发布](Docs/GitHub-Actions.md)
 - [开发过程与版本调整记录](Docs/Development-History.md)
 - [横排与竖排工作区](Docs/M8/横排与竖排.md)
 - [私钥、ssh-agent 与连接恢复](Docs/M5/私钥Agent与连接恢复.md)
