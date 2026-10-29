@@ -1,0 +1,77 @@
+{
+  "generator": "built-in image_gen",
+  "brand": "DockShell",
+  "purpose": "Ten distinct visual styles for logo exploration; opaque concept artboards, not final app-icon exports.",
+  "concepts": [
+    {
+      "id": "01",
+      "name": "瑞士字标",
+      "tag": "黑白 · 排版",
+      "file": "01-swiss-wordmark.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original DockShell logo in strict Swiss typographic style. Exact text: \"DockShell\" (capital D and S, all other letters lowercase). A horizontal wordmark, black ink on a pure white square artboard, no icon, no badge, no border. Custom refined neo-grotesk lettering with excellent kerning and generous whitespace. Subtle custom cuts at the terminals of D and S give identity without hurting legibility. One small restrained square terminal-cursor detail may align with the final l; no other symbols. The wordmark sits across the horizontal center, occupying about 70% of the artboard width and only 15–20% of its height. Stark, quiet, editorial, architectural, modern. Flat black and white only, no shading or texture."
+    },
+    {
+      "id": "02",
+      "name": "无框线性",
+      "tag": "细线 · 留白",
+      "file": "02-linear-interface.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original minimal linear symbol for DockShell. A single open connector / docking interface drawn with ONE continuous elegant black line on a warm off-white square artboard. Airy, precise, generous empty space. Form an open entrance from a shallow arch flowing into one short horizontal command line, NOT a D, S or a literal >_ symbol. No enclosing app tile, no box, no filled silhouette. Medium-light consistent stroke, about one eighth the weight of a typical chunky app glyph, visible and deliberate rather than hair-thin. One tiny copper-colored endpoint is optional. The small mark occupies about 40% of artboard width, centered. Flat linework, no gradients, no shadows, no typography."
+    },
+    {
+      "id": "03",
+      "name": "橙黑切角",
+      "tag": "粗块 · 锐角",
+      "file": "03-orange-brutalist.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original bold brutalist logo for DockShell, a native SSH tool. A compact asymmetric abstract forward-entry mark constructed from TWO massive angular orange blocks, with sharp clipped corners and a forceful diagonal negative-space cut. Entire mark is vivid safety orange #FF5A16 on a flat black square artboard. Hard flat edges, almost stencil-like, dense and confident, deliberately no rounded corners, no circle, no app tile. Do not draw D, S, a generic terminal window or a standard >_ prompt. Strong unmistakable silhouette at small size. Mark occupies roughly 55% artboard width. No lettering, gradients, texture, lighting, shadows or 3D."
+    },
+    {
+      "id": "04",
+      "name": "几何构成",
+      "tag": "蓝黄 · 模块",
+      "file": "04-bauhaus-modular.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original Bauhaus-inspired geometric logo for DockShell. Exactly THREE bold flat modules: one cobalt-blue semicircle, one cobalt-blue rectangle, and one small warm-yellow circle. Assemble them into a simple balanced open docking / connection motif, custom abstract composition rather than a letter or a decorative poster. Place on a warm ivory square artboard with generous margin. Cobalt #194BFF, yellow #F3C63F, ivory #F7F4E9. Playful yet rigorous, visually distinctive from a tech terminal icon, flat solid fills and crisp edges. No rounded-square backdrop, no black tile, no typography, no arrows, no gradients, no shadows, no textures. The emblem occupies about half the canvas width."
+    },
+    {
+      "id": "05",
+      "name": "紫色负形",
+      "tag": "圆形 · 镂空",
+      "file": "05-violet-negative.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original modern negative-space logo for DockShell. A single perfectly solid vivid violet circular emblem on pure white. Carve ONE broad white asymmetric entry channel through the violet disk, suggesting an open portal and terminal access. It must remain an abstract logo with a clean bold circular silhouette, NOT a face, eyes, chat bubble, letter D, keyhole or power button. The cut is simple, confident and optically balanced. One-color violet #7447E5, white negative space, no accent colors. Circle about 52% artboard width, centered on a square white artboard. No enclosing app icon tile, text, gradients, shadows, lighting or surface texture."
+    },
+    {
+      "id": "06",
+      "name": "像素终端",
+      "tag": "荧绿 · 方格",
+      "file": "06-pixel-terminal.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original radically minimal pixel-graphic logo for DockShell. Strict coarse square-pixel grid, a compact acid-green command-entry glyph formed from a stepped angular prompt and a separate square block cursor. Two elements maximum. Use hard square pixels only, NOT smooth rounded vector lines. Acid green #ADFF3F against a perfectly flat black square artboard. Crisp contemporary developer-tool pixel identity with large breathing room, strong at 24px, logo occupies around 45% of the artboard. No terminal screen or window frame, no retro computer illustration, no scanlines, glow, shadows, gradients, dithering, texture or words."
+    },
+    {
+      "id": "07",
+      "name": "红色印记",
+      "tag": "朱红 · 符号",
+      "file": "07-red-signature.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original minimal red signature symbol for DockShell. On a pure white square artboard, center a small dense vermilion abstract mark made of two perpendicular thick open strokes and a carefully carved central gap, suggesting two devices meeting at a docking point. Bold compact asymmetrical vertical composition, inspired by the economy of a modern stamp without drawing a stamp border, actual writing, an ideograph, a letter or a terminal prompt. One solid vermilion #E63B2E only. Mark occupies about 40% of artboard width, generous whitespace. Squared precision with subtly relieved inner corners, no circle or app tile, no brush texture, no fake Chinese characters, gradients, shadow or 3D."
+    },
+    {
+      "id": "08",
+      "name": "有机流线",
+      "tag": "橄榄 · 曲线",
+      "file": "08-organic-flow.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original organic modern logo for DockShell. An open flowing ribbon-like silhouette made from ONE elegant continuous dark-olive curved stroke on a warm white square artboard. An asymmetric soft curve suggests a fluid connection and an open shell channel, not a literal seashell and not a letter. Mature, calm, biomorphic, smooth variable-width line with rounded ends, substantial enough to stay visible at 32px. Dark olive #3D4D35 on warm white #F7F5EC. Emblem occupies around half the canvas, no enclosing geometric container, no brackets, chevrons, terminal text, leaves or nautical illustration. Flat ink, no gradients, shadows, texture, glow, or 3D."
+    },
+    {
+      "id": "09",
+      "name": "斜体连字",
+      "tag": "电蓝 · 字母",
+      "file": "09-italic-ds.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original custom lowercase \"ds\" monogram for DockShell in an athletic modern technology typographic style. Exact letters: \"ds\" only. Connect the d and s into a single bespoke italic ligature, with forward motion, decisive diagonal terminal cuts and refined negative space. Electric cobalt-blue #2259FF on a pure white square artboard. A compact horizontal logo, about 60% artboard width, optically centered with large margins. Custom lettering, not a standard italic font and not two ordinary letters placed side by side. No swoosh, underline, terminal cursor, badge, rounded-square tile, symbol frame, gradients, shadow, texture or 3D."
+    },
+    {
+      "id": "10",
+      "name": "银黑秩序",
+      "tag": "银灰 · 工业",
+      "file": "10-industrial-lines.png",
+      "prompt": "Use case: logo-brand. Produce exactly ONE standalone original logo concept on a square artboard, not a mood board or a sheet of multiple marks. Intended brand: DockShell, a native macOS SSH terminal application. The design should be simple and contemporary. Follow this direction's specific visual language and palette precisely. This is a new independent identity direction: do not repeat the earlier teal-and-mint rounded-square app badges. No commercial logo imitation, no watermark, no captions or design labels. Design one original ultra-minimal industrial logo for DockShell. Two or three precise parallel silver-gray bars and one carefully positioned open gap form a compact abstract interface / docking glyph on a flat near-black square artboard. Rational asymmetrical layout, disciplined linear spacing, flat rectangular ends, no letter D or S and no standard >_ prompt. Use a single flat cool silver-gray #C8D0D9, NOT metallic rendering. The bars should read as one engineered identity rather than a barcode, equalizer, hamburger menu, or pause button. Centered, about 50% artboard width, generous empty space. No rounded-square app container, rounded caps, screws, gears, machinery, gradients, highlights, reflections, shadows or texture."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+Approved original: Design/Branding/Fusion-Symbols-52-61/61-recessed-shell.png
+Tool: built-in image_gen
+Purpose: preserve selected artwork; prepare rounded-square icon with transparent outer corners.
+
+Use case: precise-object-edit / application icon export.
+The supplied image is the user-APPROVED FINAL concept61. Preserve its pale lavender folded two-lobe shell, negative-space command opening, dark aubergine background, surface shading, exact proportions, position and colors. Do NOT redesign or reinterpret any part of the shell.
+Prepare this exact artwork for a macOS application icon by changing ONLY the outside background boundary.
+Keep the square canvas. Retain the dark aubergine field as one softly rounded-square tile, inset about7% from every canvas edge, with smooth modern squircle-like corners (corner radius about20% of tile width). Everything OUTSIDE this tile, including the canvas corners and the small outer margin, must be genuinely transparent alpha. No light border, no outline, no added shadow, no bevel on tile, no perspective. The existing shell itself stays at its original size and location, fully inside the tile, and its dark command-opening negative space must retain exactly the same dark aubergine as the tile. Do not remove the dark color inside the mark. No lettering, watermark, added symbol, drop shadow or extra objects. Return ONE isolated icon with transparency outside the rounded-square background only.

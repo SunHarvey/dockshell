@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+.swiftpm/
+M0/LibSSH2/.vendor/
+M0/LibSSH2/.local/
+M0/LibSSH2/.work/
+M0/LibSSH2/.artifacts/
+DerivedData/
+Build/
+*.xcuserstate

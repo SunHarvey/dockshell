@@ -1,0 +1,163 @@
+{
+  "brand": "DockShell",
+  "generator": "built-in image_gen",
+  "use_case": "logo-brand / precise-object-edit",
+  "numbering": "52–61",
+  "selected_bases": [
+    24,
+    35
+  ],
+  "continuity_reference": 51,
+  "wordmark": false,
+  "purpose": "Ten pure-symbol variations combining24 curved lobes / negative-space command aperture with35 continuous folding. No lettering in any delivered concept. Opaque artboards; no original or application assets replaced.",
+  "concepts": [
+    {
+      "id": 52,
+      "file": "52-compact-open-shell.png",
+      "name": "短宽开壳",
+      "change": "双瓣变得短宽，扩大命令开口，轮廓更紧凑。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: a short broad compact two-lobe shell, its footprint a softly flattened near-circle, width about1.15 times height. Shorten both left ends, broaden the right hairpin bend, make the negative-space command chevron noticeably broad and clear. Upper and lower lobes near equal mass, with upper left end slightly shorter. Thick large simple areas, curved outer corners.\nMATERIAL: matte royal-violet outer surfaces, lilac inner fold faces, very shallow restrained depth. Pale lavender-white background. No cast shadow or texture. Large icon symbol only.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-6ca4149d-bc69-4db5-b766-e818953acd1f.png",
+      "wordmark": false
+    },
+    {
+      "id": 53,
+      "file": "53-streamlined-fold.png",
+      "name": "流线回折",
+      "change": "拉长曲线、收薄双瓣，让连续折返更有流动感。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: a noticeably WIDER streamlined shell, width about1.5 times height, two slender smooth teardrop lobes sweeping from rounded left ends into a tight rounded right-hand fold. The top lobe sweeps down, bottom lobe sweeps up; a clear long right-pointing chevron gap formed between them. Preserve rounded organic ends, avoid sharp triangular wings and airplane appearance. Continuous elegant material with one thin return edge.\nMATERIAL: satin violet with deep-purple lower face and pale-lilac inner lip, low controlled shading. Warm-white background. Pure emblem only.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-a973e95b-f49c-49b9-9aa4-a8de1d4e95bb.png",
+      "wordmark": false
+    },
+    {
+      "id": 54,
+      "file": "54-offset-shell.png",
+      "name": "偏心展开",
+      "change": "上瓣缩短、下瓣加宽，形成有方向感的不对称结构。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: deliberately asymmetric shell. The upper lobe is SMALL and lifted, about one-third of total mass; lower lobe is substantially fuller, extends leftward, and forms a stable broad curved docking foot. Both flow into one continuous right-hand return. A bold geometric > cut creates negative space through the center, set slightly above the silhouette's midpoint. Strong sculptural imbalance that is still optically balanced; a compact broad bottom, not a bird or comma.\nMATERIAL: quiet solid deep violet outer surface, one lighter upper return plane, minimal fold shading, porcelain-white background. No text, shadow or texture.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-db1e0512-d4ad-4b7f-899e-953b8e916b33.png",
+      "wordmark": false
+    },
+    {
+      "id": 55,
+      "file": "55-balanced-twin-fold.png",
+      "name": "对称双折",
+      "change": "上下双瓣等量，右侧折点居中，强调秩序与平衡。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: exactly balanced upper and lower shell lobes, MIRROR-SYMMETRIC around a horizontal centerline. Two broad half-oval wings with softly truncated left ends meet through a single centered smooth right hairpin. A very clear equal-arm > command aperture is carved between them, not a simple V wedge. Symmetry must be the visual difference from original24's uneven lobes. Quiet almost circular footprint, robust readable shape.\nMATERIAL: two-tone flat lilac and rich royal violet, crisp disciplined facet joins with only slight inner-return shading. Very pale cool lavender background. Symbol only.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-38ae0477-6935-4601-905a-5473a8bbddbd.png",
+      "wordmark": false
+    },
+    {
+      "id": 56,
+      "file": "56-soft-shell-sharp-aperture.png",
+      "name": "柔壳锐口",
+      "change": "圆润饱满的外轮廓，对比利落的直线命令切口。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: a plump nearly oval continuous shell outline with large rounded upper and lower outer lobes. Cut a STRICTLY GEOMETRIC sharp-edged > aperture through its center: precise equal45-degree diagonal arms, square left step cuts, crisp right point. Outer shape very soft and full; inner gap very straight and broad. The right return is shallow but visibly continuous. A bold interplay of organic shell and terminal syntax, not an overlaid white arrow.\nMATERIAL: restrained matte violet, almost flat except for two subtle inner fold surfaces. Bright neutral-white background, no texture, no shadow, no letters.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-8c2cb5e2-52eb-41e4-9829-ee9f155229cf.png",
+      "wordmark": false
+    },
+    {
+      "id": 57,
+      "file": "57-four-facet-command-shell.png",
+      "name": "几何折壳",
+      "change": "以四块宽折面和削角外形，重新构成壳体。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: reinterpret the fusion as a decidedly FACETED architectural shell, with four broad planes, clipped polygonal outer corners and short straight outer edges. Preserve two unequal lobes, full negative-space > command opening, and one gently rounded continuous right fold. This must have a DIFFERENT outer silhouette from the organic24 lobes: compact folded trapezoidal masses rather than ovals. No thin triangle wings.\nMATERIAL: four clearly separated FLAT colors, bright violet, deep violet, pale lilac and muted mid-purple. No gradients, realistic paper texture, cast shadows, glossy effects or studio floor. Warm-white background. One large pure graphic emblem only.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-d48ba4b0-87c5-4dbd-bc51-07b12f4937d5.png",
+      "wordmark": false
+    },
+    {
+      "id": 58,
+      "file": "58-ivory-thin-fold.png",
+      "name": "薄纸开壳",
+      "change": "用轻薄象牙白折面承载双瓣轮廓，保留完整命令开口。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: very thin paper shell with gently rolled outer edges, two large CURVED lobes, upper shorter and lower longer, joined in a tight but credible continuous right hairpin. The background-visible > opening is wide and open, with the left stepped cuts clearly visible. Broader opening and lighter edges than the original35. Avoid a long sharp paper airplane. Optical silhouette is rounded not triangular.\nMATERIAL: warm IVORY paper outer face and light lavender inner return, extremely fine visible thickness, no paper grain, subtle broad shading only. Solid deep royal-purple background, almost no contact shadow. The negative-space chevron shows that purple background. Pure symbol, no words.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-d3c3012e-c6c6-4ee2-8043-1fdd64f35233.png",
+      "wordmark": false
+    },
+    {
+      "id": 59,
+      "file": "59-soft-thick-fold.png",
+      "name": "厚折软壳",
+      "change": "增加厚度、钝化端部，让图形更稳重且有触感。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: a chunky compact one-piece folded shell, thick broad material, rounded blunt left ends and a large smooth right-hand U-turn. The two lobes have shallow pillowy curvature but remain clearly folded, not two balloons. Full > command aperture remains generously open and crisp, with two left step cuts. Shorter wings, almost square mass, a stable heavy lower edge. Different from delicate paper.\nMATERIAL: matte violet ceramic/elastomer-like surface with subtle pale-lilac inner lip, controlled soft shading, no glossy speculars, no fine texture. Warm porcelain-white background, barely any cast shadow. Emblem only.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-6b483ae2-fa2d-4241-b6c8-51cbd62ecc3a.png",
+      "wordmark": false
+    },
+    {
+      "id": 60,
+      "file": "60-single-ink-shell.png",
+      "name": "单色折返",
+      "change": "用纯色轮廓与一条留白折痕，减少对材质光影的依赖。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: a radically simplified FLAT single-ink master of the two-lobe folded shell. Robust two curved lobes share a continuous right neck; preserve full > negative-space command aperture. Show the sense of material turning back with ONLY ONE narrow tapering white return-cut near the lower-right rim, connected to the main aperture. No extra lines or scattered cuts. Compact squat silhouette, moderately asymmetric.\nMATERIAL: exactly ONE uniform saturated violet ink and white background; absolutely no gradients, two-tone coloring, 3D effects, shadows or texture. Brand-symbol design, not an illustration. Pure large centered emblem, no text.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-53ea5206-d07e-4463-8ff8-06cc049f0e9f.png",
+      "wordmark": false
+    },
+    {
+      "id": 61,
+      "file": "61-recessed-shell.png",
+      "name": "浅浮雕壳",
+      "change": "让连续折面轻微内凹，以克制的凹凸层次表现通道。",
+      "refs": [
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png",
+        "/Users/harvey/Documents/github-code/DeckShell/Design/Branding/Fusion-51/DockShell-Fusion-51.png"
+      ],
+      "prompt": "Use case: logo-brand / precise-object-edit.\nCreate ONE new PURE SYMBOL refinement combining the selected DockShell concepts. The user explicitly requests NO WORDMARK and NO TEXT ANYWHERE.\n\nREFERENCE ROLES:\nImage1 (concept24): rounded upper/lower shell lobes, rich violet identity, full negative-space right-facing > command-chevron.\nImage2 (concept35): one-piece material folding continuously back around the RIGHT hinge, large clear folded surfaces.\nImage3 (concept51): an example of combining those two ideas; use as continuity guidance, not as a constraint to repeat the exact same proportions. REMOVE its text.\n\nMANDATORY CORE:\nTwo shell lobes connected as ONE continuous fold at the right; a clear FULL > negative-space opening between them, with two diagonal white/background arms and their short vertical left step cuts. Do not reduce the gap to a plain triangular wedge. The chevron is empty space showing the background, not a printed arrow on the surface.\nRetain shell/terminal meaning while making the specified geometric variation below visibly distinct. One compact memorable silhouette, large and optically centered with generous square-artboard margins. No tiny folds, no excessive surface details.\nNo letters, wordmark, brand name, caption, digits, watermark, slogan, duplicated emblem, contact sheet or extra objects. No container app tile, shield, lock, monitor, paper airplane, boat, butterfly, play triangle, ocean shell ridges or commercial logo imitation. Opaque artboard background. Do NOT reserve a blank area below for a wordmark; center the symbol itself in both axes.\n\nGEOMETRY: two plump curved shell lobes continuously folding around a shallow right-hand hinge; round broad ends, clear asymmetric24-like silhouette, full > command aperture at center. The inner return planes are slightly RECESSED rather than extruded, creating a subtle scooped channel along the fold. Robust shape with a clean thick outline, not a hollow wire outline, not a flat triangle.\nMATERIAL: pale lavender solid shell against an opaque very dark aubergine background. Low-relief matte surface with gentle interior shading, no glow, no rainbow, no glossy glass, no grain. The negative-space command opening must be the same dark background, not a printed mark. Pure centered symbol only.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-97094519-3470-47dd-9229-74694f44a486.png",
+      "wordmark": false
+    }
+  ],
+  "review": {
+    "preferred": [
+      52,
+      57,
+      58
+    ],
+    "notes": "These are refinements within the selected shell family. Several differ mainly in proportion and fold treatment;57,58,60 and61 explore stronger graphic/material contrasts."
+  }
+}

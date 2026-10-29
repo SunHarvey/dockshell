@@ -1,0 +1,7 @@
+Approved original: Design/Branding/Shell-Refinements-41-50/49-compact-fold.png
+Tool: built-in image_gen
+Purpose: preserve selected concept49; prepare rounded-square icon with transparent outer corners.
+
+Use case: precise-object-edit / application icon export.
+The supplied image is user-selected FINAL concept49. Keep its ivory folded-paper shell, compact broad upper and lower planes, continuous rounded fold at the RIGHT, natural triangular open space, subtle paper shading and texture, and midnight petrol-blue background. Preserve the exact silhouette, geometry, proportions, position and colors; this is asset preparation only, no logo redesign.
+Create one square macOS application-icon asset by changing ONLY the outer background boundary. Keep the existing dark petrol-blue background as a softly rounded-square tile inset about7% from each canvas edge, with smooth corners of radius about20% of the tile width. Make the outside corners and outer margin genuinely transparent alpha. Keep ALL dark blue inside the tile and inside the shell opening opaque. Keep the ivory shell fully inside the tile at its original scale and location. Preserve the source49's folded paper construction and original opening. No text or wordmark, new symbols, added arrow, border, tile bevel, perspective, extra shadow, device mockup, separate objects, or watermarks. Return one isolated rounded-square app icon with transparent outer corners.

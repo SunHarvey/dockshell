@@ -1,0 +1,120 @@
+{
+  "brand": "DockShell",
+  "generator": "built-in image_gen",
+  "use_case": "logo-brand",
+  "numbering": "21–30",
+  "purpose": "Name and current-function identity explorations. Opaque concept artboards, not final transparent app icons. No application assets replaced.",
+  "concepts": [
+    {
+      "id": 21,
+      "file": "21-command-berth.png",
+      "name": "命令泊位",
+      "meaning": "D 形泊位接住命令提示符，把 Dock 与 Shell 合成一个符号。",
+      "role": "Dock + Shell",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: a broad, low, open-right D-shaped docking berth in midnight navy, with a compact coral solid right-facing command chevron fitting into its mouth. The dock must feel like one thick geometric quay, not a box around a generic terminal icon. Use the chevron and the shaped empty harbor as one coherent silhouette. Architecture-led, two bold masses, near-square but slightly wider than tall. Flat navy and coral on warm porcelain white. Symbol centered slightly above the middle; small exact wordmark \"DockShell\" below in understated medium-weight sans serif. No gradients.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-e4068642-638b-4332-85f7-dbb94ef22d5e.png"
+    },
+    {
+      "id": 22,
+      "file": "22-session-dock.png",
+      "name": "会话归港",
+      "meaning": "三个独立会话停靠在同一底座，对应多标签管理。",
+      "role": "多标签 + Dock",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: three solid upright session tabs docking into a shared horizontal base, forming a memorable compact asymmetric comb silhouette. Three independent stems with flat square ends, the middle stem taller, the right stem shortest; base and left/middle stems one deep-ink shape, rightmost tab vivid chartreuse. The base is a docking platform, the upright modules are independent SSH sessions. No UI outlines or tiny controls. Strong modular industrial graphic, flat ink black and acidic lime on soft light gray. Center the compact emblem with the exact small wordmark \"DockShell\" below, custom-looking monospaced lettering. Do not look like a bar chart: use broad tabs, narrow uniform gaps, and visibly slotted feet.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-e2ae16c5-df26-4984-bbc9-521ee2565304.png"
+    },
+    {
+      "id": 23,
+      "file": "23-ds-channel.png",
+      "name": "DS 通道",
+      "meaning": "D 与 S 共用一条连续通路，表达本地与远端之间的连接。",
+      "role": "名字首字母 + SSH",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: a custom lowercase ds ligature formed as one continuous wide copper-orange band. A rounded upright d on the left flows into a clearly recognizable compact s on the right through one shared stem. One bold connected shape, large open counters, no thin wire, no infinity loop, no italic speed stripes. The path through both letterforms suggests an uninterrupted SSH channel. Distinctive typographic industrial design, warm burnt orange on off-white. Make this ds monogram large and central with a small simple exact wordmark \"DockShell\" below. No bevel, texture or 3D.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-e61d874b-d7d7-44fd-a699-0c2270294973.png"
+    },
+    {
+      "id": 24,
+      "file": "24-shell-prompt.png",
+      "name": "Shell 开口",
+      "meaning": "两片贝壳之间露出命令箭头，将 Shell 的字面与终端含义连接起来。",
+      "role": "Shell + 命令",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: an abstract opening shell constructed from TWO bold curved wedge lobes, not a detailed seashell illustration. The clean angular gap BETWEEN the two lobes forms a crisp right-pointing terminal prompt chevron in negative space. Silhouette is a compact fan opening toward the right; the lobes are violet and a slightly deeper violet, with no extra rays or radial lines. Organic softness plus exact geometric aperture. Flat saturated violet on pale lavender-white, no gradients. The compact emblem should work in one color. Small exact wordmark \"DockShell\" below in a calm contemporary sans serif. No pearl, ocean, waves, literal animal, or app tile.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-96a6316b-dfa6-49c0-9fac-74e3566cbd5b.png"
+    },
+    {
+      "id": 25,
+      "file": "25-two-endpoints.png",
+      "name": "双端相接",
+      "meaning": "两个独立端点在中间接合，表达 SSH 的本地端与远端。",
+      "role": "SSH 连接",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: two bold interlocking geometric open brackets representing a local endpoint and a remote endpoint. Left bracket is cobalt blue, right bracket is cyan, meeting with one small decisive overlap at the center; collectively they make a squat angular S-shaped passage rather than chain links or a full enclosing frame. Exactly two parts, broad weights and large gaps, no arrow heads, no cable plugs. Precision engineering with a warm friendly identity, flat solid colors on white. Horizontal emblem with one small exact \"DockShell\" wordmark centered below. No gradients, no orbit or nodes, no shield/lock.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-b802e5cf-a6b6-4d02-b08c-7ec62f50952c.png"
+    },
+    {
+      "id": 26,
+      "file": "26-equal-pane-d.png",
+      "name": "等分 D",
+      "meaning": "D 的内部由两个等大视窗构成，对应横排、竖排的等分终端。",
+      "role": "D + 等分分屏",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: a bold uppercase D monogram divided by a single perfectly centered horizontal negative-space channel into TWO EXACTLY EQUAL-height terminal panes. Its straight left spine and rounded right edge remain obvious as a D despite the split. Add only a subtle short stepped cut at the left entrance of the central channel to suggest the command baseline, no tiny prompt icon. The entire mark is one-color vermilion on very pale warm cream. Austere architectural precision and poster-like minimalism. Large centered symbol with exact small wordmark \"DockShell\" below in restrained black monospaced type. No four-cell grid, no window frame, no decorative UI.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-8b8e4d66-9816-4db6-8c09-1eeaee3ed578.png"
+    },
+    {
+      "id": 27,
+      "file": "27-dock-shell-wordmark.png",
+      "name": "命令字标",
+      "meaning": "直接使用 DockShell 名字，以停靠基线和命令光标建立终端识别。",
+      "role": "名字 + 终端字标",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: an original custom typographic wordmark spelling EXACTLY \"DockShell\" in one line, uppercase D and S only, all letters present and legible. Bold engineered monospace-inspired glyphs, dark forest green on warm white. A single short bright green rectangular terminal cursor follows the final l at the text baseline. A low dark-green docking baseline starts under the D and ends under the k, connecting only to the first D's straight stem, giving Dock a literal berth while keeping the word easy to read. The type IS the logo; no separate icon, no enclosing box, no additional text. Wide horizontal lockup on a square artboard with generous whitespace. Understated crafted contemporary software identity, flat, no texture.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-bcce81d6-8919-4742-ac27-6c199ff66248.png"
+    },
+    {
+      "id": 28,
+      "file": "28-ssh-s-path.png",
+      "name": "Shell 流路",
+      "meaning": "S 由两段互通的折线路径组成，表达命令输入与远端输出。",
+      "role": "S + 双向通信",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: an uppercase S monogram made of two broad squared 90-degree paths that slide past one another with a precise white gap, like two directed command/data lanes. Top path near-black plum, bottom path vivid tangerine, no arrowheads. Clearly read S at thumbnail size; no circle, no badge, no separate dot. Bauhaus-like functional rhythm with big open internal spaces, two flat interrelated pieces on pale peach. Large centered monogram with the exact small wordmark \"DockShell\" in matching plum below. Keep visibly different from ribbon or infinity logos, no looped knot, no gradient.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-db56313b-8800-4fc4-8279-b1770b9b38b9.png"
+    },
+    {
+      "id": 29,
+      "file": "29-host-fingerprint.png",
+      "name": "主机印记",
+      "meaning": "稀疏的 D 形纹路暗示主机指纹与首次连接确认。",
+      "role": "D + 主机身份核验",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: a distinctive sparse fingerprint-inspired uppercase D glyph, built from ONLY THREE heavy nested open-right squared arch contours. The contours share a straight left edge visually and curve around to the right like a D, all interrupted by one broad aligned opening on the right. Three concentric contours, not many fingerprint lines. One tiny square cursor sits in the innermost opening, creating a verified terminal identity. Warm ivory ink on midnight petrol background, calm and precise. Strong enough at 32px, blunt line ends, no biometric hand illustration, no lock, no shield. Small exact wordmark \"DockShell\" below in ivory, geometric sans serif. Strict flat two-color graphic.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-01f74a2f-91d9-4059-8291-7a7325c4a77e.png"
+    },
+    {
+      "id": 30,
+      "file": "30-docking-socket.png",
+      "name": "停靠接口",
+      "meaning": "d 形接口与进入的光标块相互咬合，表达连接建立和命令就绪。",
+      "role": "Dock + 连接就绪",
+      "prompt": "Use case: logo-brand.\nBrand: DockShell, an original macOS SSH terminal client. Dock means a place to dock and organize remote connections; Shell means an interactive command terminal. Current features include independent session tabs, equal horizontal/vertical terminal splits, and verified SSH host identity. Make an original contemporary identity, not a clone of any commercial terminal app.\nDeliver ONE square concept artboard, one resolved design only, not a contact sheet. Use generous empty space, a precise vector-like graphic with clean edges, and strong small-size silhouette. No application screenshot, no mockup device, no rounded-square app container, no generic shield or padlock, no server-rack illustration, no stock clipart, no decorative code rain. Do not cram all product features into the mark. Treat the named semantic link below as the main idea. No captions, numbers, slogan, watermarks or extra marks.\n\nSubject: a lowercase d monogram designed as a robust industrial docking socket, with an open rectangular slot facing left. A separate electric-blue square cursor fits precisely into that slot with a slim even white seam. Main d shape is black, upright and compact with a rounded lower bowl and a short strong ascender; square cursor blue. The two components must feel mechanically compatible and obviously connected, not like an external dot or a keyhole. Crisp contemporary geometric product branding on clean white, high contrast, no cable. Make the emblem large and centered with a small exact \"DockShell\" wordmark below in black. No gradient, no 3D, no app container.",
+      "source": "/Users/harvey/.codex/generated_images/01a14c71-3ff6-7e01-8f1c-6af7149a60eb/exec-8f95a2ea-79c0-47b1-9bb1-10cf6501f158.png"
+    }
+  ],
+  "review": {
+    "preferred": [
+      24,
+      26,
+      30
+    ],
+    "notes": [
+      {
+        "id": 22,
+        "note": "多会话底座的含义需要说明，轮廓仍可能被看作柱状图。"
+      },
+      {
+        "id": 27,
+        "note": "横向字标适合官网、关于窗口，应用图标需要另行提炼。"
+      },
+      {
+        "id": 29,
+        "note": "主机指纹是设计隐喻，图形并非实际指纹或安全状态指示。"
+      }
+    ]
+  }
+}

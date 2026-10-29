@@ -1,0 +1,23 @@
+DockShell — Concept 51: 折壳命令口
+Generator: built-in image_gen
+Reference 1: /Users/harvey/Documents/github-code/DeckShell/Design/Branding/Name-Function-Explorations-21-30/24-shell-prompt.png
+Reference 2: /Users/harvey/Documents/github-code/DeckShell/Design/Branding/Style-Explorations-31-40/35-paper-shell.png
+Opaque concept artboard; no application assets replaced.
+
+Use case: logo-brand / precise-object-edit.
+Create ONE resolved combined DockShell identity from the TWO supplied selected originals.
+
+REFERENCE ROLES:
+Image 1, concept24: PRIMARY silhouette and negative-space geometry. Preserve its plump CURVED upper/lower shell lobes, upper lobe shorter, lower lobe fuller, and its COMPLETE right-facing white > command-chevron aperture.
+Image 2, concept35: CONTINUOUS FOLDED construction and restrained tactile form. Use its one-piece shell folding back at the right, visible fold thickness and four quiet broad surfaces.
+
+DESIGN:
+Rebuild the distinctive rounded two-lobe silhouette of24 as a SINGLE continuous violet folded shell, physically turning back through a broad smooth hairpin hinge at the RIGHT like35. Preserve the organic rounded outer ends and asymmetry from24; do not merely recolor35's straight triangular wings.
+The CENTRAL OPENING must read as an unmistakable FULL > chevron with two substantial white diagonal arms and the two characteristic short vertical step cuts at their left ends, exactly the command meaning of24. A wedge-shaped triangular gap alone is insufficient.
+This white chevron is actual background visible THROUGH the shell, not a white arrow printed on its surface. Shape the inward folded edge of the lower lobe as a broad projecting rounded wedge, making the open gap a chevron, while a complementary cut in the upper inner edge completes it. Subtle inner return planes should make the geometry of the opening credible.
+One continuous short, compact, gently folded sculptural mark. Clear outline first, no extra pieces or excessive folds. Roughly square footprint, 3/4 balanced upper/lower masses, no sharp elongated wings.
+
+STYLE:
+Saturated royal-violet outer face, deep violet lower face, pale lavender inner folded returns. Matte paper/ceramic-like finish, shallow controlled 3D depth, four broad clean facets, restrained lighting, no visible paper grain or glossy highlights. Very pale lavender-white background, airy quiet layout, barely any cast shadow.
+Place the exact small wordmark "DockShell" centered below in deep violet contemporary rounded sans serif, medium weight, optically spaced. Uppercase D and S, otherwise lowercase, correctly spell D-o-c-k-S-h-e-l-l. Symbol is the hero; wordmark is secondary.
+Square artboard, one logo only, generous margins. No contact sheet, explanation, numbers, watermark, slogan, extra symbol or app container. No paper airplane, play triangle, literal seashell, split unrelated marks, shield, lock, external >_ glyph, device, or commercial logo imitation. The result must visibly fuse BOTH originals:24's curved shell and clear > aperture,35's continuous folding structure.

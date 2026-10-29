@@ -1,0 +1,11 @@
+Tool: built-in image_gen
+Asset: DockShell-Logo-v1.png
+
+Use case: logo-brand.
+Asset type: a finished original macOS application icon for DockShell, a native SSH terminal client. Generate ONE square icon asset, not a presentation board or a grid of concepts.
+Primary request: an elegant, distinctive geometric monogram that fuses the initial D, a docking berth, and a terminal prompt into ONE coherent symbol. A bold pale-white D-like open enclosure suggests a protected docking space; an angular right-facing terminal chevron is integrated through its negative space; a short mint cursor completes a deliberate break in the lower structure. Resolve these as a single memorable mark, not a letter with a generic >_ pasted on top.
+Style: precise vector-like geometry, bold rounded strokes, balanced negative space, restrained native macOS polish. The symbol itself is flat and crisp with no texture, no tiny details, clearly legible at 32px.
+Palette: retain the project's petrol teal heritage, approximately #29707D to #1A4257 for the dark rounded-square icon tile, warm near-white for the main mark, a small mint accent for the cursor. Only a subtle tonal gradient on the tile; no neon glow.
+Composition: front-facing, perfectly centered, square 1024x1024 canvas. One softly rounded-square app tile, approximately 82% of the canvas width with clean transparent exterior margins. The monogram fills roughly 60% of the tile and has optically balanced spacing. Clean, polished edges.
+Text: NO wordmark, NO letters outside the abstract D-shaped mark, NO slogans, NO labels.
+Constraints: original identity only; do not imitate any existing terminal/SSH client's icon, commercial artwork, or app branding. No screenshots or terminal window frames, no traffic-light dots, boats, anchors, physical seashells, locks, shields, cables, mockup devices, hands, decorative background, watermark, or multi-icon sheet. Outside the rounded-square tile must be genuinely transparent.
