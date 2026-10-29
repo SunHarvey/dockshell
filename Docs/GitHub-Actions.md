@@ -1,10 +1,10 @@
 # GitHub Actions 构建与草稿发布
 
-DockShell 的云端流程分为 `CI` 和 `Draft Release`。前者检查代码能否编译并通过默认验证，后者为一个已存在的版本标签生成 arm64 DMG 预览包和草稿 Release。应用的 SSH、终端及会话业务代码不依赖 GitHub Actions。
+DockShell 的云端流程分为 `CI` 和 `Draft Release`。前者编译、运行默认验证并生成可下载的 arm64 DMG，后者为一个已存在的版本标签生成 DMG 预览包和草稿 Release。应用的 SSH、终端及会话业务代码不依赖 GitHub Actions。
 
 当前工作流准备的是 **ad-hoc 签名、未公证的测试预览包**，不会自动公开发布。GitHub 提交记录上的 SSH `Verified` 与 macOS 应用的 Developer ID 签名、公证相互独立。
 
-Release 的安装附件以 **DMG** 为主：直接下载、打开后将 `DockShell.app` 拖到 `Applications` 快捷方式。DMG 只是包装格式，不会让应用自动获得 Developer ID 签名或 Apple 公证。
+Actions Artifact 和 Release 的安装附件均以 **DMG 原文件**提供：直接下载、打开后将 `DockShell.app` 拖到 `Applications` 快捷方式。DMG 只是包装格式，不会让应用自动获得 Developer ID 签名或 Apple 公证。
 
 ## 构建环境
 
@@ -23,7 +23,7 @@ Release 的安装附件以 **DMG** 为主：直接下载、打开后将 `DockShe
 - 创建或更新目标分支为 `main` 的 Pull Request。
 - 在 GitHub 的 **Actions → CI → Run workflow** 手动运行。
 
-进入 [Actions 页面](https://github.com/SunHarvey/dockshell/actions)，选择一次 `CI` 运行，可展开各步骤查看环境、编译和验证日志。日志 Artifact 名称以 `ci-logs-arm64-` 开头，保留 7 天。
+进入 [Actions 页面](https://github.com/SunHarvey/dockshell/actions)，选择一次 `CI` 运行，可展开各步骤查看环境、编译和验证日志。成功运行后，在页面底部的 **Artifacts** 点击名称以 `.dmg` 结尾的安装包即可直接下载，无需解压 ZIP。日志 Artifact 名称以 `ci-logs-arm64-` 开头，保留 7 天。
 
 默认流程检查发布脚本和 CI 发布参数，再执行：
 
@@ -34,6 +34,8 @@ sh Scripts/test.sh
 默认验证使用临时数据与合成连接，不自动开启 GUI smoke、个人 Keychain、真实服务器或性能专项验证。需要图形交互、真实 SSH、实际睡眠等人工验收的范围，继续以 [验收矩阵](M6/验收矩阵.md) 为准。
 
 默认回归后，CI 还会实际构建 Release 预览包与 DMG，检查镜像、映像内应用签名及归档校验值；结果记录在 `dmg-package.txt`，此步骤不创建 Release。
+
+只想试用当前提交时，直接下载成功 CI 运行的 DMG 即可，无需创建版本标签或草稿 Release。工作流使用固定版本 `actions/upload-artifact v7.0.2` 的 `archive: false` 上传单个 DMG，Artifact 名称就是实际文件名；此选项支持[原文件下载](https://github.com/actions/upload-artifact/tree/cf430e030ddbb5b0abf93d22962f4752f3646cd9#upload-an-individual-file-unzipped)。
 
 ## 准备版本标签
 
@@ -68,11 +70,11 @@ git push origin refs/tags/v0.1.0-preview.2
 2. 打开 **Actions → Draft Release → Run workflow**。
 3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.1.0-preview.2`。
 4. 运行后等待构建、默认验证、产物审计和上传完成。
-5. 登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，在 **Assets** 中直接下载 `.dmg`；也可在本次运行的 **Artifacts** 下载以 `DockShell-arm64-preview-` 开头的构建产物。
+5. 在本次运行的 **Artifacts** 点击名为 `DockShell-版本-构建号-arm64-local-preview.dmg` 的条目直接下载安装包；也可登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，从 **Assets** 下载同一个 DMG。
 
 发布工作流会重新检查并构建标签对应的代码。构建或测试失败时不会进入创建草稿的步骤；同名 Release 已存在时不会覆盖其内容。
 
-构建 Artifact 保留 14 天，包含：
+发布用构建产物保留 14 天，内容如下。DMG 作为单个原文件上传；校验文件与清单可放在单独的元数据 Artifact 中：
 
 | 文件 | 用途 |
 |---|---|
@@ -83,11 +85,11 @@ git push origin refs/tags/v0.1.0-preview.2
 
 创建的 Release 同时标为 **Draft** 和 **Pre-release**，不会自动成为公开的 Latest 版本。草稿需登录具有仓库相应权限的账号查看；普通访客不能把它当作已发布下载包。GitHub Release 附件包含 DMG、校验文件和清单，`ReleaseNotes.md` 用作草稿正文。
 
-**优先从 Release 的 Assets 下载 DMG。** Actions 的 Artifact 下载仍由 GitHub 包成 ZIP；从该入口下载时，只需解压外层 ZIP 就能得到 DMG，无需再解压应用 ZIP。
+**安装只需下载 `.dmg` 条目。** 本工作流在 Actions 中原样上传 DMG，Release 的 Assets 也直接提供 DMG，两种入口都不需要解压应用 ZIP。日志或元数据 Artifact 可能仍是 ZIP，安装时不需要下载它们。
 
 打开 DMG 后，将 `DockShell.app` 拖到 `Applications（应用程序）` 快捷方式，复制完成后推出磁盘映像。当前包依然未公证；系统安全检查与安装包格式相互独立。
 
-下载并解压 Actions Artifact 后，在其中包含 `SHA256SUMS` 的目录执行：
+需要核对文件时，将 DMG 与对应的 `SHA256SUMS` 放在同一目录；从元数据 Artifact 获取校验文件时，先解压该元数据包。执行：
 
 ```sh
 shasum -a 256 -c SHA256SUMS

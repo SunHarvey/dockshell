@@ -137,9 +137,9 @@ cat > "$notes_path" <<EOF
 - 源码提交：$commit
 - 部署目标：macOS 14；macOS 14 实机与 Intel 尚未完成验收。
 
-从草稿 Release 的附件直接下载 DMG，双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。
+从本次 Actions 的 Artifacts 点击以 .dmg 结尾的安装包，或从草稿 Release 附件下载 DMG，均可直接得到原样 DMG 文件。双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。
 
-GitHub Actions 的 Artifacts 下载仍会被平台包成 ZIP；从那里下载时需先解压外层，再打开其中的 DMG。直接下载 DMG 请使用 Release 附件。
+单独的校验元数据与日志包用于核对和排查，安装只需下载 DMG 原文件。
 
 macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔离属性或改变系统安全设置。面向普通用户分发前仍需完成正式签名、公证和目标环境验收。
 

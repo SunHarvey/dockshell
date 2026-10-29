@@ -32,7 +32,8 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag }}
       DOCKSHELL_APP_OUTPUT_ROOT: ${{ github.workspace }}/Build/ci-app
     outputs:
-      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      dmg_artifact_id: ${{ steps.upload-dmg.outputs.artifact-id }}
+      metadata_artifact_id: ${{ steps.upload-metadata.outputs.artifact-id }}
       tag: ${{ steps.package.outputs.tag }}
       version: ${{ steps.package.outputs.version }}
       build: ${{ steps.package.outputs.build }}
@@ -100,15 +101,27 @@ jobs:
           fi
           case "$DMG_PATH" in "$ARTIFACT_DIR"/*.dmg) ;; *) exit 1 ;; esac
 
-      - name: Upload reviewed preview assets
-        id: upload
+      - name: Upload the DMG without an outer archive
+        id: upload-dmg
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: DockShell-arm64-preview-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ steps.package.outputs.artifact_dir }}/
+          path: ${{ steps.package.outputs.dmg_path }}
+          archive: false
+          overwrite: true
           if-no-files-found: error
           retention-days: 14
-          compression-level: 0
+
+      - name: Upload checksums and preview metadata
+        id: upload-metadata
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: DockShell-arm64-preview-metadata-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.package.outputs.artifact_dir }}/SHA256SUMS
+            ${{ steps.package.outputs.artifact_dir }}/ReleaseManifest.plist
+            ${{ steps.package.outputs.artifact_dir }}/ReleaseNotes.md
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload verification logs
         if: always()
@@ -137,7 +150,7 @@ jobs:
       - name: Download this run's verified preview assets
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ needs.build.outputs.artifact_id }}
+          artifact-ids: ${{ needs.build.outputs.dmg_artifact_id }},${{ needs.build.outputs.metadata_artifact_id }}
           path: preview
           merge-multiple: true
           digest-mismatch: error

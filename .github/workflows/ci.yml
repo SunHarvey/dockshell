@@ -57,6 +57,7 @@ jobs:
           sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
 
       - name: Build and verify the DMG preview
+        id: package
         run: |
           set -euo pipefail
           result_file="$RUNNER_TEMP/dockshell-ci-dmg-result.txt"
@@ -64,6 +65,23 @@ jobs:
           test -s "$result_file"
           result=$(cat "$result_file")
           (cd "$result" && /usr/bin/shasum -a 256 -c SHA256SUMS) 2>&1 | tee -a Build/ci-logs/dmg-package.txt
+          version=$(/usr/libexec/PlistBuddy -c 'Print :version' "$result/ReleaseManifest.plist")
+          build=$(/usr/libexec/PlistBuddy -c 'Print :build' "$result/ReleaseManifest.plist")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$build" =~ ^[1-9][0-9]*$ ]]
+          dmg_path="$result/DockShell-$version-$build-arm64-local-preview.dmg"
+          test -f "$dmg_path"
+          test ! -L "$dmg_path"
+          printf 'dmg_path=%s\n' "$dmg_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the DMG without an outer archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ steps.package.outputs.dmg_path }}
+          archive: false
+          overwrite: true
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Upload verification logs
         if: always()

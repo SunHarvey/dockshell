@@ -49,11 +49,13 @@ DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话�
 
 ### 从 DMG 测试包安装
 
-维护者通过 `Draft Release` 工作流生成新的预览草稿后，可登录具有仓库权限的账号，在 [Releases](https://github.com/SunHarvey/dockshell/releases) 对应草稿的 **Assets** 中直接下载 `.dmg`。打开 DMG，将 **DockShell.app** 拖到 **Applications（应用程序）** 快捷方式，再推出磁盘映像。
+在成功的 [CI 运行](https://github.com/SunHarvey/dockshell/actions/workflows/ci.yml)页面底部的 **Artifacts** 中，点击名称以 `.dmg` 结尾的安装包即可直接下载。维护者也可通过 `Draft Release` 生成预览草稿，再登录具有仓库权限的账号，从 [Releases](https://github.com/SunHarvey/dockshell/releases) 对应草稿的 **Assets** 下载 DMG。
 
-此流程生成的 DMG 仍为 Apple Silicon / arm64 的未公证测试包，包装格式不改变应用的签名与公证状态。新的 DMG 流程需使用包含这次打包改动的新标签，例如 `v0.1.0-preview.2`；旧 `v0.1.0-preview.1` 保持原有 ZIP 产物。
+打开 DMG，将 **DockShell.app** 拖到 **Applications（应用程序）** 快捷方式，再推出磁盘映像。
 
-从 **Release 附件**下载可以直接得到 DMG；从 **Actions → Artifacts** 下载时，GitHub 仍会提供一层 ZIP，解压该层后才得到 DMG。
+此流程生成的 DMG 仍为 Apple Silicon / arm64 的未公证测试包，包装格式不改变应用的签名与公证状态。草稿 Release 的 DMG 流程需使用包含这次打包改动的新标签，例如 `v0.1.0-preview.2`；普通 CI 下载不需要版本标签。旧 `v0.1.0-preview.1` 保持原有 ZIP 产物。
+
+工作流将单个 DMG 以原文件上传，**Actions 的 DMG 条目和 Release 附件均可直接下载 `.dmg`**，无需先解压 ZIP。日志或元数据的 Artifact 可能仍是 ZIP，不是安装所需的文件。
 
 ### 环境要求
 
@@ -160,7 +162,7 @@ DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
 
 ### GitHub Actions
 
-`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译和默认验证。`Draft Release` 可手动针对已推送的版本标签构建 **Apple Silicon / arm64** 预览包，直接将 DMG、SHA-256 校验文件和清单附到未公开的草稿 Pre-release。目前产物仍采用 ad-hoc 签名，未经过 Apple 公证；工作流不自动公开发布。优先从 Release 的 Assets 下载 DMG，避免 Actions Artifact 的外层 ZIP。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与草稿发布](Docs/GitHub-Actions.md)。
+`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译、默认验证和 arm64 DMG 打包，成功后可在 Artifacts 直接下载 `.dmg`。`Draft Release` 可手动针对已推送的版本标签构建预览包，将 DMG、SHA-256 校验文件和清单附到未公开的草稿 Pre-release。目前产物仍采用 ad-hoc 签名，未经过 Apple 公证；工作流不自动公开发布。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与草稿发布](Docs/GitHub-Actions.md)。
 
 ### 项目结构
 
