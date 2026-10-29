@@ -103,6 +103,10 @@ result="$DOCKSHELL_ROOT/Build/distribution/$stem-$(/bin/date -u '+%Y%m%dT%H%M%SZ
 mkdir "$result"
 /usr/bin/ditto "$app" "$result/DockShell.app"
 /usr/bin/ditto -c -k --keepParent "$result/DockShell.app" "$result/$stem.zip"
+if [ "$mode" = local-preview ]; then
+    sh "$DOCKSHELL_ROOT/Scripts/package-dmg.sh" "$result/DockShell.app" "$result/$stem.dmg" \
+        --mode "$mode" --architectures "$architecture_label"
+fi
 manifest="$result/ReleaseManifest.plist"
 /usr/bin/plutil -create xml1 "$manifest"
 /usr/bin/plutil -insert product -string DockShell "$manifest"
@@ -113,7 +117,12 @@ manifest="$result/ReleaseManifest.plist"
 /usr/bin/plutil -insert notarized -bool NO "$manifest"
 /usr/bin/plutil -insert publiclyDistributable -bool NO "$manifest"
 /usr/bin/plutil -insert minimumSystem -string 14.0 "$manifest"
-(cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" > SHA256SUMS)
+if [ "$mode" = local-preview ]; then
+    /usr/bin/plutil -insert installerFormat -string dmg "$manifest"
+    (cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" "$stem.dmg" > SHA256SUMS)
+else
+    (cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" > SHA256SUMS)
+fi
 if [ -n "$result_file" ]; then
     (set -C; printf '%s\n' "$result" > "$result_file") || fail 'Could not write the release result file.'
 fi

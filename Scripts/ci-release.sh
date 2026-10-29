@@ -85,10 +85,12 @@ distribution=$(CDPATH= cd -- "$root/Build/distribution" && pwd -P)
 case "$result" in "$distribution"/*) ;; *) fail 'The build returned a directory outside Build/distribution.' ;; esac
 
 zip_name="DockShell-$version-$build-arm64-local-preview.zip"
+dmg_name="DockShell-$version-$build-arm64-local-preview.dmg"
 archive="$result/$zip_name"
+installer="$result/$dmg_name"
 manifest="$result/ReleaseManifest.plist"
 checksums="$result/SHA256SUMS"
-for file in "$archive" "$manifest" "$checksums"; do
+for file in "$archive" "$installer" "$manifest" "$checksums"; do
     [ -f "$file" ] && [ ! -L "$file" ] || fail 'A required release file is missing or is a symlink.'
 done
 for key_value in "version:$version" "build:$build" 'architectures:arm64' 'signingMode:local-preview' 'notarized:false' 'publiclyDistributable:false'; do
@@ -96,18 +98,33 @@ for key_value in "version:$version" "build:$build" 'architectures:arm64' 'signin
     actual=$(/usr/libexec/PlistBuddy -c "Print :$key" "$manifest") || fail 'The release manifest is incomplete.'
     [ "$actual" = "$expected" ] || fail 'The release manifest does not match the requested arm64 preview.'
 done
-record=$(cat "$checksums")
-digest=${record%% *}
-case "$digest" in ''|*[!0-9a-f]*) fail 'The release checksum is not a SHA-256 digest.' ;; esac
-[ "${#digest}" -eq 64 ] && [ "$record" = "$digest  $zip_name" ] \
-    || fail 'SHA256SUMS must identify exactly the expected preview ZIP.'
+# The source build keeps its ZIP for existing local verification, while CI ships
+# the DMG directly. Accept exactly one checksum for each expected source file.
+found_zip=0; found_dmg=0
+while IFS= read -r record || [ -n "$record" ]; do
+    digest=${record%% *}
+    case "$digest" in ''|*[!0-9a-f]*) fail 'The release checksum is not a SHA-256 digest.' ;; esac
+    [ "${#digest}" -eq 64 ] || fail 'The release checksum is not a SHA-256 digest.'
+    case "$record" in
+        "$digest  $zip_name") [ "$found_zip" -eq 0 ] || fail 'The preview ZIP checksum is duplicated.'; found_zip=1 ;;
+        "$digest  $dmg_name") [ "$found_dmg" -eq 0 ] || fail 'The preview DMG checksum is duplicated.'; found_dmg=1 ;;
+        *) fail 'SHA256SUMS must identify only the expected preview ZIP and DMG.' ;;
+    esac
+done < "$checksums"
+[ "$found_zip:$found_dmg" = 1:1 ] || fail 'SHA256SUMS must identify both the expected preview ZIP and DMG.'
 sh "$root/Scripts/audit-release.sh" "$result/DockShell.app" --mode local-preview --architectures arm64
 (cd "$result" && /usr/bin/shasum -a 256 -c SHA256SUMS)
 
 artifact_dir=$(mktemp -d "$root/Build/ci-release.XXXXXX")
-cp "$archive" "$checksums" "$manifest" "$artifact_dir/"
+cp "$installer" "$manifest" "$artifact_dir/"
+(cd "$artifact_dir" && /usr/bin/shasum -a 256 "$dmg_name" > SHA256SUMS)
 /usr/bin/plutil -insert sourceCommit -string "$commit" "$artifact_dir/ReleaseManifest.plist"
 /usr/bin/plutil -insert releaseTag -string "$tag" "$artifact_dir/ReleaseManifest.plist"
+if /usr/libexec/PlistBuddy -c 'Print :installerFormat' "$artifact_dir/ReleaseManifest.plist" >/dev/null 2>&1; then
+    /usr/bin/plutil -replace installerFormat -string dmg "$artifact_dir/ReleaseManifest.plist"
+else
+    /usr/bin/plutil -insert installerFormat -string dmg "$artifact_dir/ReleaseManifest.plist"
+fi
 notes_path="$artifact_dir/ReleaseNotes.md"
 cat > "$notes_path" <<EOF
 # DockShell $tag — arm64 测试草稿
@@ -120,9 +137,13 @@ cat > "$notes_path" <<EOF
 - 源码提交：$commit
 - 部署目标：macOS 14；macOS 14 实机与 Intel 尚未完成验收。
 
-ZIP 内包含 DockShell.app。macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔离属性或改变系统安全设置。面向普通用户分发前仍需完成正式签名、公证和目标环境验收。
+从草稿 Release 的附件直接下载 DMG，双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。
 
-在下载文件所在目录校验 ZIP：
+GitHub Actions 的 Artifacts 下载仍会被平台包成 ZIP；从那里下载时需先解压外层，再打开其中的 DMG。直接下载 DMG 请使用 Release 附件。
+
+macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔离属性或改变系统安全设置。面向普通用户分发前仍需完成正式签名、公证和目标环境验收。
+
+在下载文件所在目录校验 DMG：
 
     shasum -a 256 -c SHA256SUMS
 
@@ -130,14 +151,14 @@ ZIP 内包含 DockShell.app。macOS 安全检查可能阻止未公证应用运�
 EOF
 (cd "$artifact_dir" && /usr/bin/shasum -a 256 -c SHA256SUMS)
 
-zip_path="$artifact_dir/$zip_name"
+dmg_path="$artifact_dir/$dmg_name"
 manifest_path="$artifact_dir/ReleaseManifest.plist"
 output artifact_dir "$artifact_dir"
-output zip_path "$zip_path"
+output dmg_path "$dmg_path"
 output notes_path "$notes_path"
 output manifest_path "$manifest_path"
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    printf '### DockShell 测试包\n\n- 标签：`%s`\n- 构建：`%s`\n- 架构：`arm64`\n- 提交：`%s`\n- 状态：ad-hoc 签名，未公证，仅供草稿核对。\n' \
+    printf '### DockShell 测试包\n\n- 标签：`%s`\n- 构建：`%s`\n- 架构：`arm64`\n- 格式：`DMG`，打开后拖到应用程序。\n- 提交：`%s`\n- 状态：ad-hoc 签名，未公证，仅供草稿核对。\n' \
         "$tag" "$build" "$commit" >> "$GITHUB_STEP_SUMMARY"
 fi
 complete=1

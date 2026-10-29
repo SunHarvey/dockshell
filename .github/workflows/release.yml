@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag, for example v0.1.0-preview.1
+        description: Existing DMG-capable version tag, for example v0.1.0-preview.2
         required: true
         type: string
 
@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            printf '%s\n' 'A version tag such as v0.1.0-preview.1 is required.' >&2
+            printf '%s\n' 'A version tag such as v0.1.0-preview.2 is required.' >&2
             exit 1
           fi
 
@@ -52,6 +52,14 @@ jobs:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Require DMG packaging in the selected tag
+        run: |
+          set -euo pipefail
+          if [ ! -f Scripts/package-dmg.sh ] || [ ! -f Scripts/test-dmg-packaging.sh ]; then
+            printf '%s\n' 'This tag predates DMG packaging. Select a new tag containing the DMG changes, such as v0.1.0-preview.2; existing tags are not moved.' >&2
+            exit 1
+          fi
 
       - name: Check pinned build environment and source version
         run: |
@@ -71,6 +79,7 @@ jobs:
           set -euo pipefail
           sh Scripts/test-release-scripts.sh 2>&1 | tee Build/ci-logs/release-guards.txt
           sh Scripts/test-ci-release.sh 2>&1 | tee Build/ci-logs/ci-release-guards.txt
+          sh Scripts/test-dmg-packaging.sh 2>&1 | tee Build/ci-logs/dmg-guards.txt
           sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
 
       - name: Prepare ad-hoc signed preview assets
@@ -78,6 +87,18 @@ jobs:
         run: |
           set -euo pipefail
           sh Scripts/ci-release.sh prepare "$RELEASE_TAG" 2>&1 | tee Build/ci-logs/package.txt
+
+      - name: Check DMG output contract
+        env:
+          DMG_PATH: ${{ steps.package.outputs.dmg_path }}
+          ARTIFACT_DIR: ${{ steps.package.outputs.artifact_dir }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DMG_PATH" ] || [ -z "$ARTIFACT_DIR" ] || [ ! -f "$DMG_PATH" ]; then
+            printf '%s\n' 'The selected tag did not produce a DMG installer. Use a tag containing the current DMG packaging helper.' >&2
+            exit 1
+          fi
+          case "$DMG_PATH" in "$ARTIFACT_DIR"/*.dmg) ;; *) exit 1 ;; esac
 
       - name: Upload reviewed preview assets
         id: upload
@@ -129,9 +150,14 @@ jobs:
           [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$APP_BUILD" =~ ^[1-9][0-9]*$ ]]
           [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-          test -f "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.zip"
+          dmg_name="DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg"
+          test -f "$dmg_name"
           test -f ReleaseManifest.plist
           test -f ReleaseNotes.md
+          checksum_record=$(cat SHA256SUMS)
+          checksum_digest=${checksum_record%% *}
+          [[ "$checksum_digest" =~ ^[0-9a-f]{64}$ ]]
+          test "$checksum_record" = "$checksum_digest  $dmg_name"
           sha256sum --check --strict SHA256SUMS
           ref_details=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '[.ref, .object.type, .object.sha] | @tsv')
           read -r remote_ref object_type remote_commit <<< "$ref_details"
@@ -157,7 +183,7 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "$RELEASE_TAG" \
-            "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.zip" \
+            "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg" \
             SHA256SUMS ReleaseManifest.plist \
             --verify-tag --draft --prerelease --latest=false \
             --title "DockShell $RELEASE_TAG (arm64 preview)" \

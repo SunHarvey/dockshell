@@ -49,11 +49,21 @@ jobs:
           set -euo pipefail
           sh Scripts/test-release-scripts.sh 2>&1 | tee Build/ci-logs/release-guards.txt
           sh Scripts/test-ci-release.sh 2>&1 | tee Build/ci-logs/ci-release-guards.txt
+          sh Scripts/test-dmg-packaging.sh 2>&1 | tee Build/ci-logs/dmg-guards.txt
 
       - name: Build and run regression checks
         run: |
           set -euo pipefail
           sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
+
+      - name: Build and verify the DMG preview
+        run: |
+          set -euo pipefail
+          result_file="$RUNNER_TEMP/dockshell-ci-dmg-result.txt"
+          sh Scripts/release.sh --local-preview --result-file "$result_file" 2>&1 | tee Build/ci-logs/dmg-package.txt
+          test -s "$result_file"
+          result=$(cat "$result_file")
+          (cd "$result" && /usr/bin/shasum -a 256 -c SHA256SUMS) 2>&1 | tee -a Build/ci-logs/dmg-package.txt
 
       - name: Upload verification logs
         if: always()

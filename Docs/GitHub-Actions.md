@@ -1,8 +1,10 @@
 # GitHub Actions 构建与草稿发布
 
-DockShell 的云端流程分为 `CI` 和 `Draft Release`。前者检查代码能否编译并通过默认验证，后者为一个已存在的版本标签生成 arm64 预览包和草稿 Release。应用的 SSH、终端及会话业务代码不依赖 GitHub Actions。
+DockShell 的云端流程分为 `CI` 和 `Draft Release`。前者检查代码能否编译并通过默认验证，后者为一个已存在的版本标签生成 arm64 DMG 预览包和草稿 Release。应用的 SSH、终端及会话业务代码不依赖 GitHub Actions。
 
 当前工作流准备的是 **ad-hoc 签名、未公证的测试预览包**，不会自动公开发布。GitHub 提交记录上的 SSH `Verified` 与 macOS 应用的 Developer ID 签名、公证相互独立。
+
+Release 的安装附件以 **DMG** 为主：直接下载、打开后将 `DockShell.app` 拖到 `Applications` 快捷方式。DMG 只是包装格式，不会让应用自动获得 Developer ID 签名或 Apple 公证。
 
 ## 构建环境
 
@@ -31,24 +33,28 @@ sh Scripts/test.sh
 
 默认验证使用临时数据与合成连接，不自动开启 GUI smoke、个人 Keychain、真实服务器或性能专项验证。需要图形交互、真实 SSH、实际睡眠等人工验收的范围，继续以 [验收矩阵](M6/验收矩阵.md) 为准。
 
+默认回归后，CI 还会实际构建 Release 预览包与 DMG，检查镜像、映像内应用签名及归档校验值；结果记录在 `dmg-package.txt`，此步骤不创建 Release。
+
 ## 准备版本标签
 
-发布工作流要求标签已经存在于远端，且标签指向的提交包含本轮工作流和 CI 发布脚本。工作流不会自动创建、移动或强制覆盖标签。
+发布工作流要求标签已经存在于远端，且标签指向的提交包含本轮工作流、CI 发布脚本和 DMG 打包代码。工作流不会自动创建、移动或强制覆盖标签。
+
+已经存在的 `v0.1.0-preview.1` 固定到旧 ZIP 打包流程。不要移动该标签或覆盖已有草稿；本次 DMG 流程使用包含新代码的标签，例如 `v0.1.0-preview.2`。应用版本仍为 `0.1.0 / build 16`，本次仅调整安装包格式。
 
 例如，在已包含这些改动的 `main` 上创建当前 `0.1.0` 的预览标签：
 
 ```sh
 git switch main
 git pull --ff-only origin main
-git tag -a v0.1.0-preview.1 -m "DockShell 0.1.0 preview 1"
-git push origin refs/tags/v0.1.0-preview.1
+git tag -a v0.1.0-preview.2 -m "DockShell 0.1.0 preview 2 (DMG)"
+git push origin refs/tags/v0.1.0-preview.2
 ```
 
 如果希望标签也使用当前仓库配置的 SSH 密钥签名，可把 `git tag -a` 改为 `git tag -s`。这使用本机已有的签名配置，云端发布无需导入该私钥。
 
 版本规则：
 
-- 使用 `v主版本.次版本.修订版本`，可带预发布后缀，例如 `v0.1.0-preview.1`。
+- 使用 `v主版本.次版本.修订版本`，可带预发布后缀，例如 `v0.1.0-preview.2`。
 - 标签的核心版本必须与 [Info.plist](../Packaging/Info.plist) 的 `CFBundleShortVersionString` 一致；当前为 `0.1.0`。
 - `CFBundleVersion` 是构建号，当前为 `16`，不会被工作流自动修改。
 - 打包时的 `HEAD` 必须就是该标签对应的提交。不存在的标签、分支名、错误版本和不安全输入会被拒绝。
@@ -60,9 +66,9 @@ git push origin refs/tags/v0.1.0-preview.1
 
 1. 确认对应版本的 `CI` 结果，并确保标签已推送。
 2. 打开 **Actions → Draft Release → Run workflow**。
-3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.1.0-preview.1`。
+3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.1.0-preview.2`。
 4. 运行后等待构建、默认验证、产物审计和上传完成。
-5. 在本次运行的 **Artifacts** 下载以 `DockShell-arm64-preview-` 开头的构建产物，或到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿。
+5. 登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，在 **Assets** 中直接下载 `.dmg`；也可在本次运行的 **Artifacts** 下载以 `DockShell-arm64-preview-` 开头的构建产物。
 
 发布工作流会重新检查并构建标签对应的代码。构建或测试失败时不会进入创建草稿的步骤；同名 Release 已存在时不会覆盖其内容。
 
@@ -70,12 +76,16 @@ git push origin refs/tags/v0.1.0-preview.1
 
 | 文件 | 用途 |
 |---|---|
-| `DockShell-版本-构建号-arm64-local-preview.zip` | 保留 `.app` 目录结构、权限与嵌套签名的应用归档 |
-| `SHA256SUMS` | ZIP 的 SHA-256 校验值 |
+| `DockShell-版本-构建号-arm64-local-preview.dmg` | 只读压缩磁盘映像，包含已签名的 `DockShell.app` 与 `Applications` 快捷方式 |
+| `SHA256SUMS` | DMG 的 SHA-256 校验值 |
 | `ReleaseManifest.plist` | 版本、构建号、架构与未公证状态 |
 | `ReleaseNotes.md` | 草稿说明与预览包使用边界 |
 
-创建的 Release 同时标为 **Draft** 和 **Pre-release**，不会自动成为公开的 Latest 版本。草稿需登录具有仓库相应权限的账号查看；普通访客不能把它当作已发布下载包。GitHub Release 附件包含 ZIP、校验文件和清单，`ReleaseNotes.md` 用作草稿正文。
+创建的 Release 同时标为 **Draft** 和 **Pre-release**，不会自动成为公开的 Latest 版本。草稿需登录具有仓库相应权限的账号查看；普通访客不能把它当作已发布下载包。GitHub Release 附件包含 DMG、校验文件和清单，`ReleaseNotes.md` 用作草稿正文。
+
+**优先从 Release 的 Assets 下载 DMG。** Actions 的 Artifact 下载仍由 GitHub 包成 ZIP；从该入口下载时，只需解压外层 ZIP 就能得到 DMG，无需再解压应用 ZIP。
+
+打开 DMG 后，将 `DockShell.app` 拖到 `Applications（应用程序）` 快捷方式，复制完成后推出磁盘映像。当前包依然未公证；系统安全检查与安装包格式相互独立。
 
 下载并解压 Actions Artifact 后，在其中包含 `SHA256SUMS` 的目录执行：
 
@@ -83,28 +93,33 @@ git push origin refs/tags/v0.1.0-preview.1
 shasum -a 256 -c SHA256SUMS
 ```
 
-SHA-256 验证归档完整性，不等于 Developer ID 身份验证或 Apple 公证。当前草稿包仍是未公证预览；正式分发的签名、公证入口见 [M6 分发准备](M6/分发准备.md)。
+SHA-256 验证 DMG 文件完整性，不等于 Developer ID 身份验证或 Apple 公证。当前草稿包仍是未公证预览；正式分发的签名、公证入口见 [M6 分发准备](M6/分发准备.md)。
 
 ## 本机校验入口
 
 下面命令均在仓库根目录运行。仅验证已有标签与版本，不打包：
 
 ```sh
-sh Scripts/ci-release.sh validate v0.1.0-preview.1
+sh Scripts/ci-release.sh validate v0.1.0-preview.2
 ```
 
 本机已检出该标签、且运行于 macOS arm64 时，可准备同样的预览产物：
 
 ```sh
-sh Scripts/ci-release.sh prepare v0.1.0-preview.1
+sh Scripts/ci-release.sh prepare v0.1.0-preview.2
 ```
 
-辅助脚本通过 `release.sh --local-preview --result-file FILE` 获取本次成功构建的精确目录，检查 arm64 应用和归档校验值，随后整理到独立的 `Build/ci-release.*` 目录。它不搜索旧版本目录来猜测待上传文件。
+辅助脚本通过 `release.sh --local-preview --result-file FILE` 获取本次成功构建的精确目录，检查 arm64 应用、源 ZIP 与 DMG 校验值，随后将 DMG 及其校验文件整理到独立的 `Build/ci-release.*` 目录。`release.sh` 内部仍保留 ZIP 供已有审计和后续公证流程使用，但 CI 的安装附件以 DMG 为主，不把应用 ZIP 再套进下载产物。辅助脚本不搜索旧版本目录来猜测待上传文件。
+
+`prepare` 向工作流输出 `artifact_dir`、`dmg_path`、`notes_path`、`manifest_path` 及标签、版本、构建号和源码提交信息；DMG 安装附件的路径字段为 `dmg_path`。
+
+打包使用 macOS 自带的 `hdiutil` 与 `ditto`，不新增第三方打包依赖。DMG 会经过完整性检查、只读挂载，以及映像内应用签名、架构、资源和快捷方式检查。
 
 CI 参数边界可单独验证：
 
 ```sh
 sh Scripts/test-ci-release.sh
+sh Scripts/test-dmg-packaging.sh
 ```
 
 ## 权限与文件索引
@@ -119,7 +134,9 @@ sh Scripts/test-ci-release.sh
 | [release.yml](../.github/workflows/release.yml) | 手动选择标签、构建预览包和创建草稿 |
 | [ci-release.sh](../Scripts/ci-release.sh) | 标签、版本、架构校验与精确产物整理 |
 | [test-ci-release.sh](../Scripts/test-ci-release.sh) | 临时仓库中的发布参数边界验证 |
-| [release.sh](../Scripts/release.sh) | 原生应用、helper、资源、签名和 ZIP 打包 |
+| [release.sh](../Scripts/release.sh) | 原生应用、helper、资源、签名和预览归档打包 |
+| [package-dmg.sh](../Scripts/package-dmg.sh) | 系统工具创建 DMG，并检查只读挂载后的应用与快捷方式 |
+| [test-dmg-packaging.sh](../Scripts/test-dmg-packaging.sh) | DMG 参数保护与可选的真实应用封装验证 |
 | [audit-release.sh](../Scripts/audit-release.sh) | 应用架构、签名、资源及部署目标审计 |
 | [test.sh](../Scripts/test.sh) | 默认验证和应用搬迁检查 |
 
