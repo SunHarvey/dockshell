@@ -3,6 +3,12 @@ import Foundation
 
 /// Resolves user storage through system APIs; no hardcoded home directory.
 public enum AppPaths {
+    /// Persistent pasted keys live outside SQLite, in a separately checked owner-only directory.
+    public static func privateKeysDirectoryURL() throws -> URL {
+        try sessionDatabaseURL().deletingLastPathComponent()
+            .appendingPathComponent("PrivateKeys", isDirectory: true)
+    }
+
     public static func knownHostsURL() throws -> URL {
         try sessionDatabaseURL().deletingLastPathComponent().appendingPathComponent("known_hosts")
     }

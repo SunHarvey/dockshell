@@ -47,6 +47,8 @@ public struct SessionDraft: Sendable {
     public var username: String
     public var authentication: AuthenticationKind
     public var keyBookmark: Data?
+    /// Unsaved pasted key material. Never encode this value or store it in the session database.
+    public var privateKeyText: String?
     public var groupID: UUID?
     public var secret: SecretChange = .keep
 
@@ -57,11 +59,15 @@ public struct SessionDraft: Sendable {
         port = String(profile?.port ?? 22)
         username = profile?.username ?? ""
         authentication = profile?.authentication.kind ?? .password
+        privateKeyText = nil
         groupID = profile?.groupID
         if case .privateKey(let bookmark, _) = profile?.authentication { keyBookmark = bookmark }
     }
 
-    public func validated(credentialID: UUID?) throws -> SessionProfile {
+    /// Checks ordinary fields before a pasted key creates an application-managed file.
+    public func validateMetadata() throws { _ = try normalizedFields() }
+
+    private func normalizedFields() throws -> (name: String, host: String, port: UInt16, username: String) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let host = host.trimmingCharacters(in: .whitespacesAndNewlines)
         let username = username.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -78,6 +84,11 @@ public struct SessionDraft: Sendable {
               !username.unicodeScalars.contains(where: {
                   CharacterSet.whitespacesAndNewlines.contains($0) || CharacterSet.controlCharacters.contains($0)
               }) else { throw DockShellError.invalidUsername }
+        return (name, host, port, username)
+    }
+
+    public func validated(credentialID: UUID?) throws -> SessionProfile {
+        let fields = try normalizedFields()
         let method: AuthenticationMethod
         switch authentication {
         case .password: method = .password(credentialID: credentialID)
@@ -86,7 +97,7 @@ public struct SessionDraft: Sendable {
             guard let keyBookmark, !keyBookmark.isEmpty else { throw DockShellError.privateKeyRequired }
             method = .privateKey(fileBookmark: keyBookmark, passphraseCredentialID: credentialID)
         }
-        return SessionProfile(id: id, name: name, host: host, port: port, username: username,
+        return SessionProfile(id: id, name: fields.name, host: fields.host, port: fields.port, username: fields.username,
                               authentication: method, groupID: groupID)
     }
 }

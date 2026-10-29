@@ -97,6 +97,10 @@ private enum DockShellVerification {
         let chinese = try L10n(resourceBundle: resources, preferredLanguages: ["zh-Hans-CN"])
         try require(english.string(.disconnected) == "Not connected", "English language fallback failed")
         try require(chinese.string(.disconnected) == "尚未连接", "Simplified Chinese language fallback failed")
+        try require(chinese.errorKey(SSHAuthenticationError.privateKeyMalformed) == .sshErrorKeyMalformed,
+                    "Malformed pasted keys must display a key-format error in the session editor")
+        try require(chinese.errorKey(SSHAuthenticationError.privateKeyUnsupported) == .sshErrorKeyContainer,
+                    "Unsupported pasted keys must display supported-format guidance")
         print("PASS resources: \(expectedKeys.count) typed keys, en/zh-Hans, regional language matching")
         try require(app.object(forInfoDictionaryKey: "CFBundleIconFile") as? String == "DockShell.icns",
                     "The approved application icon must be declared in Info.plist")
@@ -195,6 +199,7 @@ private enum DockShellVerification {
         try await M4FlowVerification.run()
         try await M5BrokerVerification.run(helperURL: helperURL)
         try await M5AuthenticationVerification.run()
+        try await ManagedPrivateKeyVerification.run()
         try await M5TransportVerification.run(helperURL: helperURL)
         try await M5RecoveryVerification.run()
         try await M6PersistenceSafetyVerification.run()

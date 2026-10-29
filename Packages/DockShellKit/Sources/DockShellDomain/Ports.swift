@@ -13,7 +13,7 @@ public protocol SessionRepository: Sendable {
     func finishCredentialCleanup(id: UUID) async throws
 }
 
-/// Secrets are held only in memory and Keychain, never in SessionRepository.
+/// Passwords and passphrases stay in memory and Keychain, never in SessionRepository.
 public protocol CredentialStore: Sendable {
     /// Creates an immutable item. Updates use a fresh UUID.
     func store(_ secret: Data, id: UUID) async throws
@@ -22,12 +22,28 @@ public protocol CredentialStore: Sendable {
     func delete(id: UUID) async throws
 }
 
-/// References an external private-key file without importing its contents.
+/// References external key files and explicitly imported private-key files.
+/// Passwords and private-key passphrases remain in CredentialStore.
 public protocol PrivateKeyFileAccess: Sendable {
     func bookmark(for url: URL) async throws -> Data
     func displayName(for bookmark: Data) async throws -> String
-    /// Resolves the user-approved external reference; a stale or missing file is a visible error.
+    /// Resolves a user-approved reference; a stale or missing file is a visible error.
     func resolve(for bookmark: Data) async throws -> URL
+    /// Imports user-pasted content into an immutable, owner-only application file.
+    /// The returned bookmark contains a file reference, never the private-key bytes.
+    func importKey(_ text: String) async throws -> Data
+    /// Rolls back an uncommitted import. An external selected file is never removed.
+    func removeImportedKey(for bookmark: Data) async throws
+    /// Startup-only maintenance, after exclusive repository access and before SSH tabs exist.
+    /// Implementations must preserve all referenced files and skip uncertain references.
+    func removeUnusedImportedKeys(referencedBy bookmarks: [Data]) async throws
+}
+
+/// External-file-only implementations and verification doubles need no import support.
+public extension PrivateKeyFileAccess {
+    func importKey(_ text: String) async throws -> Data { throw DockShellError.unsupportedPrivateKey }
+    func removeImportedKey(for bookmark: Data) async throws {}
+    func removeUnusedImportedKeys(referencedBy bookmarks: [Data]) async throws {}
 }
 
 /// PTY dimensions, expressed in character cells rather than view pixels.

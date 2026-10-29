@@ -290,6 +290,23 @@
         }
       }
     },
+    "credential.hide": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide password"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏密码"
+          }
+        }
+      }
+    },
     "credential.keephelp": {
       "extractionState": "manual",
       "localizations": {
@@ -320,6 +337,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "未保存，需要时询问"
+          }
+        }
+      }
+    },
+    "credential.passphrase.hide": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide passphrase"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏口令"
+          }
+        }
+      }
+    },
+    "credential.passphrase.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show passphrase"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示口令"
           }
         }
       }
@@ -371,6 +422,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "已保存到钥匙串"
+          }
+        }
+      }
+    },
+    "credential.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show password"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示密码"
           }
         }
       }
@@ -1174,6 +1242,40 @@
         }
       }
     },
+    "key.paste.contents": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private key contents"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "私钥内容"
+          }
+        }
+      }
+    },
+    "key.paste.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste the complete OpenSSH or PEM private key. DockShell saves a file readable only by your user; the passphrase stays in Keychain."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴完整的 OpenSSH 或 PEM 私钥。保存后由 DockShell 管理文件，仅当前用户可读；口令仍存入钥匙串。"
+          }
+        }
+      }
+    },
     "key.referencehelp": {
       "extractionState": "manual",
       "localizations": {
@@ -1187,6 +1289,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "私钥保留在原位置。支持 OpenSSH 及受支持的 PEM；PuTTY PPK 请先用 PuTTYgen 转换。移动文件后请重新选择。"
+          }
+        }
+      }
+    },
+    "key.source": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Private key source"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "私钥来源"
+          }
+        }
+      }
+    },
+    "key.source.file": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose file"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择文件"
+          }
+        }
+      }
+    },
+    "key.source.paste": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste key"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "粘贴私钥"
           }
         }
       }
@@ -1231,13 +1384,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Horizontal (Side by Side)"
+            "value": "Side by Side"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "横排（左右并列）"
+            "value": "左右并列"
           }
         }
       }
@@ -1288,7 +1441,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先打开至少两个连接，再选择横排或竖排。"
+            "value": "请先打开至少两个连接，再选择左右并列或上下堆叠。"
           }
         }
       }
@@ -1299,13 +1452,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vertical (Stacked)"
+            "value": "Stacked"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "竖排（上下堆叠）"
+            "value": "上下堆叠"
           }
         }
       }
@@ -2217,13 +2370,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The selected file is not a complete supported private key, or it is too large. Choose the original private-key file."
+            "value": "The private key is incomplete, malformed, or too large. Check the original private-key contents."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "所选文件不是完整的受支持私钥，或文件过大。请重新选择原始私钥文件。"
+            "value": "私钥内容不完整、已损坏或过大。请检查原始私钥内容。"
           }
         }
       }

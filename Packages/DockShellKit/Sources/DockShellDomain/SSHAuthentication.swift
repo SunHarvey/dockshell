@@ -17,7 +17,7 @@ public struct PrivateKeyInfo: Equatable, Sendable {
     }
 }
 
-/// Reads bounded format metadata from the user-selected external file, without copying it into app storage.
+/// Reads bounded format metadata from an external or explicitly imported private-key file.
 public protocol PrivateKeyInspecting: Sendable {
     func inspect(_ url: URL) async throws -> PrivateKeyInfo
 }

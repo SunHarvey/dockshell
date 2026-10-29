@@ -93,12 +93,21 @@ public enum L10nKey: String, CaseIterable, Sendable {
     case rememberPassphrase = "credential.rememberpassphrase"
     case secretKeepHelp = "credential.keephelp"
     case secretEmptyHelp = "credential.emptyhelp"
+    case secretShow = "credential.show"
+    case secretHide = "credential.hide"
+    case passphraseShow = "credential.passphrase.show"
+    case passphraseHide = "credential.passphrase.hide"
     case credentialSaved = "credential.saved"
     case credentialNotSaved = "credential.notsaved"
     case keyNotSelected = "key.notselected"
     case keyChoose = "key.choose"
     case keyUnavailable = "key.unavailable"
     case keyReferenceHelp = "key.referencehelp"
+    case keySource = "key.source"
+    case keySourceFile = "key.source.file"
+    case keySourcePaste = "key.source.paste"
+    case keyPasteContents = "key.paste.contents"
+    case keyPasteHelp = "key.paste.help"
     case agentHelp = "authentication.agenthelp"
     case save = "action.save"
     case cancel = "action.cancel"
@@ -243,6 +252,7 @@ public extension L10n {
     }
 
     func errorKey(_ error: any Error) -> L10nKey {
+        if let authentication = error as? SSHAuthenticationError { return sshErrorKey(authentication) }
         guard let error = error as? DockShellError else { return .errorStorageUnavailable }
         return switch error {
         case .invalidName: .errorInvalidName

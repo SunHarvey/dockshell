@@ -2,7 +2,7 @@ import Darwin
 import DockShellDomain
 import Foundation
 
-/// Inspects a bounded external key container without importing it into application storage.
+/// Inspects a bounded external or pasted key container without cryptographic parsing.
 /// This is a format/encryption preflight; system OpenSSH performs all cryptographic validation.
 public actor PrivateKeyInspector: PrivateKeyInspecting {
     private static let maximumBytes = 1_048_576
@@ -40,7 +40,18 @@ public actor PrivateKeyInspector: PrivateKeyInspecting {
             guard bytes.count + count <= Self.maximumBytes else { throw SSHAuthenticationError.privateKeyMalformed }
             bytes.append(contentsOf: buffer.prefix(count))
         }
-        guard let text = String(data: bytes, encoding: .utf8) else { throw SSHAuthenticationError.privateKeyUnsupported }
+        return try inspect(data: bytes)
+    }
+
+    /// Checks pasted content in memory before a persistent application file is created.
+    /// This shares the external-file format checks; system SSH still verifies the actual key.
+    public func inspect(data: Data) throws -> PrivateKeyInfo {
+        try Task.checkCancellation()
+        guard !data.isEmpty, data.count <= Self.maximumBytes else {
+            throw SSHAuthenticationError.privateKeyMalformed
+        }
+        guard let text = String(data: data, encoding: .utf8) else { throw SSHAuthenticationError.privateKeyUnsupported }
+        guard !text.contains("\0") else { throw SSHAuthenticationError.privateKeyMalformed }
         let lines = text.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines).filter { !$0.isEmpty }
         guard let first = lines.first, let last = lines.last else { throw SSHAuthenticationError.privateKeyMalformed }

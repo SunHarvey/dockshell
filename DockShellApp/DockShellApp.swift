@@ -59,7 +59,7 @@ private final class AppBootstrap: ObservableObject {
                 let repository = SQLiteSessionRepository(url: try AppPaths.sessionDatabaseURL())
                 let credentials = KeychainCredentialStore()
                 let service = WorkspaceService(repository: repository, credentials: credentials,
-                                               privateKeys: PrivateKeyBookmarks())
+                                               privateKeys: PrivateKeyBookmarks(), performInitialPrivateKeyCleanup: true)
                 return (l10n, service, SettingsService(repository: UserDefaultsSettingsRepository()), credentials, try AppPaths.knownHostsURL())
             }.value
             guard !Task.isCancelled else { return }
