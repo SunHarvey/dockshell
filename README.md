@@ -1,274 +1,184 @@
-# DockShell
+<p align="center">
+  <img src="Packaging/Branding/DockShellMark.png" width="96" height="96" alt="DockShell logo">
+</p>
 
-原生 macOS SSH 终端客户端。Swift 6、SwiftUI / AppKit、SPM，最低系统 macOS 14。
+<h1 align="center">DockShell</h1>
 
-当前提供 **M8：可排序标签与横排 / 竖排 SSH 工作区** 的本机预览，在当前 `DeckShell` 目录开发；产品和模块统一命名为 DockShell。一个标签对应一条独立连接，全部已打开终端可横排成一行、或竖排成一列，按所选方向平均分配空间，不新建标签或连接。标签最左侧显示从 1 开始的当前编号，名称居中，可左右拖动调整顺序；排序、切换和关闭单项均保留其他连接及终端内容。远程终端底部的提示 / 尺寸栏与工作区底部状态栏已移除，将高度交给终端。会话管理、SQLite / Keychain、三种认证、主机指纹确认、基础设置、心跳和睡眠恢复策略继续适用。尚未实现 SFTP、端口转发等其余第二阶段功能。
+<p align="center">为 macOS 打造的原生 SSH 终端客户端</p>
+<p align="center">多标签 · 横排 / 竖排分屏 · 本机 Shell · Keychain 凭据管理</p>
 
-最新标签行为与验证见 [标签排序与终端空间说明](Docs/M8/标签排序与终端空间.md)，横排 / 竖排的精确规则见 [横排与竖排说明](Docs/M8/横排与竖排.md)；自动网格和早期双面板结果保留为历史记录。真实分屏 IME 与 M6 的目标环境待验项继续保留：最终包真实 IME、真实 VM 密码保存后重启登录、实际睡眠、macOS 14 实机与正式签名 / 公证，不能因布局检查通过而视为完成。
+DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话、终端标签与分屏工作区集中在一个窗口中。终端模拟采用 SwiftTerm，SSH 连接通过系统 OpenSSH 与独立协议层适配。
 
-**0.1.0 / build 9** 首次接入 **61「浅浮雕壳」**作为无字标图标。此稿保留为历史设计，当前图标见 build 13；侧栏、空白工作区与应用的 Dock / Finder 图标始终共用同一份批准的资源。
+**当前版本：0.1.0 / build 16，开发预览。** 目前通过源码构建运行，尚未发布经过 Developer ID 签名和公证的安装包。
 
-**0.1.0 / build 10** 将侧栏默认宽度和拖动范围调整为此前的 3/4：默认约 199pt，范围约 173–255pt；标题与副标题保持单行，副标题可悬停查看完整内容。
+[功能介绍](#功能介绍) · [界面预览](#界面预览) · [安装与启动](#安装与启动) · [使用指南](#使用指南) · [开发与验证](#开发与验证)
 
-本轮已编译并通过现有多标签、原生侧栏选择、界面布局与资源搬迁检查；1080pt 验证窗口中的侧栏实测为 199pt。验证使用独立的 `Build/Sidebar-Verification` 应用副本，记录位于 `/private/tmp/dockshell-build10-sidebar.log`。
+## 功能介绍
 
-**0.1.0 / build 11** 删除侧栏名称下的副标题，并将原来的离线样例入口改为真正的“本机终端”：启动当前账号配置的默认交互式登录 shell，以账号主目录为初始目录，可执行 `ls`、`top` 等本机命令。旧样例输出仅保留在开发诊断中。
+| 功能 | 当前支持 |
+|---|---|
+| 会话管理 | 新建、编辑、删除、分组和搜索，双击已保存会话即可连接 |
+| SSH 认证 | 密码、外部私钥及本机 ssh-agent |
+| 终端工作区 | 多标签、从 1 开始的编号、拖动排序、独立关闭 |
+| 横排 / 竖排 | 将全部已打开连接平均排成一行或一列，保留原连接和终端内容 |
+| 终端显示 | 256 色、TrueColor、鼠标、窗口尺寸同步，中文与 emoji 显示 |
+| 本机终端 | 当前用户的默认交互式登录 Shell，从用户主目录启动 |
+| 连接恢复 | 连接状态、协议心跳、断线提示与手动重连 |
+| 主机信任 | 首次连接确认 SHA-256 指纹，保存主机记录，主机密钥变化时停止连接 |
+| 凭据存储 | 会话配置存入 SQLite；保存的密码和私钥口令存入 Keychain |
+| 个性化 | 字体、字号、三套终端主题，可调整的滚屏历史 |
+| 本地化 | 简体中文与英文 |
 
-**0.1.0 / build 12** 将侧栏分组入口改为全宽原生选择栏：左侧图标、单行组名、右侧展开箭头；弹出菜单至少与入口等宽，长组名在入口截断并可悬停查看全文。侧栏仍约 199pt，选择栏实测为 171pt、两侧各留 14pt，保留原有分组过滤和键盘选择行为。
+## 界面预览
 
-本轮通过现有多标签、侧栏原生点击、界面布局与应用搬迁检查，最终记录位于 `/private/tmp/dockshell-build12-groups-final.log`；宽度测量位于 `/private/tmp/dockshell-build12-groups.log`。完整实现见 [SidebarGroupSelector.swift](Packages/DockShellKit/Sources/DockShellFeatures/SidebarGroupSelector.swift)、[WorkspaceView.swift](Packages/DockShellKit/Sources/DockShellFeatures/WorkspaceView.swift) 和 [Info.plist](Packaging/Info.plist)。
+以下截图来自当前应用工作区的真实渲染，使用演示会话与示例终端输出。
 
-**0.1.0 / build 13** 将图标换成 **49「紧凑厚折」**：象牙白折纸与深海蓝背景；同时精修全宽分组栏的背景、图标底座、文字、展开箭头与交互状态。原有分组筛选、原生键盘选择和菜单宽度规则继续适用。
+### 多标签工作区
 
-分组入口采用 34pt 高的圆角轻卡片、淡色图标底座和单展开箭头，增加悬停、按下和键盘焦点状态，适配浅色 / 深色外观；长名称保持单行截断，并可悬停查看全文。原生菜单至少与入口等宽，仍由 AppKit 处理选择、键盘与辅助功能。
+会话集中在侧栏；标签显示编号、连接状态和会话名称，可拖动排序。
 
-本轮编译、现有多标签与原生界面检查、191 个双语资源键、10 个图标表示及应用搬迁检查通过；浅色与深色外观已查看截图。验证使用 `Build/Branding-Group-Verification` 独立副本，记录位于 `/private/tmp/dockshell-build13-final.log`；没有启动或退出用户正在使用的应用。最终代码中不保留截图与测量的临时夹具。
+![DockShell 多标签终端工作区](Docs/Images/terminal-tabs.png)
 
-本轮修改的完整文件：
+### 横排分屏
 
-- [SidebarGroupSelector.swift](Packages/DockShellKit/Sources/DockShellFeatures/SidebarGroupSelector.swift)：分组入口绘制、状态与原生菜单桥接。
-- [DockShellBrand.swift](Packages/DockShellKit/Sources/DockShellFeatures/DockShellBrand.swift)、[WorkspaceView.swift](Packages/DockShellKit/Sources/DockShellFeatures/WorkspaceView.swift)：批准图标的资源约定注释。
-- [generate-icons.sh](Scripts/generate-icons.sh)、[49 号生产图](Packaging/Branding/Source/DockShell-49.png)、[处理提示词](Packaging/Branding/Source/DockShell-49.prompt.txt)、[DockShell.icns](Packaging/Branding/DockShell.icns)、[DockShellMark.png](Packaging/Branding/DockShellMark.png)：49 号来源和导出资源。
-- [Verification.swift](Tools/Verification/Verification.swift)：图标验证输出不再绑定历史设计编号。
-- [Info.plist](Packaging/Info.plist)：build 13 版本声明。
+将已打开的连接并排显示，各终端平均分配宽度；也可切换为上下堆叠的竖排布局。
 
-**0.1.0 / build 14** 将标签名称从 12pt 调整为 13pt，常规标签宽度从 184pt 缩至 152pt，缩短约 17%。名称仍按整个标签居中，编号位于左侧，关闭按钮保留独立热区；分屏内的标签沿用相同样式，空间不足时继续缩小并截断长名称。文字高度改由 AppKit 测量，避免字号变化导致中文或字母下伸部被裁切。
+![DockShell 横排分屏工作区](Docs/Images/terminal-split.png)
 
-本轮编译、现有多标签、拖动排序、独立关闭、溢出滚动、窄分屏标签与资源搬迁检查通过，并查看了中英文标签截图。记录位于 `/private/tmp/dockshell-build14-tabs.log` 与 `/private/tmp/dockshell-build14-final-build.log`；使用独立的 `Build/Compact-Tabs-Verification` 应用副本，临时截图夹具已移除。修改的完整源文件为 [TerminalTabBar.swift](Packages/DockShellKit/Sources/DockShellTerminalUI/TerminalTabBar.swift) 和 [Info.plist](Packaging/Info.plist)，未新增依赖。
+## 安装与启动
 
-**0.1.0 / build 15** 将标签上下留白从各 6pt 缩为各 2pt，标签栏总高从 44pt 降为 36pt。普通标签与分屏面板共用同一高度，标签仍为 32pt 高、152pt 宽、名称 13pt；拖动插入线同步对齐标签，节省的高度交给终端。
+### 环境要求
 
-完整实现见 [TerminalTabBar.swift](Packages/DockShellKit/Sources/DockShellTerminalUI/TerminalTabBar.swift)、[TerminalTabsPane.swift](Packages/DockShellKit/Sources/DockShellFeatures/TerminalTabsPane.swift) 和 [Info.plist](Packaging/Info.plist)。现有 [M7TabBarVerification.swift](Tools/Verification/M7TabBarVerification.swift) 与 [M8SplitUIVerification.swift](Tools/Verification/M8SplitUIVerification.swift) 同步使用共享栏高，未新增依赖。
+- **运行目标：macOS 14 或更高版本。** 当前主要在 Apple Silicon 上验证；macOS 14 实机与 Intel 运行仍待验收。
+- **构建工具：Swift 6 工具链与 macOS SDK。** 当前已验证 Swift 6.4、SDK 27.0 的 Command Line Tools 环境。
+- **首次构建需要网络**，用于 Swift Package Manager 下载锁定的依赖。
 
-编译、标签拖动 / 关闭 / 溢出滚动、窄标签、应用搬迁，以及横排 / 竖排往返、各面板尺寸、输入焦点和认证表单检查通过。记录位于 `/private/tmp/dockshell-build15-tabs.log` 与 `/private/tmp/dockshell-build15-splits.log`；使用 `Build/Compact-Strip-Verification` 独立副本和合成连接，未操作用户的实际连接。
-
-**0.1.0 / build 16** 将标签名称从 13pt 放大到 15pt，编号从 11pt 放大到 12pt；标签本身从 32pt 压缩到 28pt，减少文字上下的内部留白。外部上下各 2pt，总栏高同步降为 32pt，普通 / 分屏共用；宽度仍为 152pt，关闭按钮保留 26×26pt 操作区。名称与编号均按实际字体高度垂直居中。
-
-完整修改文件为 [TerminalTabBar.swift](Packages/DockShellKit/Sources/DockShellTerminalUI/TerminalTabBar.swift) 和 [Info.plist](Packaging/Info.plist)。编译、现有标签拖动 / 关闭 / 溢出、窄标签、资源搬迁与分屏尺寸 / 焦点 / 认证检查通过，并查看了英文、中文、emoji 和字母下伸部的预览。验证使用 `Build/Compact-Text-Verification` 独立副本，日志为 `/private/tmp/dockshell-build16-tabs.log`、`/private/tmp/dockshell-build16-final-build.log` 和 `/private/tmp/dockshell-build16-splits.log`；临时预览代码已移除，未新增依赖。
-
-2026-10-27 已确认的选择：
-
-- 使用现有 Command Line Tools，不安装完整 Xcode，不登录 Apple Account。
-- SSH 后端采用系统 `/usr/bin/ssh`，由自有协议、PTY 与已签名辅助程序适配。
-- 会话持久化采用系统 SQLite，替代原方案的 SwiftData；密码与私钥口令仍保存到 Keychain。
-- SwiftTerm 已固定原版 1.19.0；不 fork、不修改第三方源码。
-
-## 构建和运行
-
-先用 ⌘Q 退出已打开的 DockShell，再在本目录的终端中执行：
+可使用 Command Line Tools 构建，**无需安装完整 Xcode，也无需登录 Apple Account**。如果尚未安装命令行工具，先执行：
 
 ```sh
+xcode-select --install
+```
+
+确认 `xcrun swift --version` 显示 Swift 6；较旧的系统命令行工具可能需要更新。
+
+### 从源码运行
+
+```sh
+git clone https://github.com/SunHarvey/dockshell.git
+cd dockshell
+
+sh Scripts/check-environment.sh
 sh Scripts/run.sh zh-Hans
 ```
 
-脚本检查工具链，编译 SwiftPM 模块，将 String Catalog 转为运行时资源，组装并进行本地临时签名，然后打开应用。首次构建会通过 SPM 下载锁定的 SwiftTerm 及其解析依赖；无需安装完整 Xcode 或登录 Apple Account。
+运行脚本会编译项目、生成双语资源、组装 `.app`、进行本地临时签名并启动应用。生成的应用位于 `Build/debug/DockShell.app`。
 
-启动后新建或选择会话，选择密码、外部私钥或本机 ssh-agent 认证，点击“在新标签中连接”。首次连接须核对 SHA-256 主机指纹；确认后才读取 Keychain、询问本次密码或口令、检查私钥或探测 agent。保存密码需在编辑会话时选择“将密码保存到钥匙串”；连接页面临时输入的密码或私钥口令不会自动保存。私钥内容保留在外部文件；PuTTY PPK 需要先转换为 OpenSSH。主机公钥发生变化时停止连接，不自动覆盖记录。
-
-双击侧栏会话、使用右键菜单，或选中会话后点击工具栏“在新标签中连接” / 按 ⌘T，可以打开另一个独立标签。点击标签切换；标签上的 × 只关闭该条连接，关闭窗口会结束窗口内所有标签。
-
-标签编号单独放在最左侧，会话名称按标签全宽居中，关闭按钮在右侧。按住标签名称区域左右拖动，在插入标记处松开即可重排；编号随当前顺序从 1 连续更新，分屏面板也按新顺序排列。拖动不会切换当前选中连接或重新认证；取消拖动保持原顺序。工作区内各分屏标签之间也可拖动。
-
-打开至少两个连接后，点击工具栏的“终端布局”菜单，选择“横排（左右并列）”或“竖排（上下堆叠）”，也可选择“标签视图”返回普通切换。横排永远是一行 N 列，所有终端等宽、全高；竖排永远是一列 N 行，所有终端等高、全宽。三个连接就是三列或三行，不自动组合成二维网格。原连接标签在普通模式显示于顶部、分屏模式显示于各自面板，不复制标签。点击面板或标签选择输入目标，× 只关闭该连接，其余按当前方向重新均分；只剩一条时自动恢复标签视图。布局切换不弹出会话选择器、不重新认证；主动新开的连接会加入当前布局。右上角连接状态菜单继续提供当前连接的取消、断开、重连和关闭。build 4 移除的大型信息栏和居中标题不恢复。
-
-“打开本机终端”启动当前用户的默认 shell，不需要建立 SSH 会话。初始目录来自账号主目录；可用 `pwd`、`ls`、`top` 验证，在 `top` 中按 `q` 返回、Ctrl-C 中断前台命令。输入 `exit` 或 Ctrl-D 结束 shell 后，可点击“重新打开”；关闭本机终端会回收它的 shell 与普通前台任务。此轮沿用单一本机入口，只在所有远程标签关闭后可用。通过齿轮按钮或 ⌘, 打开字体、字号、三主题及历史设置。默认历史 10000 行，可设 1000–100000 行。SSH 连接或本机 shell 运行期间，字体和字号延后到下次连接 / 重新打开后生效，配色与历史上限即时生效。
-
-SSH 每 15 秒发送协议心跳，连续 3 次无响应时由系统 SSH 结束连接并显示原因。点击“重新连接”重新建链；不会自动重复认证。Mac 睡眠期间保留已连接会话，唤醒后不将旧连接直接判死。正在建立的认证过程会在睡眠时取消。
-
-英文与系统默认语言：
+英文界面或跟随系统语言：
 
 ```sh
 sh Scripts/run.sh en
 sh Scripts/run.sh
 ```
 
-运行脚本会检查旧进程，避免重新构建后仍显示旧界面。已运行时请先用 ⌘Q 退出，再重新启动。语言参数只影响本次进程，不修改系统语言。
+重新构建或更换语言前，请先用 **⌘Q** 退出已运行的 DockShell。语言参数只影响本次启动。
 
-也可以只构建，然后双击生成的应用：
+### 只构建应用
 
 ```sh
 sh Scripts/build.sh
 open Build/debug/DockShell.app
 ```
 
-请运行打包后的 `.app`。直接 `swift run DockShell` 不负责组装资源包。
+需要 Release 构建时：
 
-## 验证
+```sh
+sh Scripts/build.sh release
+open Build/release/DockShell.app
+```
+
+请启动打包后的 `.app`。构建脚本负责组装终端与本地化资源，直接 `swift run DockShell` 不完成这一步。
+
+## 使用指南
+
+### 连接服务器
+
+1. 点击 **新建会话**，填写名称、主机、端口、用户名和认证方式。
+2. 保存后双击侧栏会话，或选中会话后使用工具栏连接按钮 / **⌘T**。
+3. 首次连接时，独立核对服务器的 **SHA-256 主机指纹**，确认后继续认证。
+4. 需要保存密码时，在编辑会话中勾选保存到钥匙串；连接时临时输入的密码或口令不会自动保存。
+
+私钥保留在用户选择的外部文件中。支持已识别的 OpenSSH 私钥和部分旧式 PEM 封装；PuTTY `.ppk` 需要先转换为 OpenSSH。具体格式范围见 [私钥与 ssh-agent 说明](Docs/M5/私钥Agent与连接恢复.md)。
+
+ssh-agent 认证复用当前用户已有的 agent，密钥需事先加载；DockShell 不会自动载入或解锁 agent 中的密钥。
+
+### 管理标签与分屏
+
+- 每个标签对应一条独立连接，同一已保存会话可以打开多个标签。
+- 拖动标签调整顺序，编号会按当前顺序重新从 1 排列；点击 **×** 只关闭对应连接。
+- 打开至少两个连接后，在工具栏 **终端布局** 中选择 **横排（左右并列）** 或 **竖排（上下堆叠）**。
+- 分屏使用全部已打开连接，不会额外创建连接。三个连接就是等宽的三列或等高的三行。
+- 点击目标终端或标签切换输入焦点，选择 **标签视图** 可返回普通标签切换。
+- 断线后可通过右上角连接状态菜单手动重连。
+
+### 使用本机终端与设置
+
+关闭全部远程标签后，点击 **打开本机终端**，即可使用当前用户的默认 Shell。初始目录为用户主目录，可以执行 `pwd`、`ls`、`top` 等本机命令；输入 `exit` 退出后可重新打开。
+
+通过齿轮按钮或 **⌘,** 打开设置：
+
+- 选择字体、字号与终端配色主题。
+- 滚屏历史默认 **10000 行**，可设置为 1000–100000 行。
+- 连接期间的字体与字号调整在下一次连接 / 重新打开 Shell 时生效；配色和历史上限即时生效。
+
+## 当前进度
+
+当前已实现会话管理、SSH 连接、终端、多标签、横排 / 竖排和本机 Shell。**SFTP 文件面板、端口转发、跳板机、批量输入、快速命令、日志、Zmodem 和配置导入仍在后续规划中。**
+
+中文与 emoji 的显示已有验证；完整真实中文输入法候选交互、实际睡眠唤醒、保存密码后的最终包重启登录、macOS 14 实机及正式分发签名 / 公证仍有人工待验项。详细边界见 [验收记录](Docs/M6/验收矩阵.md)。
+
+## 开发与验证
 
 ```sh
 sh Scripts/test.sh
 ```
 
-自动检查包含双语资源、M2/M3 回归、主机信任与损坏文件保护、签名辅助程序的凭据隔离、真实 PTY 的 cooked / IUTF8 初始化与 SIGWINCH、4 MiB 双向字节与背压、连接取消、输入限额、生命周期、本地签名及资源搬迁，以及 OpenSSH / PEM 容器、隔离 agent、口令桥接、睡眠事件和重连回收。M6 新增 SQLite 路径安全和新进程验证入口的范围拒绝检查。M7 覆盖同会话多开、输入 / 认证隔离、后台输出、关闭和释放。最新 M8 检查覆盖七个既有连接的横排 / 竖排 / 标签模式往返、定向均分几何、三个实际终端的固定父视图与历史保留、逐项关闭重排、各自 PTY 尺寸及焦点 / 协议回复隔离。默认使用随机临时数据，不连接服务器，不读取个人私钥或已有 Keychain 项。辅助程序测试只使用合成密码。独立性能、真实 SSH 渲染与 Keychain 重启集成需显式开启，入口和实测见 M6 文档。
-
-build 11 还验证本机终端的挂载、取消、字体策略、退出码与重启关闭顺序，以及真实 PTY 下的目录、中文 `ls`、stderr、SIGWINCH、交互式 `top`、Ctrl-C 和前台进程回收。真实 shell 测试固定使用 `/bin/zsh -f -i`，HOME / ZDOTDIR / cwd 均位于随机临时目录，跳过个人 shell 配置。仅运行这一组：
-
-```sh
-DOCKSHELL_APP_OUTPUT_ROOT="$PWD/Build/Local-Terminal-Verification" DOCKSHELL_LOCAL_TERMINAL_TEST=1 sh Scripts/test.sh
-```
-
-build 8 新增标签左侧编号、整标签名称居中、原生鼠标排序、阈值与取消、边缘滚动任务清理、分屏全局顺序和终端正文填满底部的检查。独立可见窗口的双向真实鼠标拖动与自动事件链分别记录，证据见 [本轮验证记录](Docs/M8/标签排序与终端空间.md#本轮验证记录)。
-
-build 9 的资源验证增加应用图标声明、10 个标准 / Retina 图标表示、16–1024 像素解码，以及 256px 界面图片的显式资源加载；搬迁检查也会核对这些资源。可使用独立输出目录验证，保留当前开发应用：
-
-```sh
-DOCKSHELL_APP_OUTPUT_ROOT="$PWD/Build/Branding-Verification" DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
-```
-
-实际 Keychain 读写验证只使用随机测试 service，并在结束后删除测试项：
-
-```sh
-DOCKSHELL_KEYCHAIN_TEST=1 sh Scripts/test.sh
-```
-
-在具有图形桌面的会话中，还可检查实际终端的 UTF-8、颜色、主题、滚屏、尺寸、IME 提交、鼠标及关闭释放，以及多标签 / 横排 / 竖排原生宿主的画面保留、协议回复、焦点、定向均分和各面板 PTY 尺寸同步：
+在具有图形桌面的会话中运行原生界面检查：
 
 ```sh
 DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
 ```
 
-本项目在 Codex 的受限工具环境中构建时，若嵌套 SPM sandbox 不可用，可仅对这一条命令使用：
+默认验证使用隔离的临时数据与合成连接，覆盖凭据隔离、真实本地 PTY、背压、生命周期、标签与分屏、资源打包和应用搬迁。真实服务器、性能及 Keychain 重启集成的专项入口见 [性能与交付记录](Docs/M6/性能与交付记录.md)。
 
-```sh
-DOCKSHELL_DISABLE_SPM_SANDBOX=1 sh Scripts/test.sh
+### 项目结构
+
+```text
+DockShellApp/             应用入口与依赖组装
+Packages/DockShellKit/    业务、协议、基础设施与原生终端界面
+Localization/            简体中文与英文 String Catalog
+Packaging/               应用信息、图标与分发资源
+Scripts/                 构建、运行、验证与打包脚本
+Tools/                   资源编译、辅助程序与验证工具
+Docs/                    架构、开发与验收文档
+M0/                      SSH 底层路线的独立技术验证
 ```
 
-普通终端默认保留 SPM sandbox。SwiftTerm 的已审计 BuildInfo 插件在自己的构建目录生成版本信息；它不访问网络或凭据。此开关不解除外层工具权限。
+### 主要依赖
 
-当前 CLT 缺少 Metal 离线编译工具，脚本显式使用已验证的 `--build-system native`。它已弃用，将来可能移除；工具链升级需重新验证。没有修改上游资源或 manifest 来绕过限制。
-
-Release 本机构建：
-
-```sh
-sh Scripts/build.sh release
-```
-
-输出在 `Build/release/DockShell.app`。带 Hardened Runtime 的 Apple Silicon 本地预览包另行生成：
-
-```sh
-sh Scripts/release.sh --local-preview
-```
-
-应用、ZIP 和校验文件放在 `Build/distribution/` 下的新目录。此包只供本机预览，采用 ad-hoc 签名，尚未获得 Developer ID 签名或公证。本轮没有签名证书和 macOS 14 测试环境，没有上传或公开发布。复查、正式签名和将来的公证入口见 [M6 分发准备](Docs/M6/分发准备.md)。
-
-## 模块
-
-| 模块 | 当前职责 |
+| 组件 | 版本 / 来源 |
 |---|---|
-| `DockShellDomain` | 非敏感会话、主机公钥、信任与凭据交互边界、SSH 连接、本机 shell 工厂与公共终端字节协议 |
-| `DockShellApplication` | 会话业务、有界字节通道、IO pump、本机样例/回显与设置业务 |
-| `DockShellInfrastructure` | SQLite、Keychain、书签、设置、OpenSSH 传输、主机信任、凭据桥接、本机 shell 工厂与 PTY 通道 |
-| `DockShellTerminalUI` | SwiftTerm 桥接、原生输入、本机 / SSH 控制器、字体应用策略与关闭清理；保留离线诊断控制器 |
-| `DockShellFeatures` | 会话、远程 / 本机终端、信任与密码提示、设置、MainActor ViewModel 与本地化 |
-| `DockShellApp` | 入口、异步启动和具体依赖组装 |
-| `CDockShellPTY` / `DockShellSSHHelper` | 自有 POSIX 桥接与固定 SSH/askpass 辅助程序；不实现密码学算法 |
+| [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | 固定 **1.19.0**，通过 Swift Package Manager 集成 |
+| OpenSSH | macOS 自带的系统工具，通过自有协议和 PTY 适配 |
+| SQLite | macOS 系统库 |
+| [ArgumentParser](https://github.com/apple/swift-argument-parser) | 上游解析依赖 **1.8.2**，不链接进应用 |
 
-`DockShellNetworkTestSupport` 仅链接验证器，提供可选网络黑洞夹具，不进入应用，也没有新增产品转发功能。
+M0 中的 Citadel / libssh2 探针与正式应用依赖相互独立。随应用分发的第三方声明见 [ThirdPartyNotices](Packaging/ThirdPartyNotices.txt)。
 
-本机终端与 SSH 共用有界 PTY 与 `TerminalByteChannel`，但使用独立的工厂和控制器；本机 UI 不依赖 `Process`、C 或具体网络库。默认 shell / 主目录从系统账号取得，切换目录和环境只发生在新启动的辅助进程中。标准错误并入本机 PTY，使提示符与命令错误正常显示；SSH 的独立诊断通道保留。关闭本机终端时处理所属 PTY 会话的前台进程组，随后回收 shell；主动脱离终端会话的守护进程不在此清理范围内。
+## 更多文档
 
-UI 和业务模块不导入 SQLite、SwiftData 或具体 SSH 库。会话配置存于系统 Application Support 下的 `DockShell/sessions.sqlite`；Keychain service 为 `dev.dockshell.credentials`。密码、口令不写入数据库或日志。删除分组保留其会话；凭据清理失败会显示警告并可重试。
-
-## 本机终端实现与验证
-
-build 11 已通过 Debug 完整回归、SwiftUI / AppKit 界面检查、临时 HOME 中的真实 shell 测试及资源搬迁。记录：`/private/tmp/dockshell-build11-debug-full.log`；单独本机测试记录：`/private/tmp/dockshell-build11-local.log`。最后核对还修正了共享终端的辅助功能标签，使本机与 SSH 视图均使用准确的通用说明。打开入口会等待保存设置加载完成，避免首次启动时提前冻结默认字体。
-
-Apple Silicon Release 本地预览位于 [DockShell 0.1.0 / build 11](Build/distribution/DockShell-0.1.0-11-arm64-local-preview-20261029T041745Z/DockShell.app)。签名、空 entitlements、macOS 14 部署目标、资源篡改拒绝、ZIP 校验与含空格路径的解压审计均通过；没有执行个人登录配置。ZIP 的 SHA-256：`e529819c3757db1c8f36d71b619cf31b858474e10b32494a4056de2ca7439d30`。原有 M6 真实环境验收及正式签名 / 公证待验项保持在原记录中。
-
-以下均链接到完整文件；本轮没有新增第三方依赖。
-
-| 文件 | 职责 |
-|---|---|
-| [Ports.swift](Packages/DockShellKit/Sources/DockShellDomain/Ports.swift) | 公共终端字节 IO；SSH 通道继承公共边界 |
-| [LocalTerminal.swift](Packages/DockShellKit/Sources/DockShellDomain/LocalTerminal.swift) | 本机工厂、通道、退出状态与错误协议 |
-| [TerminalIOPump.swift](Packages/DockShellKit/Sources/DockShellApplication/TerminalIOPump.swift) | 本机与 SSH 共用 4KiB 有界输出泵 |
-| [SystemLocalTerminalFactory.swift](Packages/DockShellKit/Sources/DockShellInfrastructure/SystemLocalTerminalFactory.swift) | 本机 PTY 工厂及子进程环境 |
-| [PTYProcessChannel.swift](Packages/DockShellKit/Sources/DockShellInfrastructure/PTYProcessChannel.swift) | 本机启动与隔离验证入口 |
-| [CDockShellPTY.h](Packages/DockShellKit/Sources/CDockShellPTY/include/CDockShellPTY.h) | 本机 PTY 启动的 C 边界 |
-| [pty_runtime.c](Packages/DockShellKit/Sources/CDockShellPTY/pty_runtime.c) | 本机前台进程组关闭与 shell 回收 |
-| [main.c](Tools/SSHHelper/main.c) | 系统账号、默认登录 shell、主目录、控制终端与 stderr |
-| [LocalTerminalController.swift](Packages/DockShellKit/Sources/DockShellTerminalUI/LocalTerminalController.swift) | 启动 / 退出 / 重启状态与有界 IO 生命周期 |
-| [LocalTerminalPane.swift](Packages/DockShellKit/Sources/DockShellFeatures/LocalTerminalPane.swift) | 真正的本机终端界面，替换样例面板 |
-| [WorkspaceView.swift](Packages/DockShellKit/Sources/DockShellFeatures/WorkspaceView.swift) | 删除副标题与本机入口接入 |
-| [TerminalSettingsView.swift](Packages/DockShellKit/Sources/DockShellFeatures/TerminalSettingsView.swift) | 已加载状态与打开时机 |
-| [Localization.swift](Packages/DockShellKit/Sources/DockShellFeatures/Localization.swift) / [Localizable.xcstrings](Localization/Localizable.xcstrings) | 191 个类型化双语键 |
-| [AppContainer.swift](DockShellApp/AppContainer.swift) | 注入本机后端 |
-| [LocalTerminalVerification.swift](Tools/Verification/LocalTerminalVerification.swift) | 真实临时 PTY、命令、交互与前台清理 |
-| [LocalTerminalControllerVerification.swift](Tools/Verification/LocalTerminalControllerVerification.swift) | 挂载、队列、EOF、重启、过期输出与释放 |
-| [VerificationLocalTerminalFactory.swift](Tools/Verification/VerificationLocalTerminalFactory.swift) | 界面夹具不执行用户 shell |
-| [Verification.swift](Tools/Verification/Verification.swift) | 本机专项与完整回归入口 |
-| [M7WorkspaceUIVerification.swift](Tools/Verification/M7WorkspaceUIVerification.swift) / [M8SplitUIVerification.swift](Tools/Verification/M8SplitUIVerification.swift) | 适配本机控制器的隔离界面夹具 |
-| [Info.plist](Packaging/Info.plist) | build 11 版本声明 |
-
-## 本地化
-
-唯一人工维护的文案源是 [Localizable.xcstrings](Localization/Localizable.xcstrings)。`Tools/CatalogCompiler` 使用系统 Foundation 生成独立的 `DockShellResources.bundle`；应用按自身资源目录定位，不使用构建机器的绝对路径。
-
-首版只接受 `en` / `zh-Hans` 的普通完整译文。复数、格式占位符和其他 variation 尚未实现，遇到这些输入会让构建失败。不要手工修改 `Build/Generated`。
-
-## 依赖
-
-M8 的直接第三方库仍为原版 SwiftTerm，解析版本提交于根 `Package.resolved`：
-
-| 依赖 | 版本策略 | 地址 / 集成 |
-|---|---|---|
-| OpenSSH | 使用目标 macOS 自带版本 | `/usr/bin/ssh` 与 `/usr/bin/ssh-keyscan`；无需 SPM 下载，M4 已接入 |
-| SQLite | 使用目标 macOS 自带版本 | 自有 SPM `CSQLite` systemLibrary，链接系统 `sqlite3` |
-| SwiftTerm | **1.19.0** | `https://github.com/migueldeicaza/SwiftTerm.git` |
-| ArgumentParser（上游解析依赖） | **1.8.2**；不链接进应用 | `https://github.com/apple/swift-argument-parser` |
-
-M0 候选探针的依赖与应用工程相互独立；没有将 Citadel、libssh2 或 Homebrew OpenSSL 引入正式应用。SwiftTerm 许可随应用资源打包。原版字体更改会软重置部分终端模式；M4 已按用户确认的策略冻结连接期间的字体与字号，详见 M4 文档。
-
-## 品牌资源
-
-当前使用的 **49 号**圆角资源由内置图像工具依据[选定原稿](Design/Branding/Shell-Refinements-41-50/49-compact-fold.png)准备，未添加字标。[生产资源](Packaging/Branding/Source/DockShell-49.png)和[完整处理提示词](Packaging/Branding/Source/DockShell-49.prompt.txt)均保留，先前的 61 号资源也保留在 Source 中。重新导出应用尺寸：
-
-```sh
-sh Scripts/generate-icons.sh
-```
-
-导出器只缩放并封装原图，使用 CLT 自带的 Foundation / CoreGraphics / ImageIO，无新增依赖。当前 CLT 的 `iconutil` 拒绝标准 iconset，ImageIO 的直接 ICNS 写入也会遗漏部分尺寸，因此导出器使用系统 PNG 编码和标准 ICNS 元素，随后通过系统解码器逐项检查全部尺寸。正常构建直接使用已导出的资源。
-
-界面 PNG 在原有后台启动任务中读取并解码一次，视图复用不可变图片。路径从应用内显式资源 bundle 获取，应用搬迁后仍可读取；缺失或损坏时走现有启动错误提示。品牌变更未调整会话、凭据、连接、分屏或终端主题。
-
-build 9 的历史检查：Debug 完整回归、SwiftUI / AppKit 界面检查、资源搬迁、10 个图标表示解码均通过；Release 的 arm64 本地预览构建、嵌套签名、Hardened Runtime、资源篡改拒绝、ZIP 校验及含空格路径解压审计通过。验证使用 `Build/Branding-Verification` 副本，未启动或退出用户的实际应用。记录位于 `/private/tmp/dockshell-build9-debug-full.log`、`/private/tmp/dockshell-build9-preview.log` 和 `/private/tmp/dockshell-build9-artifact-guards.log`。当前 build 13 的验证结果见本文开头。
-
-build 9 历史预览位于 [DockShell 0.1.0 / build 9](Build/distribution/DockShell-0.1.0-9-arm64-local-preview-20261029T033931Z/DockShell.app)，其中使用旧的 61 号图标。其 ZIP 的 SHA-256 为 `7ce3ef3ecbf3191b35dcc9f0164df46b5e5d48a854ade335dae23ab4eab50c09`。正式 Developer ID / 公证及既有 M6 环境待验项继续按原记录保留。
-
-build 9 品牌接入的完整文件：
-
-| 文件 | 职责 |
-|---|---|
-| [DockShellBrand.swift](Packages/DockShellKit/Sources/DockShellFeatures/DockShellBrand.swift) | 品牌图片资源读取与后台解码 |
-| [Localization.swift](Packages/DockShellKit/Sources/DockShellFeatures/Localization.swift) | 随显式资源上下文加载品牌图片 |
-| [WorkspaceView.swift](Packages/DockShellKit/Sources/DockShellFeatures/WorkspaceView.swift) | 侧栏与空白页显示新标志 |
-| [IconExporter.swift](Tools/IconExporter/IconExporter.swift) | 标准 / Retina PNG 表示、ICNS 封装与解码验证 |
-| [generate-icons.sh](Scripts/generate-icons.sh) | 从批准的资源导出图标文件 |
-| [install-branding.sh](Scripts/install-branding.sh) | 在签名前安装图标和界面图片 |
-| [package-app.sh](Scripts/package-app.sh) | 开发应用品牌打包与独立输出目录 |
-| [release.sh](Scripts/release.sh) | 发布预览品牌资源打包 |
-| [audit-release.sh](Scripts/audit-release.sh) | 图标声明与资源检查 |
-| [test.sh](Scripts/test.sh) | 独立应用副本与搬迁验证 |
-| [Verification.swift](Tools/Verification/Verification.swift) | 标准 / Retina 与显式资源验证 |
-| [Info.plist](Packaging/Info.plist) | 应用图标声明、build 9 |
-| [DockShell.icns](Packaging/Branding/DockShell.icns) / [DockShellMark.png](Packaging/Branding/DockShellMark.png) | 应用图标与 256px 界面图片 |
-
-## 文档与完整文件
-
-- [M8 横排与竖排、已有连接均分和完整文件索引](Docs/M8/横排与竖排.md)
-- [build 8 标签编号、拖动排序与终端空间](Docs/M8/标签排序与终端空间.md)
-- [build 6 自动网格历史记录](Docs/M8/自动网格.md)
-- [M8 基础分屏、会话选择、验收和完整文件索引](Docs/M8/基础分屏.md)
-- [M7 多标签历史验证与文件索引](Docs/M7/多标签开发方案.md)
-- [M6 验收矩阵、持久化安全和 Keychain 重启验证](Docs/M6/验收矩阵.md)
-- [M6 性能测量与交付记录](Docs/M6/性能与交付记录.md)
-- [M6 本地预览、签名与公证准备](Docs/M6/分发准备.md)
-- [M5 私钥、agent、心跳与唤醒、验证和完整文件索引](Docs/M5/私钥Agent与连接恢复.md)
-- [M4 历史验证记录](Docs/M4/密码SSH与主机信任.md)
-- [M3 历史验证记录](Docs/M3/离线终端与设置.md)
-- [M2 历史验证记录](Docs/M2/会话与凭据管理.md)
-- [M1 历史验证记录](Docs/M1/工程基座.md)
-- [当前开发方案](DockShell-开发方案.md)
-- [不安装 Xcode 的构建方案与历史验证](Docs/不安装Xcode的构建方案.md)
-- [M0 技术验证](M0/README.md)
-- [M0 路线对比与历史推荐](Docs/M0/SSH底层路线对比.md)
+- [开发过程与版本调整记录](Docs/Development-History.md)
+- [横排与竖排工作区](Docs/M8/横排与竖排.md)
+- [私钥、ssh-agent 与连接恢复](Docs/M5/私钥Agent与连接恢复.md)
+- [分发、签名与公证准备](Docs/M6/分发准备.md)
+- [不安装完整 Xcode 的构建方案](Docs/不安装Xcode的构建方案.md)
+- [M0 技术验证与 SSH 路线对比](Docs/M0/SSH底层路线对比.md)

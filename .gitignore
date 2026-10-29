@@ -8,3 +8,6 @@ M0/LibSSH2/.artifacts/
 DerivedData/
 Build/
 *.xcuserstate
+
+# Local logo explorations are preserved on disk, outside the published source tree.
+Design/Branding/
