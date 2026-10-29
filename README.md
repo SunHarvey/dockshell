@@ -49,11 +49,11 @@ DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话�
 
 ### 从 DMG 测试包安装
 
-打开 [v0.1.0-preview.2 Release](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0-preview.2)，在 **Assets** 中直接下载 `DockShell-0.1.0-16-arm64-local-preview.dmg`。这是公开的预览版下载入口，无需进入 Actions 或解压 ZIP。
+打开 [v0.1.0-preview.3 Release](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0-preview.3)，在 **Assets** 中直接下载 `DockShell-0.1.0-16-arm64-local-preview.dmg`。这是公开的预览版下载入口，无需进入 Actions 或解压 ZIP。
 
-打开 DMG，将 **DockShell.app** 拖到 **Applications（应用程序）** 快捷方式，再推出磁盘映像。
+打开 DMG 后，安装窗口左侧为 **DockShell.app**，右侧为 **Applications（应用程序）**，中间箭头指引拖动方向。将应用拖到右侧，复制完成后推出磁盘映像。安装窗口使用 DockShell 当前品牌图标与海军蓝、象牙白配色，并提供中英文安装提示。
 
-当前 DMG 为 Apple Silicon / arm64 的未公证预览包，包装格式不改变应用的签名与公证状态。`v0.1.0-preview.2` 使用 DMG；旧 `v0.1.0-preview.1` 保持原有 ZIP 产物。
+当前 DMG 为 Apple Silicon / arm64 的未公证预览包，包装格式不改变应用的签名与公证状态。`v0.1.0-preview.3` 更新安装窗口外观，应用仍为 `0.1.0 / build 16`；旧 `v0.1.0-preview.2` 的 DMG 与 `v0.1.0-preview.1` 的 ZIP 产物保持不变。
 
 Release 的 DMG 附件不会随 Actions Artifact 的保留期到期。需要测试尚未发布的提交时，也可从成功的 [CI 运行](https://github.com/SunHarvey/dockshell/actions/workflows/ci.yml)底部 **Artifacts** 直接下载 DMG；该临时下载保留 7 天。安装只需 DMG，日志和元数据包不是必需文件。
 
@@ -172,7 +172,7 @@ Packages/DockShellKit/    业务、协议、基础设施与原生终端界面
 Localization/            简体中文与英文 String Catalog
 Packaging/               应用信息、图标与分发资源
 Scripts/                 构建、运行、验证与打包脚本
-Tools/                   资源编译、辅助程序与验证工具
+Tools/                   资源编译、辅助程序、DMG 布局与验证工具
 Docs/                    架构、开发与验收文档
 M0/                      SSH 底层路线的独立技术验证
 ```

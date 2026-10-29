@@ -45,9 +45,12 @@ sh "$root/Scripts/audit-release.sh" "$app" --mode "$mode" --architectures "$arch
 # can refuse an existing target atomically, without overwriting a file or symlink.
 temporary=$(mktemp -d "$output_parent/.dockshell-dmg.XXXXXX")
 payload="$temporary/payload"
-mountpoint="$temporary/mounted"
+staging_mount="$temporary/staging-volume"
+verified_mount="$temporary/verified-volume"
+scratch="$temporary/scratch.dmg"
 partial="$temporary/installer.dmg"
 attach_report="$temporary/attach.plist"
+layout_tool="$temporary/DMGLayout"
 device=
 mounted=0
 cleanup() {
@@ -65,40 +68,69 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
-mkdir "$payload" "$mountpoint"
+mkdir "$payload" "$staging_mount" "$verified_mount"
+mkdir -p "$root/.build/dmg-layout-module-cache"
+xcrun --sdk macosx swiftc -swift-version 6 -O -parse-as-library \
+    -module-cache-path "$root/.build/dmg-layout-module-cache" \
+    -import-objc-header "$root/Tools/DMGLayout/NativeAlias.h" \
+    "$root/Tools/DMGLayout/DMGLayoutTool.swift" \
+    "$root/Tools/DMGLayout/FinderLayout.swift" \
+    "$root/Tools/DMGLayout/InstallerArtwork.swift" \
+    -framework AppKit -framework CoreServices -o "$layout_tool"
 /usr/bin/ditto "$app" "$payload/DockShell.app"
 # This standard install shortcut is outside the signed application bundle.
 ln -s /Applications "$payload/Applications"
+"$layout_tool" artwork "$payload" "$root/Packaging/Branding/DockShellMark.png" \
+    "$root/Packaging/Installer/Localizable.xcstrings"
+
+# Finder's picture reference must be created on the image's actual filesystem.
+# A scratch image preserves its volume/file IDs when converted to read-only UDZO.
+payload_kib=$(/usr/bin/du -sk "$payload" | /usr/bin/awk '{print $1}')
+case "$payload_kib" in ''|*[!0-9]*) fail 'Could not determine the installer payload size.' ;; esac
+image_kib=$((payload_kib + 16384))
 /usr/bin/hdiutil create -srcfolder "$payload" -volname DockShell -fs HFS+ \
-    -format UDZO -nospotlight "$partial"
+    -size "${image_kib}k" -format UDRW -nospotlight "$scratch"
+
+attach_own_image() {
+    image=$1; mountpoint=$2; access=$3
+    device=; mounted=0; attach_status=0
+    /usr/bin/hdiutil attach "$image" "$access" -nobrowse -noautoopen \
+        -mountpoint "$mountpoint" -plist > "$attach_report" || attach_status=$?
+    # Parse only this operation's own report, including partially successful mounts.
+    if /usr/bin/plutil -lint "$attach_report" >/dev/null 2>&1; then
+        device=$(/usr/libexec/PlistBuddy -c 'Print :system-entities:0:dev-entry' "$attach_report" 2>/dev/null) || device=
+        case "$device" in /dev/disk[0-9]*) mounted=1 ;; *) device= ;; esac
+    fi
+    [ "$attach_status" -eq 0 ] && [ "$mounted" -eq 1 ] || fail 'The installer image could not be mounted.'
+}
+detach_own_image() {
+    /usr/bin/hdiutil detach "$device" -quiet || fail 'The installer image could not be detached.'
+    mounted=0; device=
+}
+
+attach_own_image "$scratch" "$staging_mount" -readwrite
+"$layout_tool" write "$staging_mount"
+detach_own_image
+/usr/bin/hdiutil convert "$scratch" -format UDZO -o "$partial"
 /usr/bin/hdiutil verify "$partial"
 
-attach_status=0
-/usr/bin/hdiutil attach "$partial" -readonly -nobrowse -noautoopen \
-    -mountpoint "$mountpoint" -plist > "$attach_report" || attach_status=$?
-# Device identifiers are taken only from this attach operation's own report. A
-# partially successful attach can then be cleaned up without touching other disks.
-if /usr/bin/plutil -lint "$attach_report" >/dev/null 2>&1; then
-    device=$(/usr/libexec/PlistBuddy -c 'Print :system-entities:0:dev-entry' "$attach_report" 2>/dev/null) || device=
-    case "$device" in
-        /dev/disk[0-9]*) mounted=1 ;;
-        *) device= ;;
-    esac
-fi
-[ "$attach_status" -eq 0 ] && [ "$mounted" -eq 1 ] || fail 'The installer image could not be mounted for verification.'
-[ -d "$mountpoint/DockShell.app" ] && [ ! -L "$mountpoint/DockShell.app" ] \
+# Reopen at a different path with the scratch image detached. This catches an
+# artwork alias that accidentally points at the build folder or old mountpoint.
+attach_own_image "$partial" "$verified_mount" -readonly
+[ -d "$verified_mount/DockShell.app" ] && [ ! -L "$verified_mount/DockShell.app" ] \
     || fail 'The mounted image does not contain the application.'
-[ -L "$mountpoint/Applications" ] && [ "$(readlink "$mountpoint/Applications")" = /Applications ] \
+[ -L "$verified_mount/Applications" ] && [ "$(readlink "$verified_mount/Applications")" = /Applications ] \
     || fail 'The mounted image has no valid Applications shortcut.'
-sh "$root/Scripts/audit-release.sh" "$mountpoint/DockShell.app" --mode "$mode" --architectures "$architectures"
-cmp "$app/Contents/MacOS/DockShell" "$mountpoint/DockShell.app/Contents/MacOS/DockShell"
-cmp "$app/Contents/Helpers/dockshell-ssh-helper" "$mountpoint/DockShell.app/Contents/Helpers/dockshell-ssh-helper"
-/usr/bin/hdiutil detach "$device" -quiet || fail 'The verified installer image could not be detached.'
-mounted=0
+"$layout_tool" verify "$verified_mount"
+cmp "$payload/.background/installer.tiff" "$verified_mount/.background/installer.tiff"
+sh "$root/Scripts/audit-release.sh" "$verified_mount/DockShell.app" --mode "$mode" --architectures "$architectures"
+cmp "$app/Contents/MacOS/DockShell" "$verified_mount/DockShell.app/Contents/MacOS/DockShell"
+cmp "$app/Contents/Helpers/dockshell-ssh-helper" "$verified_mount/DockShell.app/Contents/Helpers/dockshell-ssh-helper"
+detach_own_image
 
 [ ! -e "$output" ] && [ ! -L "$output" ] || fail 'The output path appeared during packaging; no existing file was overwritten.'
 /bin/ln -h "$partial" "$output" || fail 'The completed image could not be placed at the output path.'
 [ -f "$output" ] && [ ! -L "$output" ] && [ "$partial" -ef "$output" ] \
     || fail 'The output path is not the completed installer image.'
 printf 'Prepared DMG: %s\n' "$output"
-printf '%s\n' 'PASS DMG: verified read-only image, intact signed application, Applications install shortcut'
+printf '%s\n' 'PASS DMG: compact branded Finder layout, portable Retina background, intact signed application, Applications shortcut'

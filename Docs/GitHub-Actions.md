@@ -39,7 +39,7 @@ sh Scripts/test.sh
 
 ## 从 Release 下载 DMG
 
-打开 [v0.1.0-preview.2 Release](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0-preview.2)，在 **Assets** 中点击 `DockShell-0.1.0-16-arm64-local-preview.dmg` 即可下载原文件。公开的 Release 不要求访问者登录具有维护权限的账号，安装附件也不会随 Actions Artifact 的保留期到期。
+打开 [v0.1.0-preview.3 Release](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0-preview.3)，在 **Assets** 中点击 `DockShell-0.1.0-16-arm64-local-preview.dmg` 即可下载原文件。公开的 Release 不要求访问者登录具有维护权限的账号，安装附件也不会随 Actions Artifact 的保留期到期。
 
 GitHub 自动生成的 **Source code (zip)** 和 **Source code (tar.gz)** 是源码归档；安装应用请选 `.dmg` 附件。
 
@@ -47,15 +47,15 @@ GitHub 自动生成的 **Source code (zip)** 和 **Source code (tar.gz)** 是源
 
 发布工作流要求标签已经存在于远端，且标签指向的提交包含本轮工作流、CI 发布脚本和 DMG 打包代码。工作流不会自动创建、移动或强制覆盖标签。
 
-已经存在的 `v0.1.0-preview.1` 固定到旧 ZIP 打包流程。不要移动该标签或覆盖已有草稿；公开 DMG 预览使用包含新工作流的标签，例如 `v0.1.0-preview.2`。应用版本仍为 `0.1.0 / build 16`，本次仅调整打包与发布流程。
+已经存在的 `v0.1.0-preview.1` 固定到旧 ZIP 打包流程，`v0.1.0-preview.2` 保留原 DMG。不要移动这些标签或覆盖原有附件；本次安装窗口外观更新使用新标签 `v0.1.0-preview.3`。应用版本仍为 `0.1.0 / build 16`，本次仅调整安装包外观与封装流程。
 
 例如，在已包含这些改动的 `main` 上创建当前 `0.1.0` 的预览标签：
 
 ```sh
 git switch main
 git pull --ff-only origin main
-git tag -a v0.1.0-preview.2 -m "DockShell 0.1.0 preview 2 (DMG)"
-git push origin refs/tags/v0.1.0-preview.2
+git tag -a v0.1.0-preview.3 -m "DockShell 0.1.0 preview 3 (branded DMG)"
+git push origin refs/tags/v0.1.0-preview.3
 ```
 
 推送匹配 `v*-preview.*` 的新标签会自动运行 `Preview Release`：检出标签、编译、验证、创建 DMG，再创建公开的 **Pre-release**。完成后到 [Releases](https://github.com/SunHarvey/dockshell/releases) 的对应版本 **Assets** 下载 DMG。构建或验证失败时不会发布；同名 Release 已存在时不会覆盖。
@@ -64,7 +64,7 @@ git push origin refs/tags/v0.1.0-preview.2
 
 版本规则：
 
-- 使用 `v主版本.次版本.修订版本`，可带预发布后缀，例如 `v0.1.0-preview.2`。
+- 使用 `v主版本.次版本.修订版本`，可带预发布后缀，例如 `v0.1.0-preview.3`。
 - 标签的核心版本必须与 [Info.plist](../Packaging/Info.plist) 的 `CFBundleShortVersionString` 一致；当前为 `0.1.0`。
 - `CFBundleVersion` 是构建号，当前为 `16`，不会被工作流自动修改。
 - 打包时的 `HEAD` 必须就是该标签对应的提交。不存在的标签、分支名、错误版本和不安全输入会被拒绝。
@@ -112,20 +112,35 @@ SHA-256 验证 DMG 文件完整性，不等于 Developer ID 身份验证或 Appl
 下面命令均在仓库根目录运行。仅验证已有标签与版本，不打包：
 
 ```sh
-sh Scripts/ci-release.sh validate v0.1.0-preview.2
+sh Scripts/ci-release.sh validate v0.1.0-preview.3
 ```
 
 本机已检出该标签、且运行于 macOS arm64 时，可准备同样的预览产物：
 
 ```sh
-sh Scripts/ci-release.sh prepare v0.1.0-preview.2
+sh Scripts/ci-release.sh prepare v0.1.0-preview.3
 ```
 
 辅助脚本通过 `release.sh --local-preview --result-file FILE` 获取本次成功构建的精确目录，检查 arm64 应用、源 ZIP 与 DMG 校验值，随后将 DMG 及其校验文件整理到独立的 `Build/ci-release.*` 目录。`release.sh` 内部仍保留 ZIP 供已有审计和后续公证流程使用，但 CI 的安装附件以 DMG 为主，不把应用 ZIP 再套进下载产物。辅助脚本不搜索旧版本目录来猜测待上传文件。
 
 `prepare` 向工作流输出 `artifact_dir`、`dmg_path`、`notes_path`、`manifest_path` 及标签、版本、构建号和源码提交信息；DMG 安装附件的路径字段为 `dmg_path`。
 
-打包使用 macOS 自带的 `hdiutil` 与 `ditto`，不新增第三方打包依赖。DMG 会经过完整性检查、只读挂载，以及映像内应用签名、架构、资源和快捷方式检查。
+### 安装窗口与布局验证
+
+DMG 的 Finder 初始窗口采用 **660 × 440 点**的紧凑图标视图：`DockShell.app` 位于左侧 `(170, 220)`，`Applications` 快捷方式位于右侧 `(490, 220)`，中间箭头引导拖动安装。背景沿用已选定的 **49 号图标**和海军蓝、象牙白品牌配色；底部同时显示简体中文和英文安装提示。
+
+中英文提示来自 [安装器 String Catalog](../Packaging/Installer/Localizable.xcstrings)，与应用自身的文案目录分开维护。原生构建工具生成包含 **1× / 2×** 表示的 TIFF 背景，供普通和 Retina 显示器使用。
+
+打包使用 macOS 自带的 `hdiutil`、`ditto` 与项目自有的 [DMGLayout 工具](../Tools/DMGLayout)。工具以 Swift 6、AppKit 和一个 CoreServices C 头文件桥接构建，不增加第三方打包依赖，也无需通过 AppleScript 控制 Finder。该工具仅在构建时使用，不包含在 DockShell.app 中。
+
+布局先写入临时可写 UDRW 映像，再转换成只读压缩 UDZO DMG。背景引用在映像自己的文件系统上创建；转换后将映像挂载到不同路径，检查引用仍指向当前映像中的背景，而不是构建目录或旧挂载点。打包流程包含以下检查：
+
+- String Catalog 的双语提示、TIFF 的画布与 1× / 2× 尺寸。
+- Finder 布局中的窗口大小、图标位置、图标视图及背景引用。
+- 转换后的镜像完整性、只读重新挂载及背景文件一致性。
+- 映像内应用的签名、架构、资源、主要可执行文件和 `Applications` 快捷方式。
+
+上述检查针对文件与布局数据；发布前还应在 Finder 中首次打开成品 DMG，目视核对背景、图标、文字与窗口尺寸。这与应用在 macOS 14 或 Intel 上的运行验收分别记录。
 
 CI 参数边界可单独验证：
 
@@ -147,7 +162,9 @@ sh Scripts/test-dmg-packaging.sh
 | [ci-release.sh](../Scripts/ci-release.sh) | 标签、版本、架构校验与精确产物整理 |
 | [test-ci-release.sh](../Scripts/test-ci-release.sh) | 临时仓库中的发布参数边界验证 |
 | [release.sh](../Scripts/release.sh) | 原生应用、helper、资源、签名和预览归档打包 |
-| [package-dmg.sh](../Scripts/package-dmg.sh) | 系统工具创建 DMG，并检查只读挂载后的应用与快捷方式 |
+| [package-dmg.sh](../Scripts/package-dmg.sh) | 创建可写安装映像、写入品牌布局、转换只读 DMG 并重新挂载审计 |
+| [Tools/DMGLayout](../Tools/DMGLayout) | 构建时原生工具，绘制多分辨率背景、写入 Finder 布局并检查背景引用 |
+| [安装器 Localizable.xcstrings](../Packaging/Installer/Localizable.xcstrings) | 简体中文与英文拖动安装提示 |
 | [test-dmg-packaging.sh](../Scripts/test-dmg-packaging.sh) | DMG 参数保护与可选的真实应用封装验证 |
 | [audit-release.sh](../Scripts/audit-release.sh) | 应用架构、签名、资源及部署目标审计 |
 | [test.sh](../Scripts/test.sh) | 默认验证和应用搬迁检查 |

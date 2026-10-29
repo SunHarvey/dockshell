@@ -139,6 +139,8 @@ cat > "$notes_path" <<EOF
 
 在 GitHub Release 页面的 Assets 中下载以 .dmg 结尾的安装包，无需先解压 ZIP。双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。安装只需 DMG，不需要下载 GitHub 自动生成的 Source code 归档。
 
+安装窗口采用紧凑的品牌布局：左侧 DockShell 图标、中间箭头、右侧 Applications，并提供中英文拖动安装提示及适配 Retina 的背景。
+
 单独的校验元数据与日志包用于核对和排查，安装只需下载 DMG 原文件。
 
 macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔离属性或改变系统安全设置。面向普通用户分发前仍需完成正式签名、公证和目标环境验收。
@@ -158,7 +160,7 @@ output dmg_path "$dmg_path"
 output notes_path "$notes_path"
 output manifest_path "$manifest_path"
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    printf '### DockShell 测试包\n\n- 标签：`%s`\n- 构建：`%s`\n- 架构：`arm64`\n- 格式：`DMG`，打开后拖到应用程序。\n- 提交：`%s`\n- 状态：ad-hoc 签名，未公证，仅供草稿核对。\n' \
+    printf '### DockShell 测试包\n\n- 标签：`%s`\n- 构建：`%s`\n- 架构：`arm64`\n- 格式：`DMG`，品牌安装窗口与中英文提示。\n- 提交：`%s`\n- 状态：ad-hoc 签名，未公证的测试预览。\n' \
         "$tag" "$build" "$commit" >> "$GITHUB_STEP_SUMMARY"
 fi
 complete=1
