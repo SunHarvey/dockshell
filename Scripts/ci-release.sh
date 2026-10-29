@@ -127,9 +127,9 @@ else
 fi
 notes_path="$artifact_dir/ReleaseNotes.md"
 cat > "$notes_path" <<EOF
-# DockShell $tag — arm64 预览版
+# DockShell $tag — arm64 早期开发版本
 
-这是采用 ad-hoc 签名的开发测试包，尚未获得 Developer ID 签名或 Apple 公证。此版本作为 Pre-release 提供试用，尚未完成正式分发验收。
+这是采用 ad-hoc 签名的早期开发版本，尚未获得 Developer ID 签名或 Apple 公证，部分平台与交互验收仍待完成。
 
 - 应用版本：$version
 - 构建号：$build
@@ -149,7 +149,7 @@ macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔�
 
     shasum -a 256 -c SHA256SUMS
 
-这是预览版，不会标记为 Latest 正式版本。手动运行发布工作流时仍只创建草稿；推送编号预览标签时创建公开的 Pre-release。
+GitHub 的 Latest 表示仓库当前的版本下载入口，不代表已经完成 Apple 公证或全部平台验收。完整输入法交互、实际睡眠唤醒、macOS 14 实机等待验范围见仓库的验收记录。
 EOF
 (cd "$artifact_dir" && /usr/bin/shasum -a 256 -c SHA256SUMS)
 

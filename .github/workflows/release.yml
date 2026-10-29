@@ -1,15 +1,16 @@
-name: Preview Release
+name: Release
 
-run-name: ${{ github.event_name == 'push' && 'Publish' || 'Draft' }} arm64 preview for ${{ inputs.tag || github.ref_name }}
+run-name: ${{ github.event_name == 'push' && 'Publish' || 'Draft' }} arm64 release for ${{ inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v*-preview.*'
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing DMG-capable version tag, for example v0.1.0-preview.2
+        description: Existing version tag to verify as a draft, for example v0.1.0-rc.1
         required: true
         type: string
 
@@ -17,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: preview-release-${{ inputs.tag || github.ref_name }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 defaults:
@@ -26,7 +27,7 @@ defaults:
 
 jobs:
   build:
-    name: Verify and package arm64 preview
+    name: Verify and package arm64 DMG
     if: >-
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
@@ -50,11 +51,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            printf '%s\n' 'A version tag such as v0.1.0-preview.2 is required.' >&2
+            printf '%s\n' 'A version tag such as v0.1.0 or v0.1.0-preview.3 is required.' >&2
             exit 1
           fi
-          if [ "$RELEASE_EVENT" = push ] && [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]; then
-            printf '%s\n' 'Automatic publication requires a numbered preview tag such as v0.1.0-preview.2.' >&2
+          if [ "$RELEASE_EVENT" = push ] && [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]; then
+            printf '%s\n' 'Automatic publication requires a standard version or numbered preview tag.' >&2
             exit 1
           fi
 
@@ -94,7 +95,7 @@ jobs:
           sh Scripts/test-dmg-packaging.sh 2>&1 | tee Build/ci-logs/dmg-guards.txt
           sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
 
-      - name: Prepare ad-hoc signed preview assets
+      - name: Prepare ad-hoc signed DMG assets
         id: package
         run: |
           set -euo pipefail
@@ -144,7 +145,7 @@ jobs:
           retention-days: 7
 
   publish-release:
-    name: Create preview release with DMG assets
+    name: Create release with DMG assets
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -203,23 +204,32 @@ jobs:
             exit 1
           fi
 
-      - name: Publish a tagged preview or create a manual draft
+      - name: Publish a tagged version or create a manual draft
         working-directory: preview
         run: |
           set -euo pipefail
-          release_flags=(--verify-tag --prerelease --latest=false)
+          release_flags=(--verify-tag --latest=false)
+          release_title="DockShell $RELEASE_TAG (arm64 preview)"
           case "$RELEASE_EVENT" in
             push)
-              [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]
+              if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                release_flags=(--verify-tag --latest)
+                release_title="DockShell $RELEASE_TAG (Apple Silicon)"
+              elif [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]; then
+                release_flags+=(--prerelease)
+              else
+                printf '%s\n' 'Unsupported automatic release tag.' >&2
+                exit 1
+              fi
               ;;
-            workflow_dispatch) release_flags+=(--draft) ;;
+            workflow_dispatch) release_flags+=(--draft --prerelease) ;;
             *) printf '%s\n' 'Unsupported release event.' >&2; exit 1 ;;
           esac
           gh release create "$RELEASE_TAG" \
             "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg" \
             SHA256SUMS ReleaseManifest.plist \
             "${release_flags[@]}" \
-            --title "DockShell $RELEASE_TAG (arm64 preview)" \
+            --title "$release_title" \
             --notes-file ReleaseNotes.md
 
       - name: Verify the public Release DMG download
@@ -229,7 +239,13 @@ jobs:
           set -euo pipefail
           dmg_name="DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg"
           release_metadata=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
-          printf '%s' "$release_metadata" | jq -e '.draft == false and .prerelease == true' >/dev/null
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            printf '%s' "$release_metadata" | jq -e '.draft == false and .prerelease == false' >/dev/null
+            latest_tag=$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)
+            test "$latest_tag" = "$RELEASE_TAG"
+          else
+            printf '%s' "$release_metadata" | jq -e '.draft == false and .prerelease == true' >/dev/null
+          fi
           download_url=$(printf '%s' "$release_metadata" | jq -er --arg name "$dmg_name" '.assets[] | select(.name == $name and .state == "uploaded") | .browser_download_url')
           test "$download_url" = "https://github.com/$GH_REPO/releases/download/$RELEASE_TAG/$dmg_name"
           # Download anonymously, so a maintainer-only draft cannot pass this check.
@@ -238,7 +254,7 @@ jobs:
           checksum_digest=$(cut -d ' ' -f 1 SHA256SUMS)
           printf '%s  %s\n' "$checksum_digest" "$published_dmg" | sha256sum --check --strict
           {
-            printf '### Published DMG preview\n\n'
+            printf '### Published DMG release\n\n'
             printf '[Release page](https://github.com/%s/releases/tag/%s)\n\n' "$GH_REPO" "$RELEASE_TAG"
             printf '[Download DMG](%s)\n' "$download_url"
           } >> "$GITHUB_STEP_SUMMARY"
