@@ -49,13 +49,13 @@ DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话�
 
 ### 从 DMG 测试包安装
 
-在成功的 [CI 运行](https://github.com/SunHarvey/dockshell/actions/workflows/ci.yml)页面底部的 **Artifacts** 中，点击名称以 `.dmg` 结尾的安装包即可直接下载。维护者也可通过 `Draft Release` 生成预览草稿，再登录具有仓库权限的账号，从 [Releases](https://github.com/SunHarvey/dockshell/releases) 对应草稿的 **Assets** 下载 DMG。
+打开 [v0.1.0-preview.2 Release](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0-preview.2)，在 **Assets** 中直接下载 `DockShell-0.1.0-16-arm64-local-preview.dmg`。这是公开的预览版下载入口，无需进入 Actions 或解压 ZIP。
 
 打开 DMG，将 **DockShell.app** 拖到 **Applications（应用程序）** 快捷方式，再推出磁盘映像。
 
-此流程生成的 DMG 仍为 Apple Silicon / arm64 的未公证测试包，包装格式不改变应用的签名与公证状态。草稿 Release 的 DMG 流程需使用包含这次打包改动的新标签，例如 `v0.1.0-preview.2`；普通 CI 下载不需要版本标签。旧 `v0.1.0-preview.1` 保持原有 ZIP 产物。
+当前 DMG 为 Apple Silicon / arm64 的未公证预览包，包装格式不改变应用的签名与公证状态。`v0.1.0-preview.2` 使用 DMG；旧 `v0.1.0-preview.1` 保持原有 ZIP 产物。
 
-工作流将单个 DMG 以原文件上传，**Actions 的 DMG 条目和 Release 附件均可直接下载 `.dmg`**，无需先解压 ZIP。日志或元数据的 Artifact 可能仍是 ZIP，不是安装所需的文件。
+Release 的 DMG 附件不会随 Actions Artifact 的保留期到期。需要测试尚未发布的提交时，也可从成功的 [CI 运行](https://github.com/SunHarvey/dockshell/actions/workflows/ci.yml)底部 **Artifacts** 直接下载 DMG；该临时下载保留 7 天。安装只需 DMG，日志和元数据包不是必需文件。
 
 ### 环境要求
 
@@ -162,7 +162,7 @@ DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
 
 ### GitHub Actions
 
-`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译、默认验证和 arm64 DMG 打包，成功后可在 Artifacts 直接下载 `.dmg`。`Draft Release` 可手动针对已推送的版本标签构建预览包，将 DMG、SHA-256 校验文件和清单附到未公开的草稿 Pre-release。目前产物仍采用 ad-hoc 签名，未经过 Apple 公证；工作流不自动公开发布。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与草稿发布](Docs/GitHub-Actions.md)。
+`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译、默认验证和 arm64 DMG 打包。推送 `v*-preview.*` 预览标签时，`Preview Release` 会验证该标签并构建公开的 **Pre-release**，将 DMG、SHA-256 校验文件和清单直接附到 Release 的 **Assets**；它不会标为 Latest。手动运行该工作流仍可创建草稿供维护者核对。目前产物采用 ad-hoc 签名，未经过 Apple 公证。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与预览发布](Docs/GitHub-Actions.md)。
 
 ### 项目结构
 
@@ -190,7 +190,7 @@ M0 中的 Citadel / libssh2 探针与正式应用依赖相互独立。随应用�
 
 ## 更多文档
 
-- [GitHub Actions 构建与草稿发布](Docs/GitHub-Actions.md)
+- [GitHub Actions 构建与预览发布](Docs/GitHub-Actions.md)
 - [开发过程与版本调整记录](Docs/Development-History.md)
 - [横排与竖排工作区](Docs/M8/横排与竖排.md)
 - [私钥、ssh-agent 与连接恢复](Docs/M5/私钥Agent与连接恢复.md)

@@ -1,8 +1,11 @@
-name: Draft Release
+name: Preview Release
 
-run-name: Draft arm64 preview for ${{ inputs.tag }}
+run-name: ${{ github.event_name == 'push' && 'Publish' || 'Draft' }} arm64 preview for ${{ inputs.tag || github.ref_name }}
 
 on:
+  push:
+    tags:
+      - 'v*-preview.*'
   workflow_dispatch:
     inputs:
       tag:
@@ -14,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: draft-release-${{ inputs.tag }}
+  group: preview-release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 defaults:
@@ -24,12 +27,16 @@ defaults:
 jobs:
   build:
     name: Verify and package arm64 preview
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
+      github.event.deleted == false && github.event.forced == false)
     runs-on: macos-26
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
-      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      RELEASE_EVENT: ${{ github.event_name }}
       DOCKSHELL_APP_OUTPUT_ROOT: ${{ github.workspace }}/Build/ci-app
     outputs:
       dmg_artifact_id: ${{ steps.upload-dmg.outputs.artifact-id }}
@@ -46,11 +53,15 @@ jobs:
             printf '%s\n' 'A version tag such as v0.1.0-preview.2 is required.' >&2
             exit 1
           fi
+          if [ "$RELEASE_EVENT" = push ] && [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]; then
+            printf '%s\n' 'Automatic publication requires a numbered preview tag such as v0.1.0-preview.2.' >&2
+            exit 1
+          fi
 
       - name: Check out the existing version tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -127,13 +138,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: draft-release-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          name: preview-release-logs-${{ github.run_id }}-${{ github.run_attempt }}
           path: Build/ci-logs/
           if-no-files-found: warn
           retention-days: 7
 
-  publish-draft:
-    name: Create an unpublished preview draft
+  publish-release:
+    name: Create preview release with DMG assets
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -146,6 +157,7 @@ jobs:
       APP_VERSION: ${{ needs.build.outputs.version }}
       APP_BUILD: ${{ needs.build.outputs.build }}
       SOURCE_COMMIT: ${{ needs.build.outputs.commit }}
+      RELEASE_EVENT: ${{ github.event_name }}
     steps:
       - name: Download this run's verified preview assets
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -191,13 +203,42 @@ jobs:
             exit 1
           fi
 
-      - name: Create draft prerelease without publishing
+      - name: Publish a tagged preview or create a manual draft
         working-directory: preview
         run: |
           set -euo pipefail
+          release_flags=(--verify-tag --prerelease --latest=false)
+          case "$RELEASE_EVENT" in
+            push)
+              [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]
+              ;;
+            workflow_dispatch) release_flags+=(--draft) ;;
+            *) printf '%s\n' 'Unsupported release event.' >&2; exit 1 ;;
+          esac
           gh release create "$RELEASE_TAG" \
             "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg" \
             SHA256SUMS ReleaseManifest.plist \
-            --verify-tag --draft --prerelease --latest=false \
+            "${release_flags[@]}" \
             --title "DockShell $RELEASE_TAG (arm64 preview)" \
             --notes-file ReleaseNotes.md
+
+      - name: Verify the public Release DMG download
+        if: github.event_name == 'push'
+        working-directory: preview
+        run: |
+          set -euo pipefail
+          dmg_name="DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg"
+          release_metadata=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
+          printf '%s' "$release_metadata" | jq -e '.draft == false and .prerelease == true' >/dev/null
+          download_url=$(printf '%s' "$release_metadata" | jq -er --arg name "$dmg_name" '.assets[] | select(.name == $name and .state == "uploaded") | .browser_download_url')
+          test "$download_url" = "https://github.com/$GH_REPO/releases/download/$RELEASE_TAG/$dmg_name"
+          # Download anonymously, so a maintainer-only draft cannot pass this check.
+          published_dmg="$RUNNER_TEMP/published-preview.dmg"
+          curl --fail --location --retry 3 --silent --show-error --output "$published_dmg" "$download_url"
+          checksum_digest=$(cut -d ' ' -f 1 SHA256SUMS)
+          printf '%s  %s\n' "$checksum_digest" "$published_dmg" | sha256sum --check --strict
+          {
+            printf '### Published DMG preview\n\n'
+            printf '[Release page](https://github.com/%s/releases/tag/%s)\n\n' "$GH_REPO" "$RELEASE_TAG"
+            printf '[Download DMG](%s)\n' "$download_url"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,8 +1,8 @@
-# GitHub Actions 构建与草稿发布
+# GitHub Actions 构建与预览发布
 
-DockShell 的云端流程分为 `CI` 和 `Draft Release`。前者编译、运行默认验证并生成可下载的 arm64 DMG，后者为一个已存在的版本标签生成 DMG 预览包和草稿 Release。应用的 SSH、终端及会话业务代码不依赖 GitHub Actions。
+DockShell 的云端流程分为 `CI` 和 `Preview Release`。前者编译、运行默认验证并生成可下载的 arm64 DMG；后者在推送 `v*-preview.*` 标签时生成公开的预览 Release，也支持手动为已有版本标签创建草稿。应用的 SSH、终端及会话业务代码不依赖 GitHub Actions。
 
-当前工作流准备的是 **ad-hoc 签名、未公证的测试预览包**，不会自动公开发布。GitHub 提交记录上的 SSH `Verified` 与 macOS 应用的 Developer ID 签名、公证相互独立。
+当前工作流准备的是 **ad-hoc 签名、未公证的测试预览包**。自动发布的版本标为 **Pre-release**，不会设为 Latest。GitHub 提交记录上的 SSH `Verified` 与 macOS 应用的 Developer ID 签名、公证相互独立。
 
 Actions Artifact 和 Release 的安装附件均以 **DMG 原文件**提供：直接下载、打开后将 `DockShell.app` 拖到 `Applications` 快捷方式。DMG 只是包装格式，不会让应用自动获得 Developer ID 签名或 Apple 公证。
 
@@ -37,11 +37,17 @@ sh Scripts/test.sh
 
 只想试用当前提交时，直接下载成功 CI 运行的 DMG 即可，无需创建版本标签或草稿 Release。工作流使用固定版本 `actions/upload-artifact v7.0.2` 的 `archive: false` 上传单个 DMG，Artifact 名称就是实际文件名；此选项支持[原文件下载](https://github.com/actions/upload-artifact/tree/cf430e030ddbb5b0abf93d22962f4752f3646cd9#upload-an-individual-file-unzipped)。
 
-## 准备版本标签
+## 从 Release 下载 DMG
+
+打开 [v0.1.0-preview.2 Release](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0-preview.2)，在 **Assets** 中点击 `DockShell-0.1.0-16-arm64-local-preview.dmg` 即可下载原文件。公开的 Release 不要求访问者登录具有维护权限的账号，安装附件也不会随 Actions Artifact 的保留期到期。
+
+GitHub 自动生成的 **Source code (zip)** 和 **Source code (tar.gz)** 是源码归档；安装应用请选 `.dmg` 附件。
+
+## 准备版本标签并发布预览
 
 发布工作流要求标签已经存在于远端，且标签指向的提交包含本轮工作流、CI 发布脚本和 DMG 打包代码。工作流不会自动创建、移动或强制覆盖标签。
 
-已经存在的 `v0.1.0-preview.1` 固定到旧 ZIP 打包流程。不要移动该标签或覆盖已有草稿；本次 DMG 流程使用包含新代码的标签，例如 `v0.1.0-preview.2`。应用版本仍为 `0.1.0 / build 16`，本次仅调整安装包格式。
+已经存在的 `v0.1.0-preview.1` 固定到旧 ZIP 打包流程。不要移动该标签或覆盖已有草稿；公开 DMG 预览使用包含新工作流的标签，例如 `v0.1.0-preview.2`。应用版本仍为 `0.1.0 / build 16`，本次仅调整打包与发布流程。
 
 例如，在已包含这些改动的 `main` 上创建当前 `0.1.0` 的预览标签：
 
@@ -51,6 +57,8 @@ git pull --ff-only origin main
 git tag -a v0.1.0-preview.2 -m "DockShell 0.1.0 preview 2 (DMG)"
 git push origin refs/tags/v0.1.0-preview.2
 ```
+
+推送匹配 `v*-preview.*` 的新标签会自动运行 `Preview Release`：检出标签、编译、验证、创建 DMG，再创建公开的 **Pre-release**。完成后到 [Releases](https://github.com/SunHarvey/dockshell/releases) 的对应版本 **Assets** 下载 DMG。构建或验证失败时不会发布；同名 Release 已存在时不会覆盖。
 
 如果希望标签也使用当前仓库配置的 SSH 密钥签名，可把 `git tag -a` 改为 `git tag -s`。这使用本机已有的签名配置，云端发布无需导入该私钥。
 
@@ -66,24 +74,26 @@ git push origin refs/tags/v0.1.0-preview.2
 
 ## 手动生成草稿 Release
 
-1. 确认对应版本的 `CI` 结果，并确保标签已推送。
-2. 打开 **Actions → Draft Release → Run workflow**。
-3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.1.0-preview.2`。
+手动入口用于先核对草稿。不要再次对已经公开发布的预览标签运行；工作流会拒绝同名 Release。
+
+1. 确认对应版本的 `CI` 结果，并确保待核对的标签已推送。要预先检查草稿，可使用不匹配自动触发规则的标签，例如 `v0.1.0-rc.1`。
+2. 打开 **Actions → Preview Release → Run workflow**。
+3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.1.0-rc.1`。
 4. 运行后等待构建、默认验证、产物审计和上传完成。
 5. 在本次运行的 **Artifacts** 点击名为 `DockShell-版本-构建号-arm64-local-preview.dmg` 的条目直接下载安装包；也可登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，从 **Assets** 下载同一个 DMG。
 
-发布工作流会重新检查并构建标签对应的代码。构建或测试失败时不会进入创建草稿的步骤；同名 Release 已存在时不会覆盖其内容。
+手动运行保持 **Draft + Pre-release** 状态；草稿仅供具有仓库相应权限的账号查看。要对外提供下载，需要在 GitHub 页面发布该草稿。标签推送入口则直接创建公开的 **Pre-release**，无需手动发布。两种入口都不会覆盖同名 Release。
 
-发布用构建产物保留 14 天，内容如下。DMG 作为单个原文件上传；校验文件与清单可放在单独的元数据 Artifact 中：
+发布流程的 Actions Artifact 保留 14 天；Release 附件不受该保留期影响。产物如下，DMG 作为单个原文件上传，校验文件与清单可放在单独的元数据 Artifact 中：
 
 | 文件 | 用途 |
 |---|---|
 | `DockShell-版本-构建号-arm64-local-preview.dmg` | 只读压缩磁盘映像，包含已签名的 `DockShell.app` 与 `Applications` 快捷方式 |
 | `SHA256SUMS` | DMG 的 SHA-256 校验值 |
 | `ReleaseManifest.plist` | 版本、构建号、架构与未公证状态 |
-| `ReleaseNotes.md` | 草稿说明与预览包使用边界 |
+| `ReleaseNotes.md` | 预览版本说明与使用边界 |
 
-创建的 Release 同时标为 **Draft** 和 **Pre-release**，不会自动成为公开的 Latest 版本。草稿需登录具有仓库相应权限的账号查看；普通访客不能把它当作已发布下载包。GitHub Release 附件包含 DMG、校验文件和清单，`ReleaseNotes.md` 用作草稿正文。
+GitHub Release 的 **Assets** 包含 DMG、校验文件和清单，`ReleaseNotes.md` 用作版本正文。公开的预览版与手动草稿均不会标为 Latest。清单中的 `notarized=false` 和 `publiclyDistributable=false` 表示尚未满足正式签名、公证和分发验收条件，不代表 GitHub Release 的草稿可见性。
 
 **安装只需下载 `.dmg` 条目。** 本工作流在 Actions 中原样上传 DMG，Release 的 Assets 也直接提供 DMG，两种入口都不需要解压应用 ZIP。日志或元数据 Artifact 可能仍是 ZIP，安装时不需要下载它们。
 
@@ -95,7 +105,7 @@ git push origin refs/tags/v0.1.0-preview.2
 shasum -a 256 -c SHA256SUMS
 ```
 
-SHA-256 验证 DMG 文件完整性，不等于 Developer ID 身份验证或 Apple 公证。当前草稿包仍是未公证预览；正式分发的签名、公证入口见 [M6 分发准备](M6/分发准备.md)。
+SHA-256 验证 DMG 文件完整性，不等于 Developer ID 身份验证或 Apple 公证。当前安装包仍是未公证预览；正式分发的签名、公证入口见 [M6 分发准备](M6/分发准备.md)。
 
 ## 本机校验入口
 
@@ -126,14 +136,14 @@ sh Scripts/test-dmg-packaging.sh
 
 ## 权限与文件索引
 
-普通 CI 和发布构建阶段仅请求 `contents: read`。只有成功构建后的 `publish-draft` 任务请求 `contents: write`，使用工作流自带的 `GITHUB_TOKEN` 创建草稿，不需要个人 Token 或 GitHub SSH 私钥。
+普通 CI 和发布构建阶段仅请求 `contents: read`。只有成功构建后的发布任务请求 `contents: write`，使用工作流自带的 `GITHUB_TOKEN` 创建公开预览或手动草稿，不需要个人 Token 或 GitHub SSH 私钥。
 
 当前没有接入 Developer ID 或公证凭据。后续接入正式签名时，应通过受保护的 Actions Secrets 和 runner 临时 Keychain 配置，而不是把证书、密码或 Apple API 私钥提交到仓库。
 
 | 完整文件 | 职责 |
 |---|---|
 | [ci.yml](../.github/workflows/ci.yml) | 自动编译、默认验证与日志上传 |
-| [release.yml](../.github/workflows/release.yml) | 手动选择标签、构建预览包和创建草稿 |
+| [release.yml](../.github/workflows/release.yml) | 推送预览标签后发布公开 DMG，或手动选择标签创建草稿 |
 | [ci-release.sh](../Scripts/ci-release.sh) | 标签、版本、架构校验与精确产物整理 |
 | [test-ci-release.sh](../Scripts/test-ci-release.sh) | 临时仓库中的发布参数边界验证 |
 | [release.sh](../Scripts/release.sh) | 原生应用、helper、资源、签名和预览归档打包 |

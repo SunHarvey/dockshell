@@ -1,5 +1,5 @@
 #!/bin/sh
-# Validates an existing version tag and assembles an unpublished arm64 CI preview.
+# Validates an existing version tag and assembles arm64 preview assets for CI.
 # No tag, commit, GitHub release, signing identity or notarization credential is created here.
 set -eu
 export LC_ALL=C
@@ -127,9 +127,9 @@ else
 fi
 notes_path="$artifact_dir/ReleaseNotes.md"
 cat > "$notes_path" <<EOF
-# DockShell $tag — arm64 测试草稿
+# DockShell $tag — arm64 预览版
 
-这是采用 ad-hoc 签名的开发测试包，尚未获得 Developer ID 签名或 Apple 公证，不是正式分发安装包。GitHub Release 应保持草稿状态，供维护者核对和测试。
+这是采用 ad-hoc 签名的开发测试包，尚未获得 Developer ID 签名或 Apple 公证。此版本作为 Pre-release 提供试用，尚未完成正式分发验收。
 
 - 应用版本：$version
 - 构建号：$build
@@ -137,7 +137,7 @@ cat > "$notes_path" <<EOF
 - 源码提交：$commit
 - 部署目标：macOS 14；macOS 14 实机与 Intel 尚未完成验收。
 
-从本次 Actions 的 Artifacts 点击以 .dmg 结尾的安装包，或从草稿 Release 附件下载 DMG，均可直接得到原样 DMG 文件。双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。
+在 GitHub Release 页面的 Assets 中下载以 .dmg 结尾的安装包，无需先解压 ZIP。双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。安装只需 DMG，不需要下载 GitHub 自动生成的 Source code 归档。
 
 单独的校验元数据与日志包用于核对和排查，安装只需下载 DMG 原文件。
 
@@ -147,7 +147,7 @@ macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔�
 
     shasum -a 256 -c SHA256SUMS
 
-这是测试草稿，不会自动成为公开的正式版本。
+这是预览版，不会标记为 Latest 正式版本。手动运行发布工作流时仍只创建草稿；推送编号预览标签时创建公开的 Pre-release。
 EOF
 (cd "$artifact_dir" && /usr/bin/shasum -a 256 -c SHA256SUMS)
 
