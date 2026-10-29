@@ -128,9 +128,20 @@ private enum DockShellVerification {
         print("PASS SwiftTerm resources: explicit application bundle, no build-path fallback")
         let helperURL = appURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")
         let environment = ProcessInfo.processInfo.environment
-        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST"]
+        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST"]
             .filter { environment[$0] == "1" }
         try require(specialModes.count <= 1, "Run each optional verification mode in a separate process")
+        if environment["DOCKSHELL_SFTP_REMOTE_TEST"] == "1" {
+            try await M9SFTPRemoteVerification.run(helperURL: helperURL, environment: environment)
+            return
+        }
+        if environment["DOCKSHELL_SFTP_TEST"] == "1" {
+            try M9SFTPPolicyVerification.run(helperURL: helperURL)
+            try await M9PipeVerification.run()
+            try await M9SFTPCodecVerification.run()
+            try await M9SFTPIntegrationVerification.run(helperURL: helperURL)
+            return
+        }
         if environment["DOCKSHELL_LOCAL_TERMINAL_TEST"] == "1" {
             try await LocalTerminalControllerVerification.run()
             try await LocalTerminalVerification.run(helperURL: helperURL)
@@ -199,6 +210,10 @@ private enum DockShellVerification {
         try await M4FlowVerification.run()
         try await M5BrokerVerification.run(helperURL: helperURL)
         try await M5AuthenticationVerification.run()
+        try M9SFTPPolicyVerification.run(helperURL: helperURL)
+        try M9SFTPRemoteVerification.verifyScopeGuards()
+        try await M9PipeVerification.run()
+        try await M9SFTPCodecVerification.run()
         try await ManagedPrivateKeyVerification.run()
         try await M5TransportVerification.run(helperURL: helperURL)
         try await M5RecoveryVerification.run()

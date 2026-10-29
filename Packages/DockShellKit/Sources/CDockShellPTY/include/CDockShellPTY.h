@@ -34,6 +34,12 @@ int ds_pty_session_spawn(const char *helper, char *const argv[], char *const env
 /// group, which interactive job control may separate from the shell's group.
 int ds_pty_session_spawn_local(const char *helper, char *const argv[], char *const envp[],
                               uint16_t rows, uint16_t columns, ds_pty_session **result);
+/// Binary subsystem variant. Executes only /usr/bin/ssh, with independent stdin,
+/// stdout and bounded stderr pipes. Uses the same owned lifecycle and rings, but
+/// never allocates a PTY or invokes the terminal launch helper. argv[0] must be
+/// the fixed system SSH path; no shell is involved. Returns an errno value.
+int ds_pipe_session_spawn_system_ssh(char *const argv[], char *const envp[],
+                                    ds_pty_session **result);
 pid_t ds_pty_session_pid(ds_pty_session *session);
 void ds_pty_session_retain(ds_pty_session *session);
 void ds_pty_session_release(ds_pty_session *session);

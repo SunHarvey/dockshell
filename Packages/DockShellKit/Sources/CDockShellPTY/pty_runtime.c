@@ -32,10 +32,11 @@ struct ds_pty_session {
     pthread_mutex_t lock;
     pthread_cond_t changed;
     unsigned refs;
-    int master, diagnostic, wake_read, wake_write;
+    // PTYs share the read/write descriptor; binary pipes deliberately do not.
+    int master, writer, diagnostic, wake_read, wake_write;
     pid_t pid;
     int closing, eof, write_eof, finished, exit_status, failure, reader_active;
-    int local_shell;
+    int local_shell, pipe_mode;
     struct ds_ring incoming, outgoing;
     unsigned char diagnostics[DS_DIAGNOSTIC_CAPACITY];
     size_t diagnostic_count;
@@ -167,15 +168,20 @@ static void terminate_local_jobs(ds_pty_session *session) {
 
 static void *supervise(void *context) {
     ds_pty_session *session = context;
+    // A pipe may lose its reader between poll and write. Suppress SIGPIPE only
+    // on this dedicated supervisor, without changing the application's policy.
+    sigset_t blocked;
+    sigemptyset(&blocked);
+    sigaddset(&blocked, SIGPIPE);
+    pthread_sigmask(SIG_BLOCK, &blocked, NULL);
     int pty_eof = 0, diagnostic_eof = 0;
     unsigned char temporary[16384];
     for (;;) {
         pthread_mutex_lock(&session->lock);
         int closing = session->closing;
         size_t room = DS_RING_CAPACITY - session->incoming.count;
-        short pty_events = 0;
-        if (!pty_eof && room) pty_events |= POLLIN;
-        if (!pty_eof && !session->write_eof && session->outgoing.count) pty_events |= POLLOUT;
+        short read_events = !pty_eof && room ? POLLIN : 0;
+        short write_events = !pty_eof && !session->write_eof && session->outgoing.count ? POLLOUT : 0;
         pthread_mutex_unlock(&session->lock);
         if (closing) {
             // The process is our unreaped session leader. Its PID cannot be reused
@@ -185,13 +191,14 @@ static void *supervise(void *context) {
             break;
         }
         if (pty_eof && diagnostic_eof) break;
-        struct pollfd items[3] = {
-            {.fd = pty_events ? session->master : -1, .events = pty_events},
+        struct pollfd items[4] = {
+            {.fd = read_events ? session->master : -1, .events = read_events},
+            {.fd = write_events ? session->writer : -1, .events = write_events},
             {.fd = diagnostic_eof ? -1 : session->diagnostic, .events = POLLIN},
             {.fd = session->wake_read, .events = POLLIN},
         };
         int ready;
-        do { ready = poll(items, 3, -1); } while (ready < 0 && errno == EINTR);
+        do { ready = poll(items, 4, -1); } while (ready < 0 && errno == EINTR);
         if (ready < 0) {
             pthread_mutex_lock(&session->lock);
             session->failure = errno;
@@ -199,15 +206,15 @@ static void *supervise(void *context) {
             pthread_mutex_unlock(&session->lock);
             continue;
         }
-        if ((items[0].revents | items[1].revents | items[2].revents) & POLLNVAL) {
+        if ((items[0].revents | items[1].revents | items[2].revents | items[3].revents) & POLLNVAL) {
             pthread_mutex_lock(&session->lock);
             session->failure = EBADF;
             session->closing = 1;
             pthread_mutex_unlock(&session->lock);
             continue;
         }
-        if (items[2].revents) while (read(session->wake_read, temporary, sizeof(temporary)) > 0) {}
-        if (items[1].revents & (POLLIN | POLLHUP | POLLERR)) {
+        if (items[3].revents) while (read(session->wake_read, temporary, sizeof(temporary)) > 0) {}
+        if (items[2].revents & (POLLIN | POLLHUP | POLLERR)) {
             // Bound each drain pass so a noisy stderr cannot starve PTY IO or cancellation.
             for (int pass = 0; pass < 16; ++pass) {
                 ssize_t count = read(session->diagnostic, temporary, sizeof(temporary));
@@ -253,10 +260,11 @@ static void *supervise(void *context) {
                 }
             }
         }
-        if (!session->closing && !pty_eof && items[0].revents & POLLOUT && session->outgoing.count) {
+        if (!session->closing && !pty_eof &&
+            items[1].revents & (POLLOUT | POLLHUP | POLLERR) && session->outgoing.count) {
             size_t amount = DS_RING_CAPACITY - session->outgoing.head;
             if (amount > session->outgoing.count) amount = session->outgoing.count;
-            ssize_t count = write(session->master, session->outgoing.bytes + session->outgoing.head, amount);
+            ssize_t count = write(session->writer, session->outgoing.bytes + session->outgoing.head, amount);
             if (count > 0) {
                 session->outgoing.head = (session->outgoing.head + (size_t)count) % DS_RING_CAPACITY;
                 session->outgoing.count -= (size_t)count;
@@ -277,13 +285,14 @@ static void *supervise(void *context) {
     // Darwin may keep a killed SSH process in slave-tty close/drain until its
     // master is released. Waiting for that process first would deadlock teardown.
     // Invalidate under the resize lock, then close outside it before waitpid.
-    int master = session->master, diagnostic = session->diagnostic;
-    session->master = session->diagnostic = -1;
+    int master = session->master, writer = session->writer, diagnostic = session->diagnostic;
+    session->master = session->writer = session->diagnostic = -1;
     session->eof = session->write_eof = 1;
     session->outgoing.count = 0;
     pthread_cond_broadcast(&session->changed);
     pthread_mutex_unlock(&session->lock);
     if (master >= 0) close(master);
+    if (writer >= 0 && writer != master) close(writer);
     if (diagnostic >= 0) close(diagnostic);
     complete_pending_read(session);
     int status = 0;
@@ -377,7 +386,7 @@ static int spawn_session(const char *helper, char *const argv[], char *const env
     }
     session->refs = 2; // The caller and the detached supervisor.
     session->local_shell = local_shell;
-    session->master = master; session->diagnostic = diagnostics[0];
+    session->master = session->writer = master; session->diagnostic = diagnostics[0];
     session->wake_read = wake[0]; session->wake_write = wake[1];
     pthread_t thread;
     error = pthread_create(&thread, NULL, supervise, session);
@@ -410,6 +419,100 @@ int ds_pty_session_spawn(const char *helper, char *const argv[], char *const env
 int ds_pty_session_spawn_local(const char *helper, char *const argv[], char *const envp[],
                               uint16_t rows, uint16_t columns, ds_pty_session **result) {
     return spawn_session(helper, argv, envp, rows, columns, 1, result);
+}
+
+// Keep spawn source descriptors above stdin/stdout/stderr even in a GUI process
+// whose inherited standard streams have been closed. Child dup2 actions must not
+// accidentally replace a later source descriptor.
+static int private_pipe(int descriptors[2]) {
+    if (pipe(descriptors) < 0) return errno;
+    for (int index = 0; index < 2; ++index) {
+        if (descriptors[index] < STDERR_FILENO + 1) {
+            int replacement = fcntl(descriptors[index], F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+            if (replacement < 0) return errno;
+            close(descriptors[index]);
+            descriptors[index] = replacement;
+        } else if (fcntl(descriptors[index], F_SETFD, FD_CLOEXEC) < 0) {
+            return errno;
+        }
+    }
+    return 0;
+}
+
+int ds_pipe_session_spawn_system_ssh(char *const argv[], char *const envp[],
+                                    ds_pty_session **result) {
+    if (!argv || !argv[0] || strcmp(argv[0], "/usr/bin/ssh") || !envp || !result) return EINVAL;
+    *result = NULL;
+    int input[2] = {-1, -1}, output[2] = {-1, -1};
+    int diagnostics[2] = {-1, -1}, wake[2] = {-1, -1};
+    int error = 0, child_started = 0, mutex_ready = 0, condition_ready = 0;
+    ds_pty_session *session = calloc(1, sizeof(*session));
+    if (!session) return ENOMEM;
+    if ((error = private_pipe(input)) || (error = private_pipe(output)) ||
+        (error = private_pipe(diagnostics)) || (error = private_pipe(wake))) goto cleanup;
+    // Only the parent-facing pipe ends are nonblocking. System SSH receives
+    // ordinary blocking standard streams and performs its own channel polling.
+    if ((error = nonblocking(input[1])) || (error = nonblocking(output[0])) ||
+        (error = nonblocking(diagnostics[0])) || (error = nonblocking(wake[0])) ||
+        (error = nonblocking(wake[1]))) goto cleanup;
+    posix_spawn_file_actions_t actions;
+    posix_spawnattr_t attributes;
+    if ((error = posix_spawn_file_actions_init(&actions))) goto cleanup;
+    if ((error = posix_spawnattr_init(&attributes))) {
+        posix_spawn_file_actions_destroy(&actions);
+        goto cleanup;
+    }
+    sigset_t empty_mask, default_signals;
+    sigemptyset(&empty_mask);
+    sigemptyset(&default_signals);
+    const int signals[] = {SIGHUP, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGPIPE,
+                           SIGTSTP, SIGTTIN, SIGTTOU};
+    for (size_t index = 0; index < sizeof(signals) / sizeof(signals[0]); ++index) {
+        sigaddset(&default_signals, signals[index]);
+    }
+    error = posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETSID | POSIX_SPAWN_CLOEXEC_DEFAULT |
+                                     POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF);
+    if (!error) error = posix_spawnattr_setsigmask(&attributes, &empty_mask);
+    if (!error) error = posix_spawnattr_setsigdefault(&attributes, &default_signals);
+    if (!error) error = posix_spawn_file_actions_adddup2(&actions, input[0], STDIN_FILENO);
+    if (!error) error = posix_spawn_file_actions_adddup2(&actions, output[1], STDOUT_FILENO);
+    if (!error) error = posix_spawn_file_actions_adddup2(&actions, diagnostics[1], STDERR_FILENO);
+    if (!error) error = posix_spawn(&session->pid, "/usr/bin/ssh", &actions, &attributes, argv, envp);
+    posix_spawnattr_destroy(&attributes);
+    posix_spawn_file_actions_destroy(&actions);
+    if (error) goto cleanup;
+    child_started = 1;
+    close(input[0]); input[0] = -1;
+    close(output[1]); output[1] = -1;
+    close(diagnostics[1]); diagnostics[1] = -1;
+    if ((error = pthread_mutex_init(&session->lock, NULL))) goto cleanup;
+    mutex_ready = 1;
+    if ((error = pthread_cond_init(&session->changed, NULL))) goto cleanup;
+    condition_ready = 1;
+    session->refs = 2; // The Swift owner and the detached supervisor.
+    session->pipe_mode = 1;
+    session->master = output[0]; session->writer = input[1];
+    session->diagnostic = diagnostics[0];
+    session->wake_read = wake[0]; session->wake_write = wake[1];
+    pthread_t thread;
+    if ((error = pthread_create(&thread, NULL, supervise, session))) goto cleanup;
+    pthread_detach(thread);
+    *result = session;
+    return 0;
+cleanup:
+    if (child_started) {
+        if (kill(-session->pid, SIGKILL) < 0) kill(session->pid, SIGKILL);
+        while (waitpid(session->pid, NULL, 0) < 0 && errno == EINTR) {}
+    }
+    if (condition_ready) pthread_cond_destroy(&session->changed);
+    if (mutex_ready) pthread_mutex_destroy(&session->lock);
+    int *pairs[] = {input, output, diagnostics, wake};
+    for (size_t pair = 0; pair < sizeof(pairs) / sizeof(pairs[0]); ++pair) {
+        for (int index = 0; index < 2; ++index) if (pairs[pair][index] >= 0) close(pairs[pair][index]);
+    }
+    ds_zero(session, sizeof(*session));
+    free(session);
+    return error;
 }
 
 pid_t ds_pty_session_pid(ds_pty_session *session) { return session->pid; }
@@ -500,7 +603,8 @@ int ds_pty_session_resize(ds_pty_session *session, uint16_t rows, uint16_t colum
     if (!rows || !columns) return EINVAL;
     struct winsize size = {.ws_row = rows, .ws_col = columns};
     pthread_mutex_lock(&session->lock);
-    int result = session->closing || session->finished || session->master < 0 ? EPIPE :
+    int result = session->pipe_mode ? EINVAL :
+                 session->closing || session->finished || session->master < 0 ? EPIPE :
                  ioctl(session->master, TIOCSWINSZ, &size) < 0 ? errno : 0;
     pthread_mutex_unlock(&session->lock);
     return result;

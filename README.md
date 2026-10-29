@@ -11,6 +11,8 @@ DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话�
 
 **当前源码版本：0.1.2 / build 18，早期开发版本。** 已发布安装包从最新 Release 下载；私钥粘贴与输入显示切换以包含这些改动的构建为准。当前安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证。
 
+公开 Release 仍为 **v0.1.2**。当前工作区新增 **M9.0：SFTP 底层技术验证**，包含独立连接与命令行验证入口；应用尚无 SFTP 文件面板。
+
 [功能介绍](#功能介绍) · [界面预览](#界面预览) · [安装与启动](#安装与启动) · [使用指南](#使用指南) · [开发与验证](#开发与验证)
 
 ## 功能介绍
@@ -148,6 +150,8 @@ ssh-agent 认证复用当前用户已有的 agent，密钥需事先加载；Dock
 
 当前已实现会话管理、SSH 连接、终端、多标签、左右并列 / 上下堆叠和本机 Shell。**SFTP 文件面板、端口转发、跳板机、批量输入、快速命令、日志、Zmodem 和配置导入仍在后续规划中。**
 
+M9.0 已加入基于系统 OpenSSH 无 PTY 管道的自有 SFTP v3 协议层。默认离线检查、本地隔离 SSH/SFTP 集成，以及用户授权 Linux 虚拟机的私钥与密码登录、小文件二进制往返和测试目录清理均已通过。**这些是底层技术验证，SFTP 文件面板和面向用户的传输任务仍待 M9.1 / M9.2。** 实际边界与入口见 [SFTP 技术验证](Docs/M9/SFTP技术验证.md)。
+
 中文与 emoji 的显示已有验证；完整真实中文输入法候选交互、实际睡眠唤醒、保存密码后的最终包重启登录、macOS 14 实机及正式分发签名 / 公证仍有人工待验项。详细边界见 [验收记录](Docs/M6/验收矩阵.md)。
 
 ## 开发与验证
@@ -163,6 +167,15 @@ DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
 ```
 
 默认验证使用隔离的临时数据与合成连接，覆盖凭据隔离、真实本地 PTY、背压、生命周期、标签与分屏、资源打包和应用搬迁。真实服务器、性能及 Keychain 重启集成的专项入口见 [性能与交付记录](Docs/M6/性能与交付记录.md)。
+
+M9.0 的默认回归还包含离线系统 SSH 管道、SFTP 协议与启动策略检查。需要运行生成测试密钥、独立 agent 和回环 sshd 的真实 SFTP 集成时：
+
+```sh
+sh Scripts/test-sftp.sh
+sh Scripts/test-sftp.sh release
+```
+
+它不会启用系统“远程登录”，也不会修改个人 authorized_keys、现有 agent 或正式凭据。授权远端测试另有显式入口，认证输入方式和已验范围见 [SFTP 技术验证](Docs/M9/SFTP技术验证.md)；默认回归不访问个人服务器。
 
 ### GitHub Actions
 
@@ -194,6 +207,7 @@ M0 中的 Citadel / libssh2 探针与正式应用依赖相互独立。随应用�
 
 ## 更多文档
 
+- [M9.0 SFTP 技术验证与验收边界](Docs/M9/SFTP技术验证.md)
 - [GitHub Actions 构建与发布](Docs/GitHub-Actions.md)
 - [开发过程与版本调整记录](Docs/Development-History.md)
 - [左右并列与上下堆叠工作区](Docs/M8/横排与竖排.md)

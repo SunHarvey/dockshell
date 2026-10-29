@@ -33,6 +33,8 @@ sh Scripts/test.sh
 
 默认验证使用临时数据与合成连接，不自动开启 GUI smoke、个人 Keychain、真实服务器或性能专项验证。需要图形交互、真实 SSH、实际睡眠等人工验收的范围，继续以 [验收矩阵](M6/验收矩阵.md) 为准。
 
+M9.0 起，CI 在默认回归后单独运行 `sh Scripts/test-sftp.sh`，使用生成的测试密钥、独立 agent 和当前用户的回环 sshd 验证 SFTP；不会启用系统远程登录或访问个人服务器，日志为 `sftp.txt`。Release 工作流对包含该入口的标签运行相同检查，手动选择更早的标签时跳过该步骤。技术范围见 [SFTP 技术验证](M9/SFTP技术验证.md)。
+
 默认回归后，CI 还会实际构建 Release 预览包与 DMG，检查镜像、映像内应用签名及归档校验值；结果记录在 `dmg-package.txt`，此步骤不创建 Release。
 
 只想试用当前提交时，直接下载成功 CI 运行的 DMG 即可，无需创建版本标签或草稿 Release。工作流使用固定版本 `actions/upload-artifact v7.0.2` 的 `archive: false` 上传单个 DMG，Artifact 名称就是实际文件名；此选项支持[原文件下载](https://github.com/actions/upload-artifact/tree/cf430e030ddbb5b0abf93d22962f4752f3646cd9#upload-an-individual-file-unzipped)。
@@ -186,6 +188,7 @@ sh Scripts/test-dmg-packaging.sh
 | [test-dmg-packaging.sh](../Scripts/test-dmg-packaging.sh) | DMG 参数保护与可选的真实应用封装验证 |
 | [audit-release.sh](../Scripts/audit-release.sh) | 应用架构、签名、资源及部署目标审计 |
 | [test.sh](../Scripts/test.sh) | 默认验证和应用搬迁检查 |
+| [test-sftp.sh](../Scripts/test-sftp.sh) | 隔离的本地 SSH/SFTP 集成检查 |
 
 工作流仅使用以下 GitHub 官方 Actions，并固定到完整提交 SHA；版本注释也保留在工作流中。没有新增 Swift 应用依赖。
 

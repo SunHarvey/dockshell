@@ -25,59 +25,14 @@ public struct OpenSSHTransport: SSHTransport {
     }
 
     public func connect(to profile: SessionProfile) async throws -> any SSHConnection {
-        let profile = try SessionDraft(profile: profile).validated(credentialID: profile.authentication.credentialID)
-        let endpoint = try SSHHostEndpoint(host: profile.host, port: profile.port)
-        try Task.checkCancellation()
-        let known = try await hostKeys.knownKeys(for: endpoint)
-        let offered = try await scanner.scan(endpoint)
-        let accepted: [SSHHostKey]
-        switch try HostTrustAssessment.assess(known: known, offered: offered) {
-        case .unknown(let keys):
-            guard try await interaction.confirmHost(SSHHostTrustRequest(endpoint: endpoint, keys: keys)) else {
-                throw SSHConnectionError.hostRejected
-            }
-            try Task.checkCancellation()
-            try await hostKeys.approve(keys, for: endpoint)
-            accepted = keys
-        case .trusted(let matching): accepted = matching
-        case .changed: throw SSHConnectionError.hostKeyChanged
-        }
-        try Task.checkCancellation()
-        // Local authentication material is accessed only after the host decision. Nothing is sent before strict SSH validation.
-        let authentication: OpenSSHAuthentication
-        let secret: Data?
-        switch profile.authentication {
-        case .password(let id):
-            authentication = .password
-            secret = try await credential(id: id, profile: profile, isPassphrase: false)
-        case .privateKey(let bookmark, let id):
-            let url = try await privateKeys.resolve(for: bookmark)
-            let information = try await keyInspector.inspect(url)
-            authentication = .privateKey(url)
-            secret = information.requiresPassphrase ? try await credential(id: id, profile: profile, isPassphrase: true) : nil
-        case .agent:
-            let identity = try await agent.identity()
-            authentication = .agent(identity.socketURL)
-            secret = nil
-        }
-        try Task.checkCancellation()
-        let knownHostsURL = try await hostKeys.knownHostsFileURL()
-        let arguments = try OpenSSHCommand.arguments(profile: profile, endpoint: endpoint,
-            acceptedKeys: accepted, knownHostsURL: knownHostsURL, helperURL: helperURL,
-            authentication: authentication, keepalive: keepalive)
-        return OpenSSHConnection(arguments: arguments, helperURL: helperURL, knownHostsURL: knownHostsURL,
-                                 authentication: authentication, secret: secret)
-    }
-
-    private func credential(id: UUID?, profile: SessionProfile, isPassphrase: Bool) async throws -> Data {
-        let secret: Data
-        if let id, let stored = try await credentials.read(id: id) { secret = stored }
-        else if isPassphrase { secret = try await interaction.passphrase(for: profile) }
-        else { secret = try await interaction.password(for: profile) }
-        guard !secret.isEmpty else {
-            throw isPassphrase ? SSHConnectionError.passphraseRequired : .passwordRequired
-        }
-        return secret
+        let prepared = try await OpenSSHSessionPreparation(credentials: credentials, hostKeys: hostKeys,
+            scanner: scanner, interaction: interaction, privateKeys: privateKeys,
+            keyInspector: keyInspector, agent: agent).prepare(profile)
+        let arguments = try OpenSSHCommand.arguments(profile: prepared.profile, endpoint: prepared.endpoint,
+            acceptedKeys: prepared.acceptedKeys, knownHostsURL: prepared.knownHostsURL, helperURL: helperURL,
+            authentication: prepared.authentication, keepalive: keepalive)
+        return OpenSSHConnection(arguments: arguments, helperURL: helperURL, knownHostsURL: prepared.knownHostsURL,
+                                 authentication: prepared.authentication, secret: prepared.secret)
     }
 
 }
@@ -101,12 +56,19 @@ public enum OpenSSHAuthentication: Equatable, Sendable {
     }
 }
 
+/// Selects the fixed remote service and whether a terminal is allocated.
+public enum OpenSSHInvocation: Equatable, Sendable {
+    case terminal
+    case sftp
+}
+
 /// Constructs only an argument array. Shell syntax is confined to one fixed, quoted local helper path.
 public enum OpenSSHCommand {
     public static func arguments(profile: SessionProfile, endpoint: SSHHostEndpoint,
                                  acceptedKeys: [SSHHostKey], knownHostsURL: URL, helperURL: URL,
                                  authentication resolved: OpenSSHAuthentication? = nil,
-                                 keepalive: SSHKeepalivePolicy = .standard) throws -> [String] {
+                                 keepalive: SSHKeepalivePolicy = .standard,
+                                 invocation: OpenSSHInvocation = .terminal) throws -> [String] {
         let authentication: OpenSSHAuthentication
         if let resolved { authentication = resolved }
         else if profile.authentication.kind == .password { authentication = .password }
@@ -157,8 +119,10 @@ public enum OpenSSHCommand {
             "ConnectionAttempts=1", "ConnectTimeout=12", "LogLevel=INFO",
             "PermitLocalCommand=yes", "LocalCommand=" + localCommand,
         ]
-        return ["-F", "none", "-tt"] + (options + authenticationOptions).flatMap { ["-o", $0] }
-            + ["-p", String(endpoint.port), "-l", profile.username, "--", endpoint.host]
+        let sessionOptions = invocation == .terminal ? ["-tt"] : ["-T", "-s"]
+        let subsystem = invocation == .sftp ? ["sftp"] : []
+        return ["-F", "none"] + sessionOptions + (options + authenticationOptions).flatMap { ["-o", $0] }
+            + ["-p", String(endpoint.port), "-l", profile.username, "--", endpoint.host] + subsystem
     }
 
     private static func shellQuote(_ path: String) -> String { "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'" }
