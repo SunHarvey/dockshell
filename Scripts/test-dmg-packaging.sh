@@ -1,6 +1,7 @@
 #!/bin/sh
 # Guard tests do not build, sign, mount images or use personal data. Supplying an
-# existing preview app additionally exercises real image creation and verification.
+# existing preview app additionally exercises real image creation, a normal
+# /Volumes read-only remount, and verification of artwork and root metadata.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
 [ "$#" -le 1 ] || { printf '%s\n' 'Usage: sh Scripts/test-dmg-packaging.sh [LOCAL_PREVIEW_APP]' >&2; exit 2; }
@@ -59,5 +60,5 @@ if [ "$#" -eq 1 ]; then
     /usr/bin/shasum -a 256 "$output" > "$temporary/dmg-sha256"
     expect_failure 'completed output remains immutable' 'must not already exist' sh "$root/Scripts/package-dmg.sh" "$preview" "$output" --mode local-preview --architectures "$architecture"
     /usr/bin/shasum -a 256 -c "$temporary/dmg-sha256"
-    printf '%s\n' 'PASS DMG integration: real image create/verify/read-only mount/audit/detach; signed source unchanged; existing image unchanged'
+    printf '%s\n' 'PASS DMG integration: real image create/verify/normal /Volumes read-only remount/layout and root metadata audit/detach; signed source unchanged; existing image unchanged'
 fi

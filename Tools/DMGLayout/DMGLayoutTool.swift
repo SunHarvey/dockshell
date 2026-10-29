@@ -35,14 +35,16 @@ private struct DMGLayoutTool {
             case "write" where arguments.count == 2:
                 let volume = try installerVolume(arguments[1])
                 try FinderLayout.write(to: volume)
-                try FinderLayout.verify(at: volume)
+                try MetadataRegression.runBookmark(on: volume)
+            case "self-test" where arguments.count == 2:
+                try MetadataRegression.run(fixturesURL: directory(arguments[1]))
             case "verify" where arguments.count == 2:
                 let volume = try installerVolume(arguments[1])
                 try verifyArtwork(at: volume.appendingPathComponent(".background/installer.tiff"))
                 try FinderLayout.verify(at: volume)
             default:
                 throw LayoutToolError(description:
-                    "Usage: DMGLayout artwork PAYLOAD MARK.png CATALOG.xcstrings | write VOLUME | verify VOLUME")
+                    "Usage: DMGLayout artwork PAYLOAD MARK.png CATALOG.xcstrings | write VOLUME | verify VOLUME | self-test FIXTURES")
             }
         } catch {
             FileHandle.standardError.write(Data("Installer layout failed: \(error)\n".utf8))

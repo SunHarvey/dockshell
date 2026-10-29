@@ -9,7 +9,7 @@
 
 DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话、终端标签与分屏工作区集中在一个窗口中。终端模拟采用 SwiftTerm，SSH 连接通过系统 OpenSSH 与独立协议层适配。
 
-**当前版本：0.1.0 / build 16，早期开发版本。** 可从最新 Release 直接下载 DMG；当前安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证。
+**当前源码版本：0.1.1 / build 17，早期开发版本。** 已发布安装包从最新 Release 下载；当前安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证。
 
 [功能介绍](#功能介绍) · [界面预览](#界面预览) · [安装与启动](#安装与启动) · [使用指南](#使用指南) · [开发与验证](#开发与验证)
 
@@ -49,11 +49,13 @@ DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话�
 
 ### 从 DMG 安装
 
-打开 [最新版本 Release](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 中直接下载 `.dmg` 安装包。当前版本为 [v0.1.0](https://github.com/SunHarvey/dockshell/releases/tag/v0.1.0)，附件名为 `DockShell-0.1.0-16-arm64-local-preview.dmg`，无需进入 Actions 或解压 ZIP。
+打开 [最新版本 Release](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 中直接下载 `.dmg` 安装包，无需进入 Actions 或解压 ZIP。已发布版本与构建号以该页面及安装包清单为准。
 
 打开 DMG 后，安装窗口左侧为 **DockShell.app**，右侧为 **Applications（应用程序）**，中间箭头指引拖动方向。将应用拖到右侧，复制完成后推出磁盘映像。安装窗口使用 DockShell 当前品牌图标与海军蓝、象牙白配色，并提供中英文安装提示。
 
-当前 DMG 为 Apple Silicon / arm64 的未公证早期版本。GitHub 的 **Latest** 表示当前版本下载入口，不代表已完成 Apple 公证或全部平台验收。历史 `v0.1.0-preview.1`、`preview.2`、`preview.3` 的标签和安装附件均保留。
+`0.1.1 / build 17` 修复 DMG 下载到其他 Mac 后背景变白的问题，并将安装盘辅助文件的图标移出初始安装画布。历史 `v0.1.0` 与各预览版本的标签和附件均保留。
+
+当前 DMG 为 Apple Silicon / arm64 的未公证早期版本。GitHub 的 **Latest** 表示当前版本下载入口，不代表已完成 Apple 公证或全部平台验收。
 
 Release 的 DMG 附件不会随 Actions Artifact 的保留期到期。需要测试尚未发布的提交时，也可从成功的 [CI 运行](https://github.com/SunHarvey/dockshell/actions/workflows/ci.yml)底部 **Artifacts** 直接下载 DMG；该临时下载保留 7 天。安装只需 DMG，日志和元数据包不是必需文件。
 
@@ -162,7 +164,7 @@ DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh
 
 ### GitHub Actions
 
-`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译、默认验证和 arm64 DMG 打包。`Release` 工作流根据标签发布：`v0.1.0` 这类标准版本生成普通 Release 并设为 **Latest**；`v0.1.0-preview.4` 这类预览标签生成 **Pre-release**。两者都将 DMG、SHA-256 校验文件和清单直接附到 **Assets**。手动运行仍可创建草稿供维护者核对。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与发布](Docs/GitHub-Actions.md)。
+`CI` 在提交到 `main`、向 `main` 创建 PR 或手动运行时进行编译、默认验证和 arm64 DMG 打包。`Release` 工作流根据标签发布：`v0.1.1` 这类标准版本生成普通 Release 并设为 **Latest**；`v0.1.1-preview.1` 这类预览标签生成 **Pre-release**。两者都将 DMG、SHA-256 校验文件和清单直接附到 **Assets**。手动运行仍可创建草稿供维护者核对。操作步骤、版本规则和完整文件见 [GitHub Actions 构建与发布](Docs/GitHub-Actions.md)。
 
 ### 项目结构
 

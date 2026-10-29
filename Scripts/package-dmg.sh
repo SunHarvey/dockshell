@@ -46,7 +46,7 @@ sh "$root/Scripts/audit-release.sh" "$app" --mode "$mode" --architectures "$arch
 temporary=$(mktemp -d "$output_parent/.dockshell-dmg.XXXXXX")
 payload="$temporary/payload"
 staging_mount="$temporary/staging-volume"
-verified_mount="$temporary/verified-volume"
+verified_mount=
 scratch="$temporary/scratch.dmg"
 partial="$temporary/installer.dmg"
 attach_report="$temporary/attach.plist"
@@ -68,18 +68,26 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
-mkdir "$payload" "$staging_mount" "$verified_mount"
+mkdir "$payload" "$staging_mount"
 mkdir -p "$root/.build/dmg-layout-module-cache"
 xcrun --sdk macosx swiftc -swift-version 6 -O -parse-as-library \
     -module-cache-path "$root/.build/dmg-layout-module-cache" \
     -import-objc-header "$root/Tools/DMGLayout/NativeAlias.h" \
     "$root/Tools/DMGLayout/DMGLayoutTool.swift" \
     "$root/Tools/DMGLayout/FinderLayout.swift" \
+    "$root/Tools/DMGLayout/BackgroundBookmark.swift" \
     "$root/Tools/DMGLayout/InstallerArtwork.swift" \
+    "$root/Tools/DMGLayout/MetadataRegression.swift" \
     -framework AppKit -framework CoreServices -o "$layout_tool"
+"$layout_tool" self-test "$root/Tools/DMGLayout/Fixtures"
 /usr/bin/ditto "$app" "$payload/DockShell.app"
 # This standard install shortcut is outside the signed application bundle.
 ln -s /Applications "$payload/Applications"
+# This immutable installer has no useful event history. Seed the documented
+# per-volume marker before the first mount rather than deleting a live daemon's
+# files later. Finder layout places this metadata outside the initial canvas.
+mkdir "$payload/.fseventsd"
+: > "$payload/.fseventsd/no_log"
 "$layout_tool" artwork "$payload" "$root/Packaging/Branding/DockShellMark.png" \
     "$root/Packaging/Installer/Localizable.xcstrings"
 
@@ -92,16 +100,40 @@ image_kib=$((payload_kib + 16384))
     -size "${image_kib}k" -format UDRW -nospotlight "$scratch"
 
 attach_own_image() {
-    image=$1; mountpoint=$2; access=$3
+    image=$1; requested_mount=$2; access=$3
     device=; mounted=0; attach_status=0
-    /usr/bin/hdiutil attach "$image" "$access" -nobrowse -noautoopen \
-        -mountpoint "$mountpoint" -plist > "$attach_report" || attach_status=$?
+    if [ -n "$requested_mount" ]; then
+        /usr/bin/hdiutil attach "$image" "$access" -nobrowse -noautoopen \
+            -mountpoint "$requested_mount" -plist > "$attach_report" || attach_status=$?
+    else
+        /usr/bin/hdiutil attach "$image" "$access" -nobrowse -noautoopen \
+            -plist > "$attach_report" || attach_status=$?
+    fi
     # Parse only this operation's own report, including partially successful mounts.
     if /usr/bin/plutil -lint "$attach_report" >/dev/null 2>&1; then
         device=$(/usr/libexec/PlistBuddy -c 'Print :system-entities:0:dev-entry' "$attach_report" 2>/dev/null) || device=
         case "$device" in /dev/disk[0-9]*) mounted=1 ;; *) device= ;; esac
     fi
     [ "$attach_status" -eq 0 ] && [ "$mounted" -eq 1 ] || fail 'The installer image could not be mounted.'
+    # The mounted filesystem is not always system-entities:0 (a whole-disk
+    # entity can precede its HFS+ partition). Read this attach's actual path.
+    mountpoint=
+    entity=0
+    while /usr/libexec/PlistBuddy -c "Print :system-entities:$entity" "$attach_report" >/dev/null 2>&1; do
+        candidate=$(/usr/libexec/PlistBuddy -c "Print :system-entities:$entity:mount-point" "$attach_report" 2>/dev/null) || candidate=
+        if [ -n "$candidate" ]; then
+            [ -z "$mountpoint" ] || fail 'The installer attach reported multiple mounted filesystems.'
+            mountpoint=$candidate
+        fi
+        entity=$((entity + 1))
+    done
+    [ -n "$mountpoint" ] || fail 'The installer attach did not report its mounted filesystem.'
+    single_line "$mountpoint"
+    if [ -n "$requested_mount" ]; then
+        [ "$mountpoint" = "$requested_mount" ] || fail 'The installer mounted at an unexpected path.'
+    else
+        case "$mountpoint" in /Volumes/*) ;; *) fail 'The final installer did not mount at a normal /Volumes path.' ;; esac
+    fi
 }
 detach_own_image() {
     /usr/bin/hdiutil detach "$device" -quiet || fail 'The installer image could not be detached.'
@@ -114,13 +146,27 @@ detach_own_image
 /usr/bin/hdiutil convert "$scratch" -format UDZO -o "$partial"
 /usr/bin/hdiutil verify "$partial"
 
-# Reopen at a different path with the scratch image detached. This catches an
-# artwork alias that accidentally points at the build folder or old mountpoint.
-attach_own_image "$partial" "$verified_mount" -readonly
+# Reopen as a downloaded DMG would normally mount, with the scratch detached.
+# This also exercises an automatically suffixed volume name when another
+# DockShell image is already open. Never depend on the build's custom path.
+attach_own_image "$partial" '' -readonly
+verified_mount=$mountpoint
 [ -d "$verified_mount/DockShell.app" ] && [ ! -L "$verified_mount/DockShell.app" ] \
     || fail 'The mounted image does not contain the application.'
 [ -L "$verified_mount/Applications" ] && [ "$(readlink "$verified_mount/Applications")" = /Applications ] \
     || fail 'The mounted image has no valid Applications shortcut.'
+# Every extra root item must be a declared piece of installer/OS metadata. The
+# layout audit checks that such metadata cannot occupy the installation canvas,
+# even when the user chooses to show hidden files in Finder.
+for root_item in "$verified_mount"/* "$verified_mount"/.[!.]* "$verified_mount"/..?*; do
+    [ -e "$root_item" ] || [ -L "$root_item" ] || continue
+    case "$(basename -- "$root_item")" in
+        DockShell.app|Applications|.DS_Store|.background|.fseventsd|.Trashes|.Spotlight-V100|.metadata_never_index|.VolumeIcon.icns) ;;
+        *) fail 'The installer contains an unexpected root item outside its declared layout.' ;;
+    esac
+done
+[ -f "$verified_mount/.fseventsd/no_log" ] && [ ! -L "$verified_mount/.fseventsd/no_log" ] \
+    || fail 'The installer is missing its per-volume event-log marker.'
 "$layout_tool" verify "$verified_mount"
 cmp "$payload/.background/installer.tiff" "$verified_mount/.background/installer.tiff"
 sh "$root/Scripts/audit-release.sh" "$verified_mount/DockShell.app" --mode "$mode" --architectures "$architectures"
@@ -133,4 +179,4 @@ detach_own_image
 [ -f "$output" ] && [ ! -L "$output" ] && [ "$partial" -ef "$output" ] \
     || fail 'The output path is not the completed installer image.'
 printf 'Prepared DMG: %s\n' "$output"
-printf '%s\n' 'PASS DMG: compact branded Finder layout, portable Retina background, intact signed application, Applications shortcut'
+printf '%s\n' 'PASS DMG: normal /Volumes remount, compact branded layout, declared root metadata, intact signed application, Applications shortcut'

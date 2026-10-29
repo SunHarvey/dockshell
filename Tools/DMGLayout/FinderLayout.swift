@@ -16,10 +16,17 @@ enum FinderLayout {
     static let iconSize = 96
     static let textSize = 14
     static let backgroundPath = ".background/installer.tiff"
+    /// Finder can reveal dotfiles at the user's request. Keep installer metadata
+    /// outside the initial canvas without changing that global Finder preference.
+    static let auxiliaryItemNames = [
+        ".background", ".fseventsd", ".DS_Store", ".Trashes", ".Spotlight-V100",
+        ".metadata_never_index", ".VolumeIcon.icns"
+    ]
 
     private static let windowBounds = "{{160, 160}, {660, 440}}"
     private static let pageSize = 4096
     private static let filePrefixSize = 4
+    private static var recordCount: Int { 8 + auxiliaryItemNames.count }
 
     /// Creates a portable icon-view layout without launching or scripting Finder.
     static func write(to volumeURL: URL) throws {
@@ -35,7 +42,8 @@ enum FinderLayout {
         guard aliasStatus == 0, let alias else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(aliasStatus))
         }
-        let records = try makeRecords(backgroundAlias: alias as Data)
+        let bookmark = try BackgroundBookmark.create(for: background, relativeTo: volumeURL)
+        let records = try makeRecords(backgroundAlias: alias as Data, backgroundBookmark: bookmark)
         let database = try makeDatabase(records)
         let target = volumeURL.appendingPathComponent(".DS_Store")
         guard !FileManager.default.fileExists(atPath: target.path) else {
@@ -56,7 +64,7 @@ enum FinderLayout {
             throw LayoutError.invalid("The installer Finder database is missing or has an unexpected size.")
         }
         let records = try readDatabase(Data(contentsOf: target))
-        guard records.count == 7 else {
+        guard records.count == recordCount else {
             throw LayoutError.invalid("The installer Finder database has an unexpected record count.")
         }
         let window = try propertyList(records, filename: ".", code: "bwsp")
@@ -91,18 +99,30 @@ enum FinderLayout {
               try record(records, filename: "Applications", code: "Iloc").value == iconLocation(x: applicationsCenterX) else {
             throw LayoutError.invalid("The installer icons are not in the required left-to-right order.")
         }
-        // This conversion exists specifically for reading legacy AliasRecords.
-        // Never resolve with UI or implicit mounting enabled during packaging.
-        guard let bookmark = CFURLCreateBookmarkDataFromAliasRecord(nil, alias as CFData)?.takeRetainedValue() else {
-            throw LayoutError.invalid("The installer background AliasRecord cannot be decoded.")
+        for name in auxiliaryItemNames {
+            guard try record(records, filename: name, code: "Iloc") == Record(
+                filename: name, code: "Iloc", type: "blob", value: iconLocation(x: 4096, y: 4096)
+            ) else {
+                throw LayoutError.invalid("An internal installer item would overlap the visible installation canvas.")
+            }
         }
-        var stale = false
-        let resolved = try URL(
-            resolvingBookmarkData: bookmark as Data,
-            options: [.withoutUI, .withoutMounting],
-            relativeTo: nil,
-            bookmarkDataIsStale: &stale
-        )
+        try verifyPortableAlias(alias)
+        let bookmark = try record(records, filename: ".", code: "pBBk")
+        guard bookmark.type == "blob" else {
+            throw LayoutError.invalid("The installer is missing Finder's modern background bookmark.")
+        }
+        try BackgroundBookmark.verify(bookmark.value, volumeURL: volumeURL)
+        // Use Finder's Alias Manager algorithm and the actual .DS_Store origin.
+        // A Foundation bookmark round-trip can pass through host caches while
+        // Finder still fails to resolve the image on another machine.
+        var resolutionStatus: Int32 = 0
+        let resolvedReference: CFURL? = target.path.withCString {
+            DockShellResolveFinderAlias(alias as CFData, $0, &resolutionStatus)
+        }
+        guard resolutionStatus == 0, let resolvedReference else {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(resolutionStatus))
+        }
+        let resolved = resolvedReference as URL
         let expected = volumeURL.appendingPathComponent(backgroundPath)
             .resolvingSymlinksInPath().standardizedFileURL
         guard resolved.resolvingSymlinksInPath().standardizedFileURL == expected else {
@@ -110,7 +130,7 @@ enum FinderLayout {
         }
     }
 
-    private static func makeRecords(backgroundAlias: Data) throws -> [Record] {
+    private static func makeRecords(backgroundAlias: Data, backgroundBookmark: Data) throws -> [Record] {
         let window: [String: Any] = [
             "WindowBounds": windowBounds,
             "ShowStatusBar": false,
@@ -141,23 +161,101 @@ enum FinderLayout {
             "scrollPositionX": 0.0,
             "scrollPositionY": 0.0
         ]
-        return [
+        let visibleRecords = [
             Record(filename: ".", code: "bwsp", type: "blob", value: try binaryPlist(window)),
             Record(filename: ".", code: "icvl", type: "type", value: Data("icnv".utf8)),
             Record(filename: ".", code: "icvp", type: "blob", value: try binaryPlist(icons)),
+            Record(filename: ".", code: "pBBk", type: "blob", value: backgroundBookmark),
             Record(filename: ".", code: "vSrn", type: "long", value: word(1)),
             Record(filename: ".", code: "vstl", type: "type", value: Data("icnv".utf8)),
             Record(filename: "Applications", code: "Iloc", type: "blob", value: iconLocation(x: applicationsCenterX)),
             Record(filename: "DockShell.app", code: "Iloc", type: "blob", value: iconLocation(x: appCenterX))
         ]
+        let auxiliaryRecords = auxiliaryItemNames.map {
+            Record(filename: $0, code: "Iloc", type: "blob", value: iconLocation(x: 4096, y: 4096))
+        }
+        // Finder's database orders names case-insensitively; four-byte record
+        // codes are ordered bytewise within each filename. Our names are ASCII.
+        return (visibleRecords + auxiliaryRecords).sorted {
+            let left = $0.filename.lowercased(), right = $1.filename.lowercased()
+            return left == right ? $0.code < $1.code : left < right
+        }
+    }
+
+    /// A native AliasRecord may recursively point at its disk image on the build
+    /// host. Such records can pass same-host resolution and still break in Finder
+    /// after download. Require an on-volume target and no build-host image hints.
+    static func verifyPortableAlias(_ alias: Data) throws {
+        var reader = Reader(data: alias)
+        _ = try reader.bytes(4)
+        guard Int(try reader.shortInteger()) == alias.count,
+              try reader.shortInteger() == 2, alias.count >= 154 else {
+            throw LayoutError.invalid("The installer background must use a bounded version-2 AliasRecord.")
+        }
+        guard try alias.checkedSlice(at: 130, count: 4) == Data([0, 1, 0, 2]) else {
+            throw LayoutError.invalid("The installer background must be relative to its root Finder database.")
+        }
+        _ = try reader.bytes(142)
+        var targetFound = false, mountFound = false, terminated = false
+        var volumeDate: UInt32?, targetDate: UInt32?
+        var tags = Set<UInt16>()
+        while reader.position < alias.count {
+            let tag = try reader.shortInteger()
+            let length = Int(try reader.shortInteger())
+            if tag == UInt16.max {
+                guard length == 0, reader.position == alias.count else {
+                    throw LayoutError.invalid("The installer background alias has an invalid terminator.")
+                }
+                terminated = true
+                break
+            }
+            guard tags.insert(tag).inserted else {
+                throw LayoutError.invalid("The installer background alias contains duplicate metadata.")
+            }
+            let value = try reader.bytes(length)
+            if length % 2 != 0 { _ = try reader.bytes(1) }
+            switch tag {
+            case 18:
+                guard value == Data(("/" + backgroundPath).utf8) else {
+                    throw LayoutError.invalid("The installer background alias contains a host-specific target path.")
+                }
+                targetFound = true
+            case 19:
+                guard value == Data("/Volumes/DockShell".utf8) else {
+                    throw LayoutError.invalid("The installer background alias contains a build-host mount path.")
+                }
+                mountFound = true
+            case 16, 17:
+                guard value.count == 8 else {
+                    throw LayoutError.invalid("The installer background alias has an invalid UTC timestamp.")
+                }
+                let seconds = value.reduce(UInt64(0)) { ($0 << 8) | UInt64($1) } >> 16
+                guard let date = UInt32(exactly: seconds) else {
+                    throw LayoutError.invalid("The installer background timestamp exceeds the legacy date range.")
+                }
+                if tag == 16 { volumeDate = date } else { targetDate = date }
+            case 0, 1, 2, 14, 15:
+                break
+            default:
+                throw LayoutError.invalid("The installer background alias contains unsupported host or backing-image metadata.")
+            }
+        }
+        guard terminated, targetFound, mountFound else {
+            throw LayoutError.invalid("The installer background alias is not a complete on-volume reference.")
+        }
+        let storedVolumeDate = try alias.checkedSlice(at: 38, count: 4).reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        let storedTargetDate = try alias.checkedSlice(at: 118, count: 4).reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        guard volumeDate == storedVolumeDate, targetDate == storedTargetDate else {
+            throw LayoutError.invalid("The installer background alias contains timezone-dependent legacy dates.")
+        }
     }
 
     private static func binaryPlist(_ value: [String: Any]) throws -> Data {
         try PropertyListSerialization.data(fromPropertyList: value, format: .binary, options: 0)
     }
 
-    private static func iconLocation(x: Int) -> Data {
-        word(UInt32(x)) + word(UInt32(iconCenterY)) + word(UInt32.max) + word(0xffff0000)
+    private static func iconLocation(x: Int, y: Int = iconCenterY) -> Data {
+        word(UInt32(x)) + word(UInt32(y)) + word(UInt32.max) + word(0xffff0000)
     }
 
     private struct Record: Equatable {
@@ -248,7 +346,7 @@ enum FinderLayout {
         let leafID = Int(try master.integer())
         guard try master.integer() == 0 else { throw LayoutError.invalid("The installer database is not a single leaf.") }
         let count = Int(try master.integer())
-        guard count == 7, try master.integer() == 1, try master.integer() == pageSize else {
+        guard count == recordCount, try master.integer() == 1, try master.integer() == pageSize else {
             throw LayoutError.invalid("Invalid installer database master record.")
         }
         var leaf = Reader(data: try block(leafID))
@@ -304,6 +402,9 @@ enum FinderLayout {
         mutating func byte() throws -> UInt8 { try bytes(1)[0] }
         mutating func integer() throws -> UInt32 {
             try bytes(4).reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+        }
+        mutating func shortInteger() throws -> UInt16 {
+            try bytes(2).reduce(UInt16(0)) { ($0 << 8) | UInt16($1) }
         }
         mutating func ascii(_ count: Int) throws -> String {
             guard let value = String(data: try bytes(count), encoding: .ascii) else {
