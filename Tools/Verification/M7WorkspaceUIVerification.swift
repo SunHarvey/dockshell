@@ -82,12 +82,16 @@ private final class M7UIFactory: TerminalSessionFactory {
 enum M7WorkspaceUIVerification {
     private static var sidebarEventNumber = 85_000
 
-    static func run(service: WorkspaceService, l10n: L10n) async throws {
+    static func run(service: WorkspaceService, l10n: L10n, verifySidebarInput: Bool = true) async throws {
         _ = NSApplication.shared
         let interactive = ProcessInfo.processInfo.environment["DOCKSHELL_SIDEBAR_MANUAL_TEST"] == "1"
         try check(!interactive || ProcessInfo.processInfo.environment["DOCKSHELL_TABS_TEST"] == "1",
                   "Interactive sidebar verification requires the isolated tabs test mode")
-        try await verifySidebarActivation(service: service, l10n: l10n, interactive: interactive)
+        // The pointer-dispatch fixture requires an interactive desktop. Native terminal
+        // APIs below are deterministic on hosted runners and retain the live-font checks.
+        if verifySidebarInput {
+            try await verifySidebarActivation(service: service, l10n: l10n, interactive: interactive)
+        }
         if interactive { return }
         let factory = M7UIFactory()
         let tabs = TerminalTabsViewModel(factory: factory)

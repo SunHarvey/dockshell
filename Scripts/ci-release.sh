@@ -126,30 +126,32 @@ else
     /usr/bin/plutil -insert installerFormat -string dmg "$artifact_dir/ReleaseManifest.plist"
 fi
 notes_path="$artifact_dir/ReleaseNotes.md"
-cat > "$notes_path" <<EOF
-# DockShell $tag — arm64 早期开发版本
+notes_source="$root/Docs/ReleaseNotes/$tag.md"
+if [ -L "$notes_source" ] || { [ -e "$notes_source" ] && [ ! -f "$notes_source" ]; }; then
+    fail 'Version release notes must be a regular source file.'
+fi
+if [ -f "$notes_source" ]; then
+    IFS= read -r heading < "$notes_source"
+    [ "$heading" = "# $tag" ] || fail 'Version release notes must use only the tag as their heading.'
+    cp "$notes_source" "$notes_path"
+else
+    printf '# %s\n\n从下方 Assets 下载 DMG，打开后将 DockShell.app 拖到 Applications 安装。\n' "$tag" > "$notes_path"
+fi
+cat >> "$notes_path" <<EOF
 
-这是采用 ad-hoc 签名的早期开发版本，尚未获得 Developer ID 签名或 Apple 公证，部分平台与交互验收仍待完成。
+## 构建信息
 
 - 应用版本：$version
 - 构建号：$build
-- 架构：Apple Silicon / arm64
+- 架构：arm64
 - 源码提交：$commit
 - 部署目标：macOS 14；macOS 14 实机与 Intel 尚未完成验收。
 
-在 GitHub Release 页面的 Assets 中下载以 .dmg 结尾的安装包，无需先解压 ZIP。双击打开后，将 DockShell.app 拖到 Applications（应用程序）快捷方式完成安装。安装只需 DMG，不需要下载 GitHub 自动生成的 Source code 归档。
-
-安装窗口采用紧凑的品牌布局：左侧 DockShell 图标、中间箭头、右侧 Applications，并提供中英文拖动安装提示及适配 Retina 的背景。
-
-单独的校验元数据与日志包用于核对和排查，安装只需下载 DMG 原文件。
-
-macOS 安全检查可能阻止未公证应用运行；此流程不会移除隔离属性或改变系统安全设置。面向普通用户分发前仍需完成正式签名、公证和目标环境验收。
+安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名或 Apple 公证。完整输入法交互、实际睡眠唤醒等人工待验范围见仓库的验收记录。
 
 在下载文件所在目录校验 DMG：
 
     shasum -a 256 -c SHA256SUMS
-
-GitHub 的 Latest 表示仓库当前的版本下载入口，不代表已经完成 Apple 公证或全部平台验收。完整输入法交互、实际睡眠唤醒、macOS 14 实机等待验范围见仓库的验收记录。
 EOF
 (cd "$artifact_dir" && /usr/bin/shasum -a 256 -c SHA256SUMS)
 

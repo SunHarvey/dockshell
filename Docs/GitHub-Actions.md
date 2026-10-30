@@ -10,7 +10,7 @@ Actions Artifact 和 Release 的安装附件均以 **DMG 原文件**提供：直
 
 - GitHub-hosted `macos-26`、Apple Silicon / arm64。
 - 固定使用 `/Applications/Xcode_26.6.app/Contents/Developer` 中的开发工具；所需版本不存在时让任务失败，避免静默换用另一套工具链。
-- Swift Package Manager 按 `Package.resolved` 获取项目依赖，不修改锁定版本。
+- Swift Package Manager 使用仓库中的固定本地依赖，SwiftTerm 来源与补丁记录于 `Vendor/SwiftTerm/UPSTREAM.md`。
 - 应用部署目标仍为 macOS 14；在 macOS 26 上构建和检查，不代表已经完成 macOS 14 实机或 Intel 验收。
 
 云端使用预装的开发工具，本机仍可沿用现有 Command Line Tools。工作流不会要求把个人 GitHub SSH 私钥、Apple 账号、Developer ID 证书或私钥放入仓库。
@@ -31,7 +31,7 @@ Actions Artifact 和 Release 的安装附件均以 **DMG 原文件**提供：直
 sh Scripts/test.sh
 ```
 
-默认验证使用临时数据与合成连接，不自动开启 GUI smoke、个人 Keychain、真实服务器或性能专项验证。需要图形交互、真实 SSH、实际睡眠等人工验收的范围，继续以 [验收矩阵](M6/验收矩阵.md) 为准。
+默认验证使用临时数据与合成连接，不自动开启完整 GUI smoke、个人 Keychain、真实服务器或性能专项验证。另有字体热更新专项，使用原生视图 API、合成 SSH 通道与真实隔离本机 PTY 中的 vim / top，独立于需要桌面交互的侧栏点击检查。需要图形交互、真实 SSH、实际睡眠等人工验收的范围，继续以 [验收矩阵](M6/验收矩阵.md) 为准。
 
 M9.0 起，CI 在默认回归后单独运行 `sh Scripts/test-sftp.sh`，使用生成的测试密钥、独立 agent 和当前用户的回环 sshd 验证 SFTP；不会启用系统远程登录或访问个人服务器，日志为 `sftp.txt`。Release 工作流对包含该入口的标签运行相同检查，手动选择更早的标签时跳过该步骤。技术范围见 [SFTP 技术验证](M9/SFTP技术验证.md)。
 
@@ -49,26 +49,26 @@ GitHub 自动生成的 **Source code (zip)** 和 **Source code (tar.gz)** 是源
 
 发布工作流要求标签已经存在于远端，且标签指向的提交包含本轮工作流、CI 发布脚本和 DMG 打包代码。工作流不会自动创建、移动或强制覆盖标签。
 
-历史预览版本与 `v0.1.0` 的标签和安装附件均保留，不移动标签或覆盖原附件。当前源码为 `0.1.2 / build 18`，增加私钥粘贴与密码、口令显示切换，并调整终端布局名称。已发布版本以 Release 页面为准；源码更新不会自动移动现有版本标签。
+历史预览版本与 `v0.1.0` 的标签和安装附件均保留，不移动标签或覆盖原附件。当前源码为 `0.2.0 / build 19`，新增 SFTP 目录浏览、文件上传下载与队列，以及保存设置后的终端字体热更新。已发布版本以 Release 页面为准；源码更新不会自动移动现有版本标签。
 
-先推送 `main` 并等待 CI，再下载该次 CI 的实际 DMG，在 Finder 中检查安装窗口。确认产物后，可为同一提交创建 `0.1.2` 的标准版本标签：
+先推送 `main` 并等待 CI，再下载该次 CI 的实际 DMG，在 Finder 中检查安装窗口。确认产物后，可为同一提交创建 `0.2.0` 的标准版本标签：
 
 ```sh
 git switch main
 git pull --ff-only origin main
-git tag -a v0.1.2 -m "DockShell 0.1.2"
-git push origin refs/tags/v0.1.2
+git tag -a v0.2.0 -m "DockShell 0.2.0"
+git push origin refs/tags/v0.2.0
 ```
 
 `Release` 工作流区分以下入口：
 
 | 入口 | 示例 / 触发匹配 | 发布结果 |
 |---|---|---|
-| 标准版本标签推送 | `v0.1.2`；`v[0-9]+.[0-9]+.[0-9]+` | 公开的普通 Release，设为 **Latest** |
-| 编号预览标签推送 | `v0.1.2-preview.1`；`v*-preview.*` | 公开的 **Pre-release**，不设为 Latest |
+| 标准版本标签推送 | `v0.2.0`；`v[0-9]+.[0-9]+.[0-9]+` | 公开的普通 Release，设为 **Latest** |
+| 编号预览标签推送 | `v0.2.0-preview.1`；`v*-preview.*` | 公开的 **Pre-release**，不设为 Latest |
 | 从 `main` 手动运行 | 输入已有版本标签 | **Draft + Pre-release** 草稿 |
 
-自动流程检出标签、编译、验证、创建 DMG，再创建对应 Release。完成后到 [Releases](https://github.com/SunHarvey/dockshell/releases) 的对应版本 **Assets** 下载。构建或验证失败时不会发布；同名 Release 已存在时不会覆盖。`rc` 等其他后缀不触发自动发布，可用于手动草稿核对。
+自动流程检出标签、编译、验证、创建 DMG，再创建对应 Release。Release 标题只显示版本标签，例如 `v0.2.0`；正文优先使用 `Docs/ReleaseNotes/版本标签.md`，不在标题附加产品名或架构。完成后到 [Releases](https://github.com/SunHarvey/dockshell/releases) 的对应版本 **Assets** 下载。构建或验证失败时不会发布；同名 Release 已存在时不会覆盖。`rc` 等其他后缀不触发自动发布，可用于手动草稿核对。
 
 GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，仓库首页可能只显示 tags；发布普通 Release 并设为 Latest 后，首页才能提供最新版本入口。具体行为见 [GitHub Release API](https://docs.github.com/en/rest/releases/releases#create-a-release)。
 
@@ -76,9 +76,9 @@ GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，�
 
 版本规则：
 
-- 使用 `v主版本.次版本.修订版本`，例如 `v0.1.2`；预览版本使用 `-preview.编号` 后缀。
-- 标签的核心版本必须与 [Info.plist](../Packaging/Info.plist) 的 `CFBundleShortVersionString` 一致；当前为 `0.1.2`。
-- `CFBundleVersion` 是构建号，当前为 `18`，不会被工作流自动修改。
+- 使用 `v主版本.次版本.修订版本`，例如 `v0.2.0`；预览版本使用 `-preview.编号` 后缀。
+- 标签的核心版本必须与 [Info.plist](../Packaging/Info.plist) 的 `CFBundleShortVersionString` 一致；当前为 `0.2.0`。
+- `CFBundleVersion` 是构建号，当前为 `19`，不会被工作流自动修改。
 - 打包时的 `HEAD` 必须就是该标签对应的提交。不存在的标签、分支名、错误版本和不安全输入会被拒绝。
 - 工作区必须干净，不能存在未提交修改或未忽略的新文件，确保打包内容与标签对应的提交一致。
 
@@ -88,9 +88,9 @@ GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，�
 
 手动入口用于先核对草稿。不要再次对已经公开发布的标签运行；工作流会拒绝同名 Release。
 
-1. 确认对应版本的 `CI` 结果，并确保待核对的标签已推送。要预先检查草稿，可使用不匹配自动触发规则的标签，例如 `v0.1.2-rc.1`。
+1. 确认对应版本的 `CI` 结果，并确保待核对的标签已推送。要预先检查草稿，可使用不匹配自动触发规则的标签，例如 `v0.2.0-rc.1`。
 2. 打开 **Actions → Release → Run workflow**。
-3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.1.2-rc.1`。
+3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.2.0-rc.1`。
 4. 运行后等待构建、默认验证、产物审计和上传完成。
 5. 在本次运行的 **Artifacts** 点击名为 `DockShell-版本-构建号-arm64-local-preview.dmg` 的条目直接下载安装包；也可登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，从 **Assets** 下载同一个 DMG。
 
@@ -124,13 +124,13 @@ SHA-256 验证 DMG 文件完整性，不等于 Developer ID 身份验证或 Appl
 下面命令均在仓库根目录运行。仅验证已有标签与版本，不打包：
 
 ```sh
-sh Scripts/ci-release.sh validate v0.1.2
+sh Scripts/ci-release.sh validate v0.2.0
 ```
 
 本机已检出该标签、且运行于 macOS arm64 时，可准备同样的安装产物：
 
 ```sh
-sh Scripts/ci-release.sh prepare v0.1.2
+sh Scripts/ci-release.sh prepare v0.2.0
 ```
 
 辅助脚本通过 `release.sh --local-preview --result-file FILE` 获取本次成功构建的精确目录，检查 arm64 应用、源 ZIP 与 DMG 校验值，随后将 DMG 及其校验文件整理到独立的 `Build/ci-release.*` 目录。`release.sh` 内部仍保留 ZIP 供已有审计和后续公证流程使用，但 CI 的安装附件以 DMG 为主，不把应用 ZIP 再套进下载产物。辅助脚本不搜索旧版本目录来猜测待上传文件。

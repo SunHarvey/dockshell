@@ -96,6 +96,7 @@ jobs:
           sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
 
       - name: Verify live terminal settings and real vim
+        if: ${{ hashFiles('Scripts/test-terminal-settings.sh') != '' }}
         run: |
           set -euo pipefail
           sh Scripts/test-terminal-settings.sh 2>&1 | tee Build/ci-logs/terminal-settings.txt
@@ -221,12 +222,11 @@ jobs:
         run: |
           set -euo pipefail
           release_flags=(--verify-tag --latest=false)
-          release_title="DockShell $RELEASE_TAG (arm64 preview)"
+          release_title="$RELEASE_TAG"
           case "$RELEASE_EVENT" in
             push)
               if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
                 release_flags=(--verify-tag --latest)
-                release_title="DockShell $RELEASE_TAG (Apple Silicon)"
               elif [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[1-9][0-9]*$ ]]; then
                 release_flags+=(--prerelease)
               else
@@ -251,6 +251,7 @@ jobs:
           set -euo pipefail
           dmg_name="DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg"
           release_metadata=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
+          printf '%s' "$release_metadata" | jq -e --arg tag "$RELEASE_TAG" '.name == $tag and .tag_name == $tag' >/dev/null
           if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             printf '%s' "$release_metadata" | jq -e '.draft == false and .prerelease == false' >/dev/null
             latest_tag=$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name)

@@ -198,7 +198,7 @@ private enum DockShellVerification {
         if environment["DOCKSHELL_TERMINAL_SETTINGS_TEST"] == "1" {
             try require(arguments.contains("--ui-smoke"), "Live terminal settings verification requires AppKit")
             try await TerminalAdapterVerification.run()
-            try await M7WorkspaceUIVerification.run(service: service, l10n: chinese)
+            try await M7WorkspaceUIVerification.run(service: service, l10n: chinese, verifySidebarInput: false)
             try await LiveTerminalSettingsVerification.run(helperURL: helperURL, l10n: chinese)
             await repository.close()
             return

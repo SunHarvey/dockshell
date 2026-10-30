@@ -9,9 +9,9 @@
 
 DockShell 使用 Swift、SwiftUI 和 AppKit 构建，让已保存的 SSH 会话、终端标签与分屏工作区集中在一个窗口中。终端模拟采用 SwiftTerm，SSH 连接通过系统 OpenSSH 与独立协议层适配。
 
-**当前源码版本：0.1.2 / build 18，早期开发版本。** 已发布安装包从最新 Release 下载；私钥粘贴与输入显示切换以包含这些改动的构建为准。当前安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证。
+**当前源码版本：0.2.0 / build 19，早期开发版本。** 安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证。
 
-公开 Release 仍为 **v0.1.2**。当前源码继续加入 **M9.2：SFTP 文件上传与下载**；本轮按要求不发布 Release，体验新功能请运行当前源码或使用包含本轮提交的 CI 构建。
+**v0.2.0** 新增 SFTP 目录浏览、文件上传下载与传输队列，并支持字体设置保存后即时生效。版本说明见 [v0.2.0](Docs/ReleaseNotes/v0.2.0.md)，安装包从 [Releases](https://github.com/SunHarvey/dockshell/releases) 下载。
 
 [功能介绍](#功能介绍) · [界面预览](#界面预览) · [安装与启动](#安装与启动) · [使用指南](#使用指南) · [开发与验证](#开发与验证)
 
