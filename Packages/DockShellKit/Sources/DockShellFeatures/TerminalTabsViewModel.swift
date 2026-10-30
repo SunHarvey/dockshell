@@ -9,20 +9,26 @@ public protocol TerminalSessionFactory: AnyObject {
     func makeSession() -> TerminalTabSession
 }
 
-/// One connection and terminal. Its identity is independent of tabbed, horizontal or vertical presentation.
-/// Layout changes never replace its controller, authentication decisions or transport.
+/// One terminal and its optional independent file browser, with stable tab identity.
+/// Layout changes never replace their controllers, authentication decisions or transports.
 @MainActor
 public final class TerminalTabSession: Identifiable {
     public let id: UUID
     public let controller: SSHSessionController
     public let prompts: SSHConnectionPrompts
+    public let files: SFTPBrowserViewModel?
+    public var needsAttention: Bool {
+        prompts.hostRequest != nil || prompts.passwordRequest != nil
+            || files?.prompts.hostRequest != nil || files?.prompts.passwordRequest != nil
+    }
 
-    public init(id: UUID = UUID(), controller: SSHSessionController, prompts: SSHConnectionPrompts) {
-        self.id = id; self.controller = controller; self.prompts = prompts
+    public init(id: UUID = UUID(), controller: SSHSessionController, prompts: SSHConnectionPrompts,
+                files: SFTPBrowserViewModel? = nil) {
+        self.id = id; self.controller = controller; self.prompts = prompts; self.files = files
     }
 }
 
-/// One existing tab always owns exactly one connection, including while all tabs are tiled.
+/// One tab owns one terminal session and its optional file browser, including while tiled.
 /// Keeping this wrapper preserves existing tab callers without introducing split groups.
 @MainActor
 public final class TerminalWorkspaceTab: Identifiable {
@@ -46,6 +52,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     @Published public private(set) var tabs: [TerminalWorkspaceTab] = []
     @Published public private(set) var selectedID: UUID?
     @Published public private(set) var arrangement: TerminalArrangement = .tabs
+    @Published public private(set) var fileBrowserIDs: Set<UUID> = []
     private let factory: any TerminalSessionFactory
     private var observations: [UUID: Set<AnyCancellable>] = [:]
     /// These Sendable MainActor handles can be transferred to cleanup from Swift 6's
@@ -63,6 +70,21 @@ public final class TerminalTabsViewModel: ObservableObject {
     public var allSessions: [TerminalTabSession] { tabs.map(\.session) }
     public var canTile: Bool { tabs.count > 1 }
     public var isTiled: Bool { arrangement != .tabs }
+    public var showsSelectedFiles: Bool { selectedID.map { fileBrowserIDs.contains($0) } ?? false }
+
+    /// File browsing is lazy and owned by the same stable tab as its terminal.
+    /// Hiding the panel retains its directory and connection; closing the tab ends both.
+    public func toggleSelectedFiles() {
+        guard let session = selectedSession, let files = session.files,
+              let profile = session.controller.profile else { return }
+        if fileBrowserIDs.contains(session.id) { fileBrowserIDs.remove(session.id) }
+        else {
+            fileBrowserIDs.insert(session.id)
+            files.start(profile: profile)
+        }
+    }
+
+    public func hideFiles(id: UUID) { fileBrowserIDs.remove(id) }
 
     /// Current one-based position. A closed or unknown session has no ordinal.
     public func ordinal(for id: UUID) -> Int? { tabs.firstIndex { $0.id == id }.map { $0 + 1 } }
@@ -126,6 +148,7 @@ public final class TerminalTabsViewModel: ObservableObject {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         let closing = tabs[index].session
         disown(closing)
+        fileBrowserIDs.remove(id)
         tabs.remove(at: index)
         if selectedID == id { selectedID = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)].id }
         if !canTile && isTiled { arrangement = .tabs }
@@ -137,6 +160,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     public func closeAll() {
         let closing = Array(ownedSessions.values)
         ownedSessions.removeAll(); observations.removeAll()
+        fileBrowserIDs.removeAll()
         if !tabs.isEmpty { tabs.removeAll() }
         if selectedID != nil { selectedID = nil }
         if isTiled { arrangement = .tabs }
@@ -146,6 +170,8 @@ public final class TerminalTabsViewModel: ObservableObject {
     private func owner(ofCandidate candidate: TerminalTabSession) -> TerminalWorkspaceTab? {
         tabs.first {
             $0.session.id == candidate.id || $0.controller === candidate.controller || $0.prompts === candidate.prompts
+                || (candidate.files != nil && $0.session.files === candidate.files)
+                || (candidate.files != nil && $0.session.files?.prompts === candidate.files?.prompts)
         }
     }
 
@@ -155,6 +181,10 @@ public final class TerminalTabsViewModel: ObservableObject {
         // Only state changes are forwarded. Raw terminal output is deliberately unpublished.
         session.controller.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
         session.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+        if let files = session.files {
+            files.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+            files.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+        }
         observations[session.id] = tokens
     }
 
@@ -170,6 +200,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     private func stop(_ session: TerminalTabSession) {
         session.controller.setPresentationActive(false)
         session.prompts.cancelAll()
+        session.files?.close()
         session.controller.closePresentation()
     }
 
@@ -179,6 +210,7 @@ public final class TerminalTabsViewModel: ObservableObject {
             for session in closing.values {
                 session.controller.setPresentationActive(false)
                 session.prompts.cancelAll()
+                session.files?.close()
                 session.controller.closePresentation()
             }
         }

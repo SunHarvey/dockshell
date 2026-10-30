@@ -42,7 +42,11 @@ private final class OpenSSHTerminalSessionFactory: TerminalSessionFactory {
         let prompts = SSHConnectionPrompts()
         let transport = OpenSSHTransport(credentials: credentials, hostKeys: hostKeys,
             scanner: OpenSSHHostKeyScanner(), interaction: prompts, helperURL: helperURL)
+        let filePrompts = SSHConnectionPrompts()
+        let files = SFTPBrowserViewModel(factory: OpenSSHSFTPClientFactory(credentials: credentials,
+            hostKeys: hostKeys, scanner: OpenSSHHostKeyScanner(), interaction: filePrompts, helperURL: helperURL),
+            prompts: filePrompts)
         return TerminalTabSession(controller: SSHSessionController(transport: transport,
-            sleepEvents: MacSystemSleepEvents()), prompts: prompts)
+            sleepEvents: MacSystemSleepEvents()), prompts: prompts, files: files)
     }
 }

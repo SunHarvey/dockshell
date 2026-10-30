@@ -5,6 +5,51 @@ import Foundation
 
 /// Typed keys are checked against the generated tables by dockshell-verify.
 public enum L10nKey: String, CaseIterable, Sendable {
+    case sftpOpen = "sftp.open"
+    case sftpClose = "sftp.close"
+    case sftpTitle = "sftp.title"
+    case sftpUnavailable = "sftp.unavailable"
+    case sftpPath = "sftp.path"
+    case sftpPathHelp = "sftp.path.help"
+    case sftpUp = "sftp.up"
+    case sftpHome = "sftp.home"
+    case sftpRefresh = "sftp.refresh"
+    case sftpFilter = "sftp.filter"
+    case sftpClearFilter = "sftp.filter.clear"
+    case sftpShowHidden = "sftp.hidden"
+    case sftpLoading = "sftp.loading"
+    case sftpEmpty = "sftp.empty"
+    case sftpNoMatches = "sftp.nomatches"
+    case sftpNotConnected = "sftp.notconnected"
+    case sftpDisconnected = "sftp.disconnected"
+    case sftpSize = "sftp.size"
+    case sftpModified = "sftp.modified"
+    case sftpOpenFolder = "sftp.openfolder"
+    case sftpKindDirectory = "sftp.kind.directory"
+    case sftpKindFile = "sftp.kind.file"
+    case sftpKindLink = "sftp.kind.link"
+    case sftpKindOther = "sftp.kind.other"
+    case sftpUnknownValue = "sftp.unknownvalue"
+    case sftpUnitBytes = "sftp.unit.bytes"
+    case sftpUnitKiB = "sftp.unit.kib"
+    case sftpUnitMiB = "sftp.unit.mib"
+    case sftpUnitGiB = "sftp.unit.gib"
+    case sftpUnitTiB = "sftp.unit.tib"
+    case sftpUnitPiB = "sftp.unit.pib"
+    case sftpUnitEiB = "sftp.unit.eib"
+    case sftpItems = "sftp.items"
+    case sftpBrowseHelp = "sftp.browsehelp"
+    case sftpErrorPath = "sftp.error.path"
+    case sftpErrorMissing = "sftp.error.missing"
+    case sftpErrorPermission = "sftp.error.permission"
+    case sftpErrorDirectory = "sftp.error.directory"
+    case sftpErrorDirectoryLimit = "sftp.error.directorylimit"
+    case sftpErrorDisconnected = "sftp.error.disconnected"
+    case sftpErrorProtocol = "sftp.error.protocol"
+    case sftpErrorUnsupported = "sftp.error.unsupported"
+    case sftpErrorSubsystem = "sftp.error.subsystem"
+    case sftpErrorBusy = "sftp.error.busy"
+
     case layoutTitle = "layout.title"
     case layoutHorizontal = "layout.horizontal"
     case layoutVertical = "layout.vertical"
@@ -243,6 +288,30 @@ public struct L10n: Sendable {
 }
 
 public extension L10n {
+    /// Maps only typed failures; remote diagnostic text never reaches a UI label.
+    func sftpErrorKey(_ error: SFTPBrowserError) -> L10nKey {
+        switch error {
+        case .invalidPath: return .sftpErrorPath
+        case .connection(let underlying), .operation(let underlying):
+            guard let value = underlying as? SFTPError else { return sshErrorKey(underlying) }
+            return switch value {
+            case .invalidPath, .invalidArgument: .sftpErrorPath
+            case .directoryLimit: .sftpErrorDirectoryLimit
+            case .connectionClosed: .sftpErrorDisconnected
+            case .handshakeTimedOut: .sshErrorTimeout
+            case .subsystemUnavailable: .sftpErrorSubsystem
+            case .unsupportedOperation, .unsupportedVersion: .sftpErrorUnsupported
+            case .requestLimit: .sftpErrorBusy
+            case .invalidHandle, .invalidPacket, .packetTooLarge, .unexpectedResponse: .sftpErrorProtocol
+            case .status(2): .sftpErrorMissing
+            case .status(3): .sftpErrorPermission
+            case .status(6), .status(7): .sftpErrorDisconnected
+            case .status(8): .sftpErrorUnsupported
+            case .status: .sftpErrorDirectory
+            }
+        }
+    }
+
     func authentication(_ kind: AuthenticationKind) -> String {
         switch kind {
         case .password: string(.authenticationPassword)

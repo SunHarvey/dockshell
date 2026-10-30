@@ -65,7 +65,7 @@ struct SSHSessionPane: View {
     private var promptBackground: some View { Color(nsColor: .windowBackgroundColor).opacity(0.96) }
 }
 
-private struct HostTrustPrompt: View {
+struct HostTrustPrompt: View {
     let request: SSHHostTrustRequest
     @ObservedObject var prompts: SSHConnectionPrompts
     let l10n: L10n
@@ -98,7 +98,7 @@ private struct HostTrustPrompt: View {
     }
 }
 
-private struct ConnectionPasswordPrompt: View {
+struct ConnectionPasswordPrompt: View {
     let request: SSHPasswordRequest
     @ObservedObject var prompts: SSHConnectionPrompts
     let l10n: L10n

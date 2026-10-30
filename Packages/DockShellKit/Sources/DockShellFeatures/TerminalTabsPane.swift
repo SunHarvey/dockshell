@@ -14,6 +14,120 @@ public struct TerminalTabsPane: View {
     }
 
     public var body: some View {
+        FileWorkspaceRepresentable(model: model, settings: settings, l10n: l10n,
+            visibleSession: model.showsSelectedFiles ? model.selectedSession : nil)
+    }
+}
+
+/// The terminal's native parent survives opening, closing and switching file panels.
+/// Only the secondary hosting view changes, preserving terminal modes and IME state.
+@MainActor
+private struct FileWorkspaceRepresentable: NSViewRepresentable {
+    let model: TerminalTabsViewModel
+    let settings: TerminalSettingsViewModel
+    let l10n: L10n
+    let visibleSession: TerminalTabSession?
+
+    func makeNSView(context: Context) -> NativeFileWorkspaceSplit {
+        NativeFileWorkspaceSplit(model: model, settings: settings, l10n: l10n)
+    }
+
+    func updateNSView(_ view: NativeFileWorkspaceSplit, context: Context) {
+        view.update(model: model, settings: settings, l10n: l10n, session: visibleSession)
+    }
+}
+
+@MainActor
+private final class NativeFileWorkspaceSplit: NSSplitView, NSSplitViewDelegate {
+    private let terminalHost: NSHostingView<TerminalTabsContent>
+    private var fileHost: NSHostingView<SFTPBrowserPane>?
+    private var visibleID: UUID?
+    private var preferredFileWidth: CGFloat = 380
+    private var arranging = false
+
+    init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n) {
+        terminalHost = NSHostingView(rootView: TerminalTabsContent(model: model, settings: settings, l10n: l10n))
+        super.init(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        isVertical = true
+        dividerStyle = .thin
+        delegate = self
+        identifier = NSUserInterfaceItemIdentifier("dockshell.sftp.workspace")
+        terminalHost.sizingOptions = []
+        addArrangedSubview(terminalHost)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func update(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel,
+                l10n: L10n, session: TerminalTabSession?) {
+        terminalHost.rootView = TerminalTabsContent(model: model, settings: settings, l10n: l10n)
+        guard let session, let files = session.files else {
+            if let fileHost {
+                removeArrangedSubview(fileHost)
+                fileHost.removeFromSuperview()
+                self.fileHost = nil; visibleID = nil
+                arrange()
+            }
+            return
+        }
+        if visibleID != session.id {
+            fileHost.map { removeArrangedSubview($0); $0.removeFromSuperview() }
+            let id = session.id
+            let host = NSHostingView(rootView: SFTPBrowserPane(model: files, l10n: l10n,
+                onClose: { [weak model] in model?.hideFiles(id: id) }))
+            host.sizingOptions = []
+            host.identifier = NSUserInterfaceItemIdentifier("dockshell.sftp.panel-host")
+            fileHost = host; visibleID = id
+            addArrangedSubview(host)
+            arrange()
+        }
+    }
+
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        arranging = true
+        super.resizeSubviews(withOldSize: oldSize)
+        arranging = false
+        arrange()
+    }
+
+    private var minimumTerminal: CGFloat { min(180, bounds.width * 0.3) }
+    private var minimumFiles: CGFloat { min(360, max(0, bounds.width - minimumTerminal - dividerThickness)) }
+
+    private func arrange() {
+        arranging = true
+        defer { arranging = false }
+        if fileHost != nil {
+            let maximumFiles = max(0, bounds.width - minimumTerminal - dividerThickness)
+            let width = min(max(preferredFileWidth, minimumFiles), maximumFiles)
+            setPosition(max(0, bounds.width - width - dividerThickness), ofDividerAt: 0)
+        } else { terminalHost.frame = bounds }
+        terminalHost.layoutSubtreeIfNeeded()
+        fileHost?.layoutSubtreeIfNeeded()
+    }
+
+    func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat,
+                   ofSubviewAt dividerIndex: Int) -> CGFloat { minimumTerminal }
+    func splitView(_ splitView: NSSplitView, constrainMaxCoordinate proposedMaximumPosition: CGFloat,
+                   ofSubviewAt dividerIndex: Int) -> CGFloat {
+        max(minimumTerminal, bounds.width - minimumFiles - dividerThickness)
+    }
+    func splitViewDidResizeSubviews(_ notification: Notification) {
+        if !arranging, let fileHost, fileHost.frame.width >= 360 {
+            preferredFileWidth = fileHost.frame.width
+        }
+    }
+}
+
+private struct TerminalTabsContent: View {
+    @ObservedObject private var model: TerminalTabsViewModel
+    @ObservedObject private var settings: TerminalSettingsViewModel
+    private let l10n: L10n
+
+    public init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n) {
+        self.model = model; self.settings = settings; self.l10n = l10n
+    }
+
+    public var body: some View {
         VStack(spacing: 0) {
             // A connection's existing tab appears either here or in its grid cell.
             // There is no second, grouped tab or duplicate row of connection labels.
@@ -52,7 +166,7 @@ public struct TerminalTabsPane: View {
             let endpoint = profile.map { $0.username + "@" + $0.host + ":" + String($0.port) } ?? ""
             return TerminalTabBarItem(id: session.id, title: profile?.name ?? "", tooltip: endpoint + " · " + phase,
                 phase: session.controller.phase,
-                needsAttention: session.prompts.hostRequest != nil || session.prompts.passwordRequest != nil,
+                needsAttention: session.needsAttention,
                 ordinal: index + 1)
         }
     }
@@ -73,7 +187,7 @@ private struct TerminalPaneTabStrip: View {
         let phase = l10n.string(l10n.sshPhaseKey(controller.phase))
         let endpoint = profile.map { $0.username + "@" + $0.host + ":" + String($0.port) } ?? ""
         let item = TerminalTabBarItem(id: session.id, title: profile?.name ?? "", tooltip: endpoint + " · " + phase,
-            phase: controller.phase, needsAttention: prompts.hostRequest != nil || prompts.passwordRequest != nil,
+            phase: controller.phase, needsAttention: session.needsAttention,
             ordinal: model.ordinal(for: session.id) ?? 1)
         TerminalTabBarRepresentable(items: [item], selectedID: model.selectedID == session.id ? session.id : nil,
             labels: TerminalTabBarLabels(close: l10n.string(.sshClose), select: l10n.string(.tabSelect),

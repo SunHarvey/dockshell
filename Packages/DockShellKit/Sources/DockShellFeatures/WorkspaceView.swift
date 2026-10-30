@@ -62,6 +62,13 @@ public struct WorkspaceView: View {
                 .help(l10n.string(.tabConnectHelp))
                 .keyboardShortcut("t", modifiers: .command)
                 .disabled(model.selectedProfile == nil || model.isLoading || model.isMutating || model.hasLoadError)
+                Button { tabs.toggleSelectedFiles() } label: {
+                    Label(l10n.string(tabs.showsSelectedFiles ? .sftpClose : .sftpOpen),
+                          systemImage: "folder")
+                }
+                .help(l10n.string(tabs.showsSelectedFiles ? .sftpClose : .sftpOpen))
+                .accessibilityIdentifier("dockshell.sftp.toggle")
+                .disabled(tabs.selectedSession?.files == nil)
                 layoutMenu
                 groupMenu
                 Button { editor = SessionEditorRoute(profile: nil) } label: {

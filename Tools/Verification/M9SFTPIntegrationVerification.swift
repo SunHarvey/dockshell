@@ -2,6 +2,7 @@ import CryptoKit
 import Darwin
 import DockShellDomain
 import DockShellInfrastructure
+import DockShellFeatures
 import DockShellNetworkTestSupport
 import Foundation
 
@@ -68,6 +69,11 @@ enum M9SFTPIntegrationVerification {
                               "A plain SFTP key requested a fallback secret")
                 } catch { await client.shutdown(); throw error }
                 await client.shutdown()
+                if key == plain {
+                    stage = "read-only directory browser"
+                    try await verifyBrowser(profile: profile, directory: remoteDirectory, store: store,
+                                            expectedHost: expectedHost, helperURL: helperURL)
+                }
             }
             stage = "wrong encrypted-key passphrase"
             let encryptedProfile = try await profile(key: encrypted, endpoint: endpoint, bookmarks: bookmarks)
@@ -138,6 +144,53 @@ enum M9SFTPIntegrationVerification {
         try check(try canonical(URL(fileURLWithPath: reported)) == canonical(remoteDirectory),
                   "SFTP fixture did not start in its own physical directory")
         try await verifyRoundtrip(client, directory: home)
+    }
+
+    /// Runs the real presentation model against generated-key SSH, without a UI
+    /// or any personal server. Fixture content is created only in our local root.
+    @MainActor
+    private static func verifyBrowser(profile: SessionProfile, directory: URL, store: OpenSSHHostKeyStore,
+                                      expectedHost: SSHHostKey, helperURL: URL) async throws {
+        let name = "目录 😀"
+        try await M5AuthenticationVerification.onWorker {
+            let nested = directory.appendingPathComponent(name, isDirectory: true)
+            try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: false,
+                                                    attributes: [.posixPermissions: 0o700])
+            try Data("directory fixture".utf8).write(to: nested.appendingPathComponent("read-only.txt"))
+        }
+        let prompts = SSHConnectionPrompts()
+        let browser = SFTPBrowserViewModel(factory: OpenSSHSFTPClientFactory(credentials: M9SFTPCredentials(),
+            hostKeys: store, scanner: M9SFTPScanner(key: expectedHost), interaction: prompts,
+            helperURL: helperURL), prompts: prompts)
+        defer { browser.close() }
+        browser.start(profile: profile)
+        func ready() async throws {
+            let deadline = ContinuousClock.now.advanced(by: .seconds(15))
+            while browser.phase == .connecting || browser.isLoading {
+                guard ContinuousClock.now < deadline else {
+                    throw M9SFTPIntegrationFailure(description: "Directory browser did not finish its real SFTP request")
+                }
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            try check(browser.phase == .ready && browser.error == nil,
+                      "Directory browser did not reach a usable real SFTP listing")
+        }
+        try await ready()
+        guard let entry = browser.entries.first(where: { $0.nameBytes == Data(name.utf8) }) else {
+            throw M9SFTPIntegrationFailure(description: "Directory browser lost the real Unicode directory")
+        }
+        let home = browser.currentPath
+        try check(entry.kind == .directory, "Directory browser lost the real directory attributes")
+        browser.open(entry)
+        try await ready()
+        try check(browser.entries.contains(where: { $0.displayName == "read-only.txt" && $0.kind == .file }),
+                  "Directory browser did not load its real child directory")
+        browser.goUp()
+        try await ready()
+        try check(browser.currentPath == home, "Directory browser parent navigation changed its real path")
+        browser.refresh()
+        try await ready()
+        print("PASS M9.1 real browser: generated-host SSH, Unicode directory metadata, child/parent navigation and refresh")
     }
 
     /// Shared by local and explicitly authorized remote acceptance. Every path
