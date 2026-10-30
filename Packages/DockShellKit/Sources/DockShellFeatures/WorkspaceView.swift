@@ -63,13 +63,14 @@ public struct WorkspaceView: View {
                     moreMenu
                 }
                 .padding(.horizontal, 8)
-                .frame(height: 36)
+                .frame(height: 28)
                 .controlSize(.regular)
                 .buttonStyle(.plain)
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .fixedSize()
             }
+            .withoutSharedBackground()
         }
         .onReceive(model.commandRequests) { command in
             guard editor == nil, groupEditor == nil else { return }
@@ -448,6 +449,19 @@ public struct WorkspaceView: View {
         guard tabs.tabs.isEmpty else { return }
         guard showTerminal || settings.isLoaded else { return }
         showTerminal.toggle()
+    }
+}
+
+private extension ToolbarContent {
+    /// Newer macOS releases add a glass capsule around toolbar items by default.
+    /// Earlier systems retain their existing plain controls without requiring new APIs.
+    @ToolbarContentBuilder
+    func withoutSharedBackground() -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            self.sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
     }
 }
 
