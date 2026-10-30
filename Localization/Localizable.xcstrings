@@ -4444,13 +4444,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose a local folder for the selected remote files."
+            "value": "Choose a local folder. Same-name downloads receive numbered filenames automatically."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择保存远程文件的本机目录。"
+            "value": "选择保存远程文件的本机目录，同名文件会自动添加编号。"
           }
         }
       }
@@ -4835,13 +4835,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Select files to upload to the current remote folder."
+            "value": "Select files to upload. Same-name remote files are replaced automatically."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择上传到当前远程目录的本机文件。"
+            "value": "选择上传到当前远程目录的本机文件，同名远程文件会直接覆盖。"
           }
         }
       }

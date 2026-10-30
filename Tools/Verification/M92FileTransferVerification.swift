@@ -20,7 +20,7 @@ enum M92FileTransferVerification {
         try await failures(root)
         try await localSafety(root)
         print("PASS M9.2 transfer engine: bounded binary/empty roundtrip, short reads, raw names and acknowledged progress")
-        print("PASS M9.2 transfer decisions: skip/save-as/replace, capability gating, cooperative cleanup and uncertain commit reporting")
+        print("PASS transfer naming: automatic upload replacement, numbered downloads, no-clobber races and no leftover temporary files")
         print("PASS M9.2 local files: regular sources, symlink/FIFO rejection, changed sources and no-clobber destination races")
     }
 
@@ -33,7 +33,9 @@ enum M92FileTransferVerification {
     private static func perform(_ request: SFTPTransferRequest, peer: any SFTPClient,
                                 token: SFTPTransferCancellation = SFTPTransferCancellation(),
                                 progress: @escaping @Sendable (SFTPTransferProgress) async -> Void = { _ in },
-                                decision: @escaping @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision = { _ in .skip }
+                                decision: @escaping @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision = { _ in
+                                    throw M92TransferTestFailure(description: "The default transfer policy unexpectedly requested a filename decision")
+                                }
     ) async throws -> SFTPTransferOutcome {
         try await engine.perform(request, client: peer, cancellation: token, progress: progress, resolveConflict: decision)
     }
@@ -66,43 +68,63 @@ enum M92FileTransferVerification {
         let source = root.appendingPathComponent("conflict-source"), new = Data("replacement".utf8), old = Data("preserve me".utf8)
         try new.write(to: source)
         let target = try RemotePath("/remote/existing")
-        for action in [SFTPTransferDecision.skip, .rename("saved-copy"), .replace] {
-            let peer = M92TransferPeer(); await peer.put(target, data: old)
-            let outcome = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: target), peer: peer,
-                                            decision: { _ in action })
-            switch action {
-            case .skip:
-                guard case .skipped = outcome else { throw M92TransferTestFailure(description: "Skip did not report skipped") }
-                try check(await peer.data(target) == old, "Skip changed an existing remote file")
-            case .rename:
-                try check(await peer.data(target) == old, "Save-as changed an existing remote file")
-                try check(await peer.data(RemotePath("/remote/saved-copy")) == new, "Remote save-as did not select a sibling name")
-            case .replace: try check(await peer.data(target) == new, "Confirmed replacement did not commit")
-            }
-            try check(await peer.temporaryNames().isEmpty, "A conflict decision retained remote staging data")
-        }
+        let peer = M92TransferPeer(); await peer.put(target, data: old)
+        _ = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: target), peer: peer)
+        try check(await peer.data(target) == new, "Same-name upload did not replace its destination automatically")
+        try check(await peer.temporaryNames().isEmpty, "Automatic replacement retained remote staging data")
         let unsupported = M92TransferPeer(atomic: false); await unsupported.put(target, data: old)
         try await failure(.remote(.unsupportedOperation)) {
-            _ = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: target), peer: unsupported,
-                                  decision: { conflict in
-                try check(!conflict.canReplace, "Unsupported atomic replacement was offered")
-                return .replace
-            })
+            _ = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: target), peer: unsupported)
         }
         try check(await unsupported.data(target) == old, "A missing atomic capability damaged the existing file")
-        for (index, action) in [SFTPTransferDecision.skip, .rename("download-copy"), .replace].enumerated() {
-            let folder = root.appendingPathComponent("local-conflict-\(index)")
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
-            let local = folder.appendingPathComponent("existing")
-            try old.write(to: local)
-            let peer = M92TransferPeer(); await peer.put(target, data: new)
-            _ = try await perform(SFTPTransferRequest(direction: .download, localURL: local, remotePath: target), peer: peer,
-                                  decision: { _ in action })
-            if case .replace = action { try check(try Data(contentsOf: local) == new, "Local replacement did not commit") }
-            else { try check(try Data(contentsOf: local) == old, "Skip/save-as overwrote the original local file") }
-            if case .rename = action { try check(try Data(contentsOf: folder.appendingPathComponent("download-copy")) == new, "Local save-as failed") }
+        let newOnly = M92TransferPeer(atomic: false)
+        _ = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: target), peer: newOnly)
+        try check(await newOnly.data(target) == new, "A server without replacement support rejected a new filename")
+        let folder = root.appendingPathComponent("numbered-downloads")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        let local = folder.appendingPathComponent("报告 👩‍💻.txt")
+        for name in ["报告 👩‍💻.txt", "报告 👩‍💻 (1).txt", "报告 👩‍💻 (2).txt"] {
+            let outcome = try await perform(SFTPTransferRequest(direction: .download, localURL: local, remotePath: target), peer: peer)
+            guard case .completedAt(.local(let actual)) = outcome else {
+                throw M92TransferTestFailure(description: "Numbered download did not report its actual completed destination")
+            }
+            try check(actual.lastPathComponent == name, "Repeated download did not allocate the next filename")
+            try check(try Data(contentsOf: folder.appendingPathComponent(name)) == new, "Numbered download changed content")
             try noLocalTemporary(folder)
         }
+        // Gaps, dotfiles, extensionless names and maximum-length UTF-8 names.
+        try FileManager.default.removeItem(at: folder.appendingPathComponent("报告 👩‍💻 (1).txt"))
+        let gap = try await perform(SFTPTransferRequest(direction: .download, localURL: local, remotePath: target), peer: peer)
+        guard case .completedAt(.local(let gapURL)) = gap else { throw M92TransferTestFailure(description: "Gap copy did not complete") }
+        try check(gapURL.lastPathComponent == "报告 👩‍💻 (1).txt", "Download failed to reuse a free copy number")
+        for original in ["README", ".env", String(repeating: "中", count: 83) + ".txt"] {
+            let selected = folder.appendingPathComponent(original)
+            try old.write(to: selected)
+            let outcome = try await perform(SFTPTransferRequest(direction: .download, localURL: selected, remotePath: target), peer: peer)
+            guard case .completedAt(.local(let actual)) = outcome else { throw M92TransferTestFailure(description: "Named copy did not complete") }
+            try check(actual.lastPathComponent.utf8.count <= 255 && actual.lastPathComponent.contains(" (1)"),
+                      "A numbered Unicode filename exceeded the filesystem limit or lost its number")
+            try check(try Data(contentsOf: actual) == new && (try Data(contentsOf: selected)) == old,
+                      "A named copy replaced the original or changed its payload")
+        }
+        try noLocalTemporary(folder)
+        let parallelFolder = root.appendingPathComponent("parallel-copies")
+        try FileManager.default.createDirectory(at: parallelFolder, withIntermediateDirectories: false)
+        let gate = M92CommitGate(), parallelTarget = parallelFolder.appendingPathComponent("same.txt")
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<2 {
+                group.addTask {
+                    _ = try await perform(SFTPTransferRequest(direction: .download, localURL: parallelTarget, remotePath: target), peer: peer,
+                        progress: { if $0.stage == .committing { await gate.arrive() } })
+                }
+            }
+            try await group.waitForAll()
+        }
+        for name in ["same.txt", "same (1).txt"] {
+            try check(try Data(contentsOf: parallelFolder.appendingPathComponent(name)) == new,
+                      "Parallel downloads overwrote each other or saved incomplete content")
+        }
+        try noLocalTemporary(parallelFolder)
     }
 
     private static func cancellation(_ root: URL) async throws {
@@ -119,7 +141,11 @@ enum M92FileTransferVerification {
                     decision: { _ in .replace })
             }
             if direction == .upload { try check(await peer.data(path) == old, "Cancel changed the final remote target") }
-            else { try check(try Data(contentsOf: local) == old, "Cancel changed the final local target") }
+            else {
+                try check(try Data(contentsOf: local) == old, "Cancel changed the final local target")
+                try check(!FileManager.default.fileExists(atPath: root.appendingPathComponent("cancel-download (1)").path),
+                          "Cancellation left an incomplete numbered download")
+            }
             try check(await peer.temporaryNames().isEmpty, "Cooperative cancel did not remove remote staging")
             try noLocalTemporary(root)
         }
@@ -188,17 +214,29 @@ enum M92FileTransferVerification {
         try await failure(.unsupportedFile) { _ = try await files.openSource(fifo) }
         let race = root.appendingPathComponent("race-target"), body = Data("download".utf8), concurrent = Data("concurrently created".utf8)
         let path = try RemotePath("/remote/race"), peer = M92TransferPeer(); await peer.put(path, data: body)
-        try await failure(.destinationChanged) {
-            _ = try await perform(SFTPTransferRequest(direction: .download, localURL: race, remotePath: path), peer: peer,
-                progress: { event in if event.stage == .committing { try? concurrent.write(to: race) } })
-        }
+        let raced = try await perform(SFTPTransferRequest(direction: .download, localURL: race, remotePath: path), peer: peer,
+            progress: { event in if event.stage == .committing { try? concurrent.write(to: race) } })
         try check(try Data(contentsOf: race) == concurrent, "No-clobber commit replaced a concurrently created target")
-        let replaceRace = root.appendingPathComponent("replace-race"); try Data("old".utf8).write(to: replaceRace)
-        try await failure(.destinationChanged) {
-            _ = try await perform(SFTPTransferRequest(direction: .download, localURL: replaceRace, remotePath: path), peer: peer,
-                progress: { event in if event.stage == .committing { try? concurrent.write(to: replaceRace) } }, decision: { _ in .replace })
-        }
-        try check(try Data(contentsOf: replaceRace) == concurrent, "Replacement ignored a changed target snapshot")
+        guard case .completedAt(.local(let racedURL)) = raced else { throw M92TransferTestFailure(description: "Raced download did not complete") }
+        try check(racedURL.lastPathComponent == "race-target (1)" && (try Data(contentsOf: racedURL)) == body,
+                  "A commit-time filename collision did not retry using a numbered copy")
+        // A closed, synced stage can be committed again after a rename error.
+        let retryFolder = root.appendingPathComponent("retry-stage")
+        try FileManager.default.createDirectory(at: retryFolder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        let retry = try await files.prepareDestination(retryFolder.appendingPathComponent("first.bin"))
+        try await retry.write(body, offset: 0)
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: retryFolder.path)
+        do {
+            try await retry.commit(replacing: nil)
+            throw M92TransferTestFailure(description: "A readonly test directory accepted a rename")
+        } catch SFTPTransferError.localPermission { }
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: retryFolder.path)
+        try await retry.selectName("second.bin")
+        try await retry.commit(replacing: nil)
+        try check(await retry.discard(), "Retried commit did not finish its temporary cleanup")
+        try check(try Data(contentsOf: retryFolder.appendingPathComponent("second.bin")) == body,
+                  "Retrying an already closed stage lost its data")
+        try noLocalTemporary(retryFolder)
         let selected = root.appendingPathComponent("swapped-target")
         let writer = try await files.prepareDestination(selected)
         try await writer.write(body, offset: 0)
@@ -233,19 +271,21 @@ enum M92FileTransferVerification {
             _ = try await perform(SFTPTransferRequest(direction: .download, localURL: output, remotePath: remote), peer: client)
             try check(hash(try Data(contentsOf: output)) == hash(body), "Real transfer engine roundtrip changed bytes")
             let replacement = Data("second version 中文".utf8); try replacement.write(to: source)
-            _ = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: remote), peer: client,
-                                  decision: { conflict in
-                try check(conflict.canReplace, "The isolated OpenSSH server did not offer safe replacement")
-                return .replace
-            })
-            _ = try await perform(SFTPTransferRequest(direction: .download, localURL: output, remotePath: remote), peer: client, decision: { _ in .replace })
-            try check(try Data(contentsOf: output) == replacement, "Real confirmed replacement changed bytes")
+            _ = try await perform(SFTPTransferRequest(direction: .upload, localURL: source, remotePath: remote), peer: client)
+            for name in ["download (1).bin", "download (2).bin"] {
+                let outcome = try await perform(SFTPTransferRequest(direction: .download, localURL: output, remotePath: remote), peer: client)
+                guard case .completedAt(.local(let actual)) = outcome else { throw M92TransferTestFailure(description: "Real numbered download did not complete") }
+                try check(actual.lastPathComponent == name && (try Data(contentsOf: actual)) == replacement,
+                          "Real numbered download saved the wrong name or data")
+            }
+            try check(hash(try Data(contentsOf: output)) == hash(body), "Repeated download overwrote the existing original")
+            try noLocalTemporary(local)
             try await client.removeFile(remote)
         } catch {
             try? await client.removeFile(remote)
             throw error
         }
-        print("PASS M9.2 real engine: generated-host SSH, 1 MiB binary upload/download and confirmed atomic replacement")
+        print("PASS real transfer naming: generated-host SSH, automatic upload replacement, numbered repeat downloads and staging cleanup")
     }
 
     @discardableResult
@@ -262,6 +302,24 @@ enum M92FileTransferVerification {
 }
 
 private actor M92Once { private var used = false; func claim() -> Bool { if used { return false }; used = true; return true } }
+private actor M92CommitGate {
+    private var arrivals = 0
+    private var waiting: CheckedContinuation<Void, Never>?
+    func arrive() async {
+        arrivals += 1
+        if arrivals == 2 { release() }
+        else {
+            await withTaskCancellationHandler {
+                guard !Task.isCancelled else { return }
+                await withCheckedContinuation { continuation in
+                    if Task.isCancelled { continuation.resume() }
+                    else { waiting = continuation }
+                }
+            } onCancel: { Task { await self.release() } }
+        }
+    }
+    private func release() { waiting?.resume(); waiting = nil }
+}
 private actor M92Progress {
     var events: [SFTPTransferProgress] = []
     func record(_ event: SFTPTransferProgress) { events.append(event) }

@@ -26,6 +26,9 @@ public protocol SFTPTransferDestination: Sendable {
     func inspect() async throws -> SFTPTransferLocalMetadata?
     func selectName(_ name: String) async throws
     func write(_ bytes: Data, offset: UInt64) async throws
+    /// A nil snapshot requests an atomic no-overwrite commit. If the name is
+    /// taken, throw destinationExists and retain the synced staging data so the
+    /// caller can select another name and retry without downloading it again.
     func commit(replacing expected: SFTPTransferLocalMetadata?) async throws
     /// Removes only this writer's uncommitted temporary file. False means a
     /// known temporary location must be reported for manual inspection.

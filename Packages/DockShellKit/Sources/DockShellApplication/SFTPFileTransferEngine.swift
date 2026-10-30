@@ -10,31 +10,28 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
     public func perform(_ request: SFTPTransferRequest, client: any SFTPClient,
                         cancellation: SFTPTransferCancellation,
                         progress: @escaping @Sendable (SFTPTransferProgress) async -> Void,
-                        resolveConflict: @escaping @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision
+                        resolveConflict _: @escaping @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision
     ) async throws -> SFTPTransferOutcome {
         guard request.remotePath.bytes.first == 47, request.localURL.isFileURL,
               request.localURL.path.hasPrefix("/") else { throw SFTPTransferFailure(.invalidPath) }
         switch request.direction {
         case .upload:
-            return try await upload(request, client: client, cancellation: cancellation,
-                                    progress: progress, resolve: resolveConflict)
+            return try await upload(request, client: client, cancellation: cancellation, progress: progress)
         case .download:
-            return try await download(request, client: client, cancellation: cancellation,
-                                      progress: progress, resolve: resolveConflict)
+            return try await download(request, client: client, cancellation: cancellation, progress: progress)
         }
     }
 
     private func upload(_ request: SFTPTransferRequest, client: any SFTPClient,
                         cancellation: SFTPTransferCancellation,
-                        progress: @escaping @Sendable (SFTPTransferProgress) async -> Void,
-                        resolve: @escaping @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision
+                        progress: @escaping @Sendable (SFTPTransferProgress) async -> Void
     ) async throws -> SFTPTransferOutcome {
         let source = try await localFiles.openSource(request.localURL)
         var temporary: RemotePath?
         var ownsTemporary = false
         var handle: SFTPHandle?
         var commitStarted = false
-        var destination = request.remotePath
+        let destination = request.remotePath
         var total: UInt64 = 0, completed: UInt64 = 0
         do {
             try await check(cancellation)
@@ -42,11 +39,7 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
             guard original.isRegular else { throw SFTPTransferError.unsupportedFile }
             total = original.size
             let capabilities = await client.capabilities
-            var replacing: SFTPFileAttributes?
-            let initial = try await chooseRemote(destination, request: request, client: client,
-                canReplace: capabilities.supportsAtomicRename, cancellation: cancellation, resolve: resolve)
-            guard let initial else { await source.close(); return .skipped }
-            destination = initial.0; replacing = initial.1
+            try await validateUploadTarget(destination, client: client, canReplace: capabilities.supportsAtomicRename)
             try await check(cancellation)
             let parent = try parent(of: destination)
             let temp = try parent.appending(".dockshell-upload-" + UUID().uuidString + ".part")
@@ -96,22 +89,14 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
             try await client.closeHandle(opened); handle = nil
             await source.close()
             try await check(cancellation)
-            // Reassess at commit: a target may have appeared while uploading.
-            let current = try await remoteAttributes(destination, client: client)
-            if current != replacing {
-                let revised = try await chooseRemote(destination, request: request, client: client,
-                    canReplace: capabilities.supportsAtomicRename, cancellation: cancellation, resolve: resolve)
-                guard let revised else {
-                    try await client.removeFile(temp); temporary = nil
-                    return .skipped
-                }
-                destination = revised.0; replacing = revised.1
-            }
+            try await validateUploadTarget(destination, client: client, canReplace: capabilities.supportsAtomicRename)
             try await check(cancellation)
             await progress(SFTPTransferProgress(bytes: total, totalBytes: total, stage: .committing))
             try await check(cancellation)
             commitStarted = true
-            try await client.rename(temp, to: destination, replaceExisting: replacing != nil)
+            // Use atomic replacement even for a currently absent target, so a
+            // same-name file appearing after validation follows the same policy.
+            try await client.rename(temp, to: destination, replaceExisting: capabilities.supportsAtomicRename)
             temporary = nil
             return .completedAt(.remote(destination))
         } catch {
@@ -137,8 +122,7 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
 
     private func download(_ request: SFTPTransferRequest, client: any SFTPClient,
                           cancellation: SFTPTransferCancellation,
-                          progress: @escaping @Sendable (SFTPTransferProgress) async -> Void,
-                          resolve: @escaping @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision
+                          progress: @escaping @Sendable (SFTPTransferProgress) async -> Void
     ) async throws -> SFTPTransferOutcome {
         var destination: (any SFTPTransferDestination)?
         var handle: SFTPHandle?
@@ -157,11 +141,9 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
             try await check(cancellation)
             let local = try await localFiles.prepareDestination(request.localURL)
             destination = local
-            guard let replacing = try await chooseLocal(local, request: request, cancellation: cancellation, resolve: resolve) else {
-                try await client.closeHandle(opened); handle = nil
-                guard await local.discard() else { throw SFTPTransferFailure(.localIO, residues: [.local(await local.temporaryURL())]) }
-                return .skipped
-            }
+            var nextCopy = 0
+            try await selectDownloadName(local, originalName: request.localURL.lastPathComponent,
+                                         nextCopy: &nextCopy, cancellation: cancellation)
             let capabilities = await client.capabilities
             let chunk = min(32_768, capabilities.maximumReadBytes)
             guard chunk > 0 else { throw SFTPTransferError.remote(.invalidPacket) }
@@ -206,7 +188,16 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
             try await check(cancellation)
             await progress(SFTPTransferProgress(bytes: total, totalBytes: total, stage: .committing))
             try await check(cancellation)
-            try await local.commit(replacing: replacing.value)
+            while true {
+                try await check(cancellation)
+                do { try await local.commit(replacing: nil); break }
+                catch SFTPTransferError.destinationExists {
+                    // A different process may claim the name after inspection.
+                    // Keep our completed staging data and claim the next name.
+                    try await selectDownloadName(local, originalName: request.localURL.lastPathComponent,
+                                                 nextCopy: &nextCopy, cancellation: cancellation)
+                }
+            }
             guard await local.discard() else { throw SFTPTransferError.localIO }
             return .completedAt(.local(await local.currentURL()))
         } catch {
@@ -222,51 +213,47 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
         }
     }
 
-    private struct LocalChoice { let value: SFTPTransferLocalMetadata? }
-    private func chooseLocal(_ destination: any SFTPTransferDestination, request: SFTPTransferRequest,
-                             cancellation: SFTPTransferCancellation,
-                             resolve: @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision
-    ) async throws -> LocalChoice? {
-        for _ in 0..<100 {
+    private func selectDownloadName(_ destination: any SFTPTransferDestination, originalName: String,
+                                    nextCopy: inout Int, cancellation: SFTPTransferCancellation) async throws {
+        while nextCopy < 10_000 {
             try await check(cancellation)
-            guard let existing = try await destination.inspect() else { return LocalChoice(value: nil) }
-            let url = await destination.currentURL()
-            let decision = try await resolve(SFTPTransferConflict(requestID: request.id,
-                destinationName: Data(url.lastPathComponent.utf8), direction: .download, canReplace: existing.isRegular))
-            switch decision {
-            case .skip: return nil
-            case .replace:
-                guard existing.isRegular else { throw SFTPTransferError.unsupportedFile }
-                return LocalChoice(value: existing)
-            case .rename(let name): try await destination.selectName(name)
-            }
+            let name = nextCopy == 0 ? originalName : numberedName(originalName, number: nextCopy)
+            nextCopy += 1
+            try await destination.selectName(name)
+            if try await destination.inspect() == nil { return }
         }
         throw SFTPTransferError.destinationChanged
     }
 
-    private func chooseRemote(_ first: RemotePath, request: SFTPTransferRequest, client: any SFTPClient,
-                              canReplace: Bool, cancellation: SFTPTransferCancellation,
-                              resolve: @Sendable (SFTPTransferConflict) async throws -> SFTPTransferDecision
-    ) async throws -> (RemotePath, SFTPFileAttributes?)? {
-        var path = first
-        let parent = try parent(of: first)
-        for _ in 0..<100 {
-            try await check(cancellation)
-            guard let existing = try await remoteAttributes(path, client: client) else { return (path, nil) }
-            let allowed = canReplace && regular(existing)
-            switch try await resolve(SFTPTransferConflict(requestID: request.id,
-                destinationName: Data(path.bytes.split(separator: 47).last ?? Data.SubSequence()),
-                direction: .upload, canReplace: allowed)) {
-            case .skip: return nil
-            case .replace:
-                guard allowed else { throw SFTPTransferError.remote(.unsupportedOperation) }
-                return (path, existing)
-            case .rename(let name):
-                guard validName(name) else { throw SFTPTransferError.invalidPath }
-                path = try parent.appending(name)
-            }
+    /// Preserve the last extension and whole Unicode characters within NAME_MAX.
+    /// Every retry derives from the original name, never from an earlier copy.
+    private func numberedName(_ name: String, number: Int) -> String {
+        var stem = name, ext = ""
+        if let dot = name.lastIndex(of: "."), dot != name.startIndex, dot != name.index(before: name.endIndex) {
+            stem = String(name[..<dot]); ext = String(name[name.index(after: dot)...])
         }
-        throw SFTPTransferError.destinationChanged
+        let suffix = " (" + String(number) + ")"
+        ext = utf8Prefix(ext, maximum: max(0, 255 - suffix.utf8.count - 33))
+        let ending = ext.isEmpty ? "" : "." + ext
+        let budget = 255 - suffix.utf8.count - ending.utf8.count
+        let prefix = utf8Prefix(stem, maximum: budget)
+        return (prefix.isEmpty ? "download" : prefix) + suffix + ending
+    }
+
+    private func utf8Prefix(_ string: String, maximum: Int) -> String {
+        var result = "", length = 0
+        for character in string {
+            let next = String(character)
+            guard length + next.utf8.count <= maximum else { break }
+            result += next; length += next.utf8.count
+        }
+        return result
+    }
+
+    private func validateUploadTarget(_ path: RemotePath, client: any SFTPClient, canReplace: Bool) async throws {
+        guard let existing = try await remoteAttributes(path, client: client) else { return }
+        guard regular(existing) else { throw SFTPTransferError.unsupportedFile }
+        guard canReplace else { throw SFTPTransferError.remote(.unsupportedOperation) }
     }
 
     private func remoteAttributes(_ path: RemotePath, client: any SFTPClient) async throws -> SFTPFileAttributes? {
@@ -278,9 +265,6 @@ public struct SFTPFileTransferEngine: SFTPFileTransferring {
         let component = Data(path.bytes[(last + 1)...])
         guard component != Data(".".utf8), component != Data("..".utf8) else { throw SFTPTransferError.invalidPath }
         return try RemotePath(bytes: last == 0 ? Data([47]) : Data(path.bytes[..<last]))
-    }
-    private func validName(_ name: String) -> Bool {
-        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\0") && name.utf8.count <= 255
     }
     private func regular(_ attrs: SFTPFileAttributes) -> Bool { attrs.permissions.map { $0 & 0o170000 == 0o100000 } ?? false }
     private func check(_ token: SFTPTransferCancellation) async throws { try Task.checkCancellation(); try await token.check() }

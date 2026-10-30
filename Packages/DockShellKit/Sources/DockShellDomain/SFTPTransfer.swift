@@ -43,7 +43,7 @@ public enum SFTPTransferLocation: Sendable, Hashable { case local(URL), remote(R
 /// Errors retain only typed categories and selected paths, never file contents,
 /// credentials, server messages or raw operating-system diagnostic strings.
 public enum SFTPTransferError: Error, Sendable, Equatable {
-    case cancelled, invalidPath, unsupportedFile, sourceChanged, destinationChanged
+    case cancelled, invalidPath, unsupportedFile, sourceChanged, destinationChanged, destinationExists
     case localPermission, localIO, commitUncertain, notConnected, queueLimit
     case remote(SFTPError)
 }
@@ -68,7 +68,8 @@ public actor SFTPTransferCancellation {
 }
 
 /// Backend-neutral, bounded single-file transfer. The queue owns authentication
-/// and the connection. A resolver must explicitly authorize any replacement.
+/// and the connection. Conflict callbacks support alternate policies; the
+/// default engine replaces uploads and allocates numbered download copies.
 public protocol SFTPFileTransferring: Sendable {
     func perform(_ request: SFTPTransferRequest, client: any SFTPClient,
                  cancellation: SFTPTransferCancellation,

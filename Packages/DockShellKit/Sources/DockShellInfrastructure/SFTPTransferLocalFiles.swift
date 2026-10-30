@@ -145,6 +145,7 @@ private final class TransferDestinationState: @unchecked Sendable {
     var device: dev_t = 0
     var ownsTemporary = false
     var committed = false
+    var readyForCommit = false
     func inspect() throws -> SFTPTransferLocalMetadata? {
         guard directory >= 0 else { throw SFTPTransferError.localIO }
         var info = stat()
@@ -210,23 +211,33 @@ private actor SystemTransferDestination: SFTPTransferDestination {
     func commit(replacing expected: SFTPTransferLocalMetadata?) async throws {
         let state = state
         try await worker.perform {
-            guard state.descriptor >= 0, state.ownsTemporary, !state.committed else { throw SFTPTransferError.localIO }
+            guard state.ownsTemporary, !state.committed else { throw SFTPTransferError.localIO }
+            guard state.descriptor >= 0 || state.readyForCommit else { throw SFTPTransferError.localIO }
             var staging = stat()
             let staged = state.temporaryName.withCString { fstatat(state.directory, $0, &staging, AT_SYMLINK_NOFOLLOW) }
             guard staged == 0, staging.st_dev == state.device, staging.st_ino == state.inode,
                   staging.st_mode & S_IFMT == S_IFREG else { throw SFTPTransferError.destinationChanged }
             let current = try state.inspect()
+            if expected == nil, current != nil { throw SFTPTransferError.destinationExists }
             guard current == expected, current?.isRegular != false else { throw SFTPTransferError.destinationChanged }
-            if let expected, fchmod(state.descriptor, mode_t(expected.permissions)) != 0 { throw TransferPOSIX.error() }
-            guard fsync(state.descriptor) == 0 else { throw TransferPOSIX.error() }
-            let fd = state.descriptor; state.descriptor = -1
-            guard Darwin.close(fd) == 0 else { throw TransferPOSIX.error() }
-            guard try state.inspect() == expected else { throw SFTPTransferError.destinationChanged }
+            if state.descriptor >= 0 {
+                if let expected, fchmod(state.descriptor, mode_t(expected.permissions)) != 0 { throw TransferPOSIX.error() }
+                guard fsync(state.descriptor) == 0 else { throw TransferPOSIX.error() }
+                let fd = state.descriptor; state.descriptor = -1
+                guard Darwin.close(fd) == 0 else { throw TransferPOSIX.error() }
+                state.readyForCommit = true
+            }
+            let latest = try state.inspect()
+            if expected == nil, latest != nil { throw SFTPTransferError.destinationExists }
+            guard latest == expected else { throw SFTPTransferError.destinationChanged }
             let flags = expected == nil ? UInt32(RENAME_EXCL) : 0
             let result = state.temporaryName.withCString { source in
                 state.name.withCString { target in renameatx_np(state.directory, source, state.directory, target, flags) }
             }
-            guard result == 0 else { throw TransferPOSIX.error() }
+            guard result == 0 else {
+                if expected == nil, errno == EEXIST { throw SFTPTransferError.destinationExists }
+                throw TransferPOSIX.error()
+            }
             state.ownsTemporary = false; state.committed = true
         }
     }

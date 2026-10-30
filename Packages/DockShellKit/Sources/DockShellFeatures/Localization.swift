@@ -342,7 +342,7 @@ public extension L10n {
         case .invalidPath: .transferErrorInvalidPath
         case .unsupportedFile: .transferErrorUnsupportedFile
         case .sourceChanged: .transferErrorSourceChanged
-        case .destinationChanged: .transferErrorDestinationChanged
+        case .destinationChanged, .destinationExists: .transferErrorDestinationChanged
         case .localPermission: .transferErrorLocalPermission
         case .localIO: .transferErrorLocalIO
         case .commitUncertain: .transferErrorCommitUncertain
