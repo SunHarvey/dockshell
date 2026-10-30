@@ -20,6 +20,9 @@ public final class TerminalTabSession: Identifiable {
     public var needsAttention: Bool {
         prompts.hostRequest != nil || prompts.passwordRequest != nil
             || files?.prompts.hostRequest != nil || files?.prompts.passwordRequest != nil
+            || files?.transfers?.prompts.hostRequest != nil || files?.transfers?.prompts.passwordRequest != nil
+            || files?.transfers?.conflict != nil
+            || files?.transfers?.hasWarnings == true
     }
 
     public init(id: UUID = UUID(), controller: SSHSessionController, prompts: SSHConnectionPrompts,
@@ -53,6 +56,9 @@ public final class TerminalTabsViewModel: ObservableObject {
     @Published public private(set) var selectedID: UUID?
     @Published public private(set) var arrangement: TerminalArrangement = .tabs
     @Published public private(set) var fileBrowserIDs: Set<UUID> = []
+    @Published public private(set) var transferCloseRequestID: UUID?
+    @Published public private(set) var transferWarningCloseID: UUID?
+    private var drainingTabIDs: Set<UUID> = []
     private let factory: any TerminalSessionFactory
     private var observations: [UUID: Set<AnyCancellable>] = [:]
     /// These Sendable MainActor handles can be transferred to cleanup from Swift 6's
@@ -145,7 +151,48 @@ public final class TerminalTabsViewModel: ObservableObject {
 
     /// Closes one tab/connection. Selection follows the existing right-then-left rule.
     public func close(id: UUID) {
+        guard !drainingTabIDs.contains(id), let tab = tabs.first(where: { $0.id == id }) else { return }
+        if tab.session.files?.transfers?.hasUnfinished == true { transferCloseRequestID = id; return }
+        if tab.session.files?.transfers?.hasWarnings == true { transferWarningCloseID = id; return }
+        closeImmediately(id: id)
+    }
+
+    public func dismissTransferClose() { transferCloseRequestID = nil }
+    public func dismissWarningClose() { transferWarningCloseID = nil }
+
+    /// A normal tab close waits for cancellation cleanup. Uncertain results stay
+    /// visible until the user explicitly chooses to discard the tab's record.
+    public func confirmTransferClose(id: UUID) {
+        guard !drainingTabIDs.contains(id), let tab = tabs.first(where: { $0.id == id }),
+              let transfers = tab.session.files?.transfers else { return }
+        transferCloseRequestID = nil
+        drainingTabIDs.insert(id)
+        Task { [weak self, transfers] in
+            await transfers.cancelAndWait()
+            guard let self else { return }
+            self.drainingTabIDs.remove(id)
+            guard self.tabs.contains(where: { $0.id == id }) else { return }
+            if transfers.hasWarnings { self.transferWarningCloseID = id }
+            else { self.closeImmediately(id: id) }
+        }
+    }
+
+    public func discardTransferRecordAndClose(id: UUID) {
+        guard !drainingTabIDs.contains(id), let tab = tabs.first(where: { $0.id == id }) else { return }
+        if tab.session.files?.transfers?.hasUnfinished == true {
+            transferWarningCloseID = nil
+            transferCloseRequestID = id
+            return
+        }
+        transferWarningCloseID = nil
+        closeImmediately(id: id)
+    }
+
+    private func closeImmediately(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        if transferCloseRequestID == id { transferCloseRequestID = nil }
+        if transferWarningCloseID == id { transferWarningCloseID = nil }
+        drainingTabIDs.remove(id)
         let closing = tabs[index].session
         disown(closing)
         fileBrowserIDs.remove(id)
@@ -158,6 +205,7 @@ public final class TerminalTabsViewModel: ObservableObject {
 
     /// Window teardown cancels every pending decision before ending all connections.
     public func closeAll() {
+        transferCloseRequestID = nil; transferWarningCloseID = nil; drainingTabIDs.removeAll()
         let closing = Array(ownedSessions.values)
         ownedSessions.removeAll(); observations.removeAll()
         fileBrowserIDs.removeAll()
@@ -184,6 +232,10 @@ public final class TerminalTabsViewModel: ObservableObject {
         if let files = session.files {
             files.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
             files.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+            if let transfers = files.transfers {
+                transfers.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+                transfers.$conflict.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+            }
         }
         observations[session.id] = tokens
     }
@@ -201,6 +253,7 @@ public final class TerminalTabsViewModel: ObservableObject {
         session.controller.setPresentationActive(false)
         session.prompts.cancelAll()
         session.files?.close()
+        session.files?.transfers?.close()
         session.controller.closePresentation()
     }
 
@@ -211,6 +264,7 @@ public final class TerminalTabsViewModel: ObservableObject {
                 session.controller.setPresentationActive(false)
                 session.prompts.cancelAll()
                 session.files?.close()
+                session.files?.transfers?.close()
                 session.controller.closePresentation()
             }
         }

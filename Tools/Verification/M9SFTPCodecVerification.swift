@@ -8,6 +8,7 @@ private struct M9CodecFailure: Error, CustomStringConvertible { let description:
 enum M9SFTPCodecVerification {
     static func run() async throws {
         try await verifyBinaryAndDirectory()
+        try await verifyFileAttributes()
         try await verifyReorderedReplies()
         try await verifyNegotiationAndFailures()
         try await verifyCancellationAndBounds()
@@ -15,6 +16,7 @@ enum M9SFTPCodecVerification {
         try await verifyDeallocation()
         print("PASS M9 SFTP codec: fragmented binary framing, raw Unicode/non-UTF8 names, short reads, 64-bit attributes and scoped handles")
         print("PASS M9 SFTP lifecycle: out-of-order requests, bounded pending table, version/extension negotiation, malformed peers and cancellation close")
+        print("PASS M9.2 attributes: STAT/LSTAT/FSTAT preserve raw paths and 64-bit metadata, reject foreign/closed handles and malformed ATTRS")
     }
 
     private static func check(_ condition: Bool, _ message: String) throws {
@@ -61,6 +63,55 @@ enum M9SFTPCodecVerification {
             try check(result.0 == firstPath && result.1 == secondPath, "Out-of-order replies were assigned by arrival order")
             await client.shutdown()
         } catch { await client.shutdown(); throw error }
+    }
+
+    private static func verifyFileAttributes() async throws {
+        let peer = M9SFTPPeer(mode: .normal, fragment: 1)
+        let client = try await SFTPV3Client.connect(channel: peer)
+        do {
+            let path = try RemotePath(bytes: Data([47, 0xff, 32, 97]))
+            let stat = try await client.attributes(of: path, followSymbolicLinks: true)
+            let lstat = try await client.attributes(of: path, followSymbolicLinks: false)
+            let handle = try await client.openFile(path, options: .read, permissions: 0)
+            let fstat = try await client.attributes(of: handle)
+            try check(stat.size == 4_294_967_297 && stat.userID == 501 && stat.groupID == 20
+                      && stat.permissions == 0o100640 && stat.accessTime == 1_700_000_000
+                      && stat.modificationTime == 1_700_000_001,
+                      "STAT lost optional metadata or truncated a 64-bit size")
+            try check(lstat.permissions == 0o120777 && fstat == stat,
+                      "LSTAT followed a link or FSTAT lost the opened file metadata")
+            let requests = await peer.attributeRequests()
+            try check(requests.map { $0.0 } == [17, 7, 8]
+                      && requests[0].1 == path.bytes && requests[1].1 == path.bytes
+                      && requests[2].1 == handle.bytes,
+                      "Attribute requests changed raw path/handle bytes or request semantics")
+            let previous = await peer.requestCount()
+            let foreign = SFTPHandle(sessionID: UUID(), bytes: handle.bytes)
+            try await expect(.invalidHandle) { _ = try await client.attributes(of: foreign) }
+            try check(await peer.requestCount() == previous, "A foreign handle reached the wire")
+            try await client.closeHandle(handle)
+            let closedCount = await peer.requestCount()
+            try await expect(.invalidHandle) { _ = try await client.attributes(of: handle) }
+            try check(await peer.requestCount() == closedCount, "A closed handle reached FSTAT")
+            await client.shutdown()
+        } catch { await client.shutdown(); throw error }
+
+        for (mode, expected) in [(M9SFTPPeer.Mode.attributeMissing, SFTPError.status(2)),
+                                 (.attributeDenied, .status(3))] {
+            let peer = M9SFTPPeer(mode: mode, fragment: 2)
+            let client = try await SFTPV3Client.connect(channel: peer)
+            try await expect(expected) { _ = try await client.attributes(of: RemotePath("/missing"), followSymbolicLinks: false) }
+            try check(!(await peer.isClosed()), "A recoverable STAT error unnecessarily retired its session")
+            await client.shutdown()
+        }
+        for (mode, expected) in [(M9SFTPPeer.Mode.attributeTrailing, SFTPError.invalidPacket),
+                                 (.attributeUnknownFlags, .invalidPacket), (.attributeTruncated, .invalidPacket),
+                                 (.attributeWrongType, .unexpectedResponse)] {
+            let peer = M9SFTPPeer(mode: mode, fragment: 3)
+            let client = try await SFTPV3Client.connect(channel: peer)
+            try await expect(expected) { _ = try await client.attributes(of: RemotePath("/malformed"), followSymbolicLinks: true) }
+            try await waitUntil { await peer.isClosed() }
+        }
     }
 
     private static func verifyNegotiationAndFailures() async throws {
@@ -210,7 +261,8 @@ private actor M9WeakSFTPClient {
 /// captures requests; it does not use production encoders to generate responses.
 private actor M9SFTPPeer: SFTPByteChannel {
     enum Mode: Sendable { case normal, reversePair, limits, smallPacketLimits, blockedWrites, wrongExtensionVersion, wrongVersion, oversized,
-        duplicateExtension, truncated, wrongID, wrongResponse, malformedName, hold, holdHandshake }
+        duplicateExtension, truncated, wrongID, wrongResponse, malformedName, hold, holdHandshake,
+        attributeMissing, attributeDenied, attributeTrailing, attributeUnknownFlags, attributeTruncated, attributeWrongType }
     private let mode: Mode
     private let fragment: Int
     private var buffer = Data()
@@ -218,6 +270,7 @@ private actor M9SFTPPeer: SFTPByteChannel {
     private var waiterCapacity = 0
     private var closed = false
     private var eof = false
+    private var attributesRead: [(UInt8, Data)] = []
     private var initialized = false
     private var count = 0
     private var handleCloses = 0
@@ -275,6 +328,21 @@ private actor M9SFTPPeer: SFTPByteChannel {
                     reverse.removeAll()
                 }
             } else { append(Self.name(id, path)) }
+        } else if type == 7 || type == 8 || type == 17 {
+            attributesRead.append((type, try reader.string()))
+            if mode == .attributeMissing { append(Self.status(id, 2)); return }
+            if mode == .attributeDenied { append(Self.status(id, 3)); return }
+            if mode == .attributeWrongType { append(Self.name(id, Data("/wrong-type".utf8))); return }
+            var body = Data([105]) + Self.word(id)
+            if mode == .attributeUnknownFlags { body += Self.word(0x10) }
+            else if mode == .attributeTruncated { body += Self.word(1) + Self.word(123) }
+            else {
+                let permissions: UInt32 = type == 7 ? 0o120777 : 0o100640
+                body += Self.word(15) + Self.wide(4_294_967_297) + Self.word(501) + Self.word(20)
+                    + Self.word(permissions) + Self.word(1_700_000_000) + Self.word(1_700_000_001)
+                if mode == .attributeTrailing { body.append(0x99) }
+            }
+            append(Self.frame(body))
         } else if type == 11 {
             directoryPage = false
             append(Self.frame(Data([102]) + Self.word(id) + Self.string(Data("directory".utf8))))
@@ -323,6 +391,7 @@ private actor M9SFTPPeer: SFTPByteChannel {
     func hasInit() -> Bool { initialized }
     func closedHandleCount() -> Int { handleCloses }
     func lastWrite() -> (UInt64, Data) { (lastOffset, lastBytes) }
+    func attributeRequests() -> [(UInt8, Data)] { attributesRead }
     private func take(_ capacity: Int) -> Data {
         let count = min(min(capacity, fragment), buffer.count)
         let bytes = Data(buffer.prefix(count)); buffer = Data(buffer.dropFirst(count)); return bytes

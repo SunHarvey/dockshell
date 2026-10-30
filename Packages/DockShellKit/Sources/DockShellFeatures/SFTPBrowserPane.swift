@@ -1,7 +1,8 @@
+import AppKit
 import DockShellDomain
 import SwiftUI
 
-/// Read-only directory presentation for one tab's independently owned SFTP session.
+/// Directory presentation and file selections for one tab's SFTP sessions.
 /// Display strings never replace the raw paths retained by the browser model.
 @MainActor
 public struct SFTPBrowserPane: View {
@@ -13,7 +14,7 @@ public struct SFTPBrowserPane: View {
     @ViewState<Bool> private var pathWasEdited = false
     @ViewState<UUID> private var pathEditID = UUID()
     @ViewState<UUID?> private var submittedPathEditID: UUID?
-    @ViewState<Data?> private var selection: Data?
+    @ViewState<Set<Data>> private var selection: Set<Data> = []
 
     public init(model: SFTPBrowserViewModel, l10n: L10n, onClose: @escaping () -> Void) {
         self.model = model
@@ -29,10 +30,14 @@ public struct SFTPBrowserPane: View {
             VStack(spacing: 0) {
                 navigation
                 filterBar
+                if let transfers = model.transfers {
+                    SFTPTransferSelectionControls(browser: model, transfers: transfers, selection: $selection, l10n: l10n)
+                }
                 if let error = model.error { errorBanner(error) }
                 directoryContent
                 Divider()
                 footer
+                if let transfers = model.transfers { SFTPTransfersPane(model: transfers, l10n: l10n) }
             }
             .allowsHitTesting(prompts.hostRequest == nil && prompts.passwordRequest == nil)
             .overlay {
@@ -57,7 +62,7 @@ public struct SFTPBrowserPane: View {
         .accessibilityIdentifier("dockshell.sftp.browser")
         .onAppear(perform: synchronizePathIfAppropriate)
         .onChange(of: model.currentPath) { _, _ in
-            selection = nil
+            selection = []
             synchronizePathIfAppropriate()
         }
         .onChange(of: model.isLoading) { _, loading in

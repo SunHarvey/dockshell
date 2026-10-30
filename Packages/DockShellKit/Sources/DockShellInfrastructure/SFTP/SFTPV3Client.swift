@@ -33,9 +33,9 @@ public actor SFTPV3Client: SFTPClient {
         let expectation: Expectation
         let continuation: CheckedContinuation<Response, any Error>
     }
-    private enum Expectation: Sendable { case status, handle, names, data(Int), extended }
+    private enum Expectation: Sendable { case status, handle, names, attributes, data(Int), extended }
     private enum Response: Sendable {
-        case status(UInt32), handle(Data), names([SFTPDirectoryEntry]), data(Data), extended(Data)
+        case status(UInt32), handle(Data), names([SFTPDirectoryEntry]), attributes(SFTPFileAttributes), data(Data), extended(Data)
     }
     private var pending: [UInt32: Pending] = [:]
 
@@ -100,6 +100,20 @@ public actor SFTPV3Client: SFTPClient {
         }
         do { return try RemotePath(bytes: name) }
         catch { await fail(.invalidPacket); throw SFTPError.invalidPacket }
+    }
+
+    public func attributes(of path: RemotePath, followSymbolicLinks: Bool) async throws -> SFTPFileAttributes {
+        let response = try await request(type: followSymbolicLinks ? 17 : 7,
+            payload: SFTPWire.string(path.bytes), expecting: .attributes)
+        guard case .attributes(let attributes) = response else { return try await operationError(response) }
+        return attributes
+    }
+
+    public func attributes(of handle: SFTPHandle) async throws -> SFTPFileAttributes {
+        try requireHandle(handle)
+        let response = try await request(type: 8, payload: SFTPWire.string(handle.bytes), expecting: .attributes)
+        guard case .attributes(let attributes) = response else { return try await operationError(response) }
+        return attributes
     }
 
     public func listDirectory(_ path: RemotePath, maximumEntries: Int) async throws -> [SFTPDirectoryEntry] {
@@ -302,6 +316,7 @@ public actor SFTPV3Client: SFTPClient {
                     entries.append(SFTPDirectoryEntry(name: name, attributes: try reader.attributes()))
                 }
                 response = .names(entries)
+            case 105: response = .attributes(try reader.attributes())
             case 201: response = .extended(try reader.bytes(reader.remaining))
             default: throw SFTPError.unexpectedResponse
             }
@@ -311,7 +326,7 @@ public actor SFTPV3Client: SFTPClient {
             case (_, .status(let status)): matches = status != 0 || {
                 if case .status = operation.expectation { return true }; return false
             }()
-            case (.handle, .handle), (.names, .names), (.extended, .extended): matches = true
+            case (.handle, .handle), (.names, .names), (.attributes, .attributes), (.extended, .extended): matches = true
             case (.data(let maximum), .data(let bytes)): matches = bytes.count <= maximum
             default: matches = false
             }

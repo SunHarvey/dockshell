@@ -99,6 +99,10 @@ public enum SFTPError: Error, Equatable, Sendable {
 public protocol SFTPClient: Sendable {
     var capabilities: SFTPCapabilities { get async }
     func canonicalPath(_ path: RemotePath) async throws -> RemotePath
+    /// Reads attributes for a path. Passing false inspects a symbolic link itself.
+    func attributes(of path: RemotePath, followSymbolicLinks: Bool) async throws -> SFTPFileAttributes
+    /// Reads attributes from this client's already-open handle.
+    func attributes(of handle: SFTPHandle) async throws -> SFTPFileAttributes
     func listDirectory(_ path: RemotePath, maximumEntries: Int) async throws -> [SFTPDirectoryEntry]
     func openFile(_ path: RemotePath, options: SFTPOpenOptions, permissions: UInt32) async throws -> SFTPHandle
     func read(_ handle: SFTPHandle, offset: UInt64, maximumBytes: Int) async throws -> Data?
@@ -109,6 +113,18 @@ public protocol SFTPClient: Sendable {
     func removeDirectory(_ path: RemotePath) async throws
     func rename(_ source: RemotePath, to destination: RemotePath, replaceExisting: Bool) async throws
     func shutdown() async
+}
+
+public extension SFTPClient {
+    /// Backends must explicitly implement attribute operations before transfers
+    /// can rely on them; an absent implementation never fabricates metadata.
+    func attributes(of path: RemotePath, followSymbolicLinks: Bool) async throws -> SFTPFileAttributes {
+        throw SFTPError.unsupportedOperation
+    }
+
+    func attributes(of handle: SFTPHandle) async throws -> SFTPFileAttributes {
+        throw SFTPError.unsupportedOperation
+    }
 }
 
 /// A file connection has its own authentication and lifetime, independent of a terminal channel.

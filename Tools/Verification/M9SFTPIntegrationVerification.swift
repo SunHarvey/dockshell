@@ -63,6 +63,10 @@ enum M9SFTPIntegrationVerification {
                 do {
                     try await within(seconds: 20) {
                         try await verifyFiles(client, remoteDirectory: remoteDirectory)
+                        if key == plain {
+                            try await M92FileTransferVerification.verifyReal(client: client,
+                                directory: client.canonicalPath(RemotePath(".")), root: root)
+                        }
                     }
                     let counts = await interaction.counts()
                     try check(counts.password == 0 && counts.passphrase == 0,

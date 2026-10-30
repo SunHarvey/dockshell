@@ -5,6 +5,54 @@ import Foundation
 
 /// Typed keys are checked against the generated tables by dockshell-verify.
 public enum L10nKey: String, CaseIterable, Sendable {
+    case transferTitle = "transfer.title"
+    case transferUpload = "transfer.upload"
+    case transferDownload = "transfer.download"
+    case transferUploadPrompt = "transfer.upload.prompt"
+    case transferDownloadPrompt = "transfer.download.prompt"
+    case transferFileOnly = "transfer.filesonly"
+    case transferResume = "transfer.resume"
+    case transferCancelAll = "transfer.cancelall"
+    case transferClear = "transfer.clear"
+    case transferQueued = "transfer.queued"
+    case transferWaitingConflict = "transfer.waitingconflict"
+    case transferCancelling = "transfer.cancelling"
+    case transferCompleted = "transfer.completed"
+    case transferSkipped = "transfer.skipped"
+    case transferCancelled = "transfer.cancelled"
+    case transferFailed = "transfer.failed"
+    case transferRunning = "transfer.running"
+    case transferCommitting = "transfer.committing"
+    case transferCleaning = "transfer.cleaning"
+    case transferAuthentication = "transfer.authentication"
+    case transferConflictTitle = "transfer.conflict.title"
+    case transferConflictHelp = "transfer.conflict.help"
+    case transferNoReplace = "transfer.conflict.noreplace"
+    case transferNewName = "transfer.conflict.newname"
+    case transferSaveAs = "transfer.conflict.saveas"
+    case transferSkip = "transfer.conflict.skip"
+    case transferReplace = "transfer.conflict.replace"
+    case transferResidueHelp = "transfer.residue.help"
+    case transferUncertainHelp = "transfer.uncertain.help"
+    case transferLocal = "transfer.local"
+    case transferRemote = "transfer.remote"
+    case transferErrorQueueFull = "transfer.error.queuefull"
+    case transferErrorInvalidPath = "transfer.error.path"
+    case transferErrorUnsupportedFile = "transfer.error.unsupportedfile"
+    case transferErrorSourceChanged = "transfer.error.sourcechanged"
+    case transferErrorDestinationChanged = "transfer.error.destinationchanged"
+    case transferErrorLocalPermission = "transfer.error.localpermission"
+    case transferErrorLocalIO = "transfer.error.localio"
+    case transferErrorNotConnected = "transfer.error.notconnected"
+    case transferErrorCommitUncertain = "transfer.error.commituncertain"
+    case transferCloseTitle = "transfer.close.title"
+    case transferCloseBody = "transfer.close.body"
+    case transferCloseConfirm = "transfer.close.confirm"
+    case transferCleanupTitle = "transfer.cleanup.title"
+    case transferCleanupBody = "transfer.cleanup.body"
+    case transferDiscardAndClose = "transfer.close.discard"
+    case transferUploadPermissions = "transfer.upload.permissions"
+
     case sftpOpen = "sftp.open"
     case sftpClose = "sftp.close"
     case sftpTitle = "sftp.title"
@@ -288,6 +336,22 @@ public struct L10n: Sendable {
 }
 
 public extension L10n {
+    func transferErrorKey(_ error: SFTPTransferError) -> L10nKey {
+        switch error {
+        case .cancelled: .transferCancelled
+        case .invalidPath: .transferErrorInvalidPath
+        case .unsupportedFile: .transferErrorUnsupportedFile
+        case .sourceChanged: .transferErrorSourceChanged
+        case .destinationChanged: .transferErrorDestinationChanged
+        case .localPermission: .transferErrorLocalPermission
+        case .localIO: .transferErrorLocalIO
+        case .commitUncertain: .transferErrorCommitUncertain
+        case .notConnected: .transferErrorNotConnected
+        case .queueLimit: .transferErrorQueueFull
+        case .remote(let error): sftpErrorKey(.operation(error))
+        }
+    }
+
     /// Maps only typed failures; remote diagnostic text never reaches a UI label.
     func sftpErrorKey(_ error: SFTPBrowserError) -> L10nKey {
         switch error {

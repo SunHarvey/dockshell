@@ -43,9 +43,13 @@ private final class OpenSSHTerminalSessionFactory: TerminalSessionFactory {
         let transport = OpenSSHTransport(credentials: credentials, hostKeys: hostKeys,
             scanner: OpenSSHHostKeyScanner(), interaction: prompts, helperURL: helperURL)
         let filePrompts = SSHConnectionPrompts()
+        let transferPrompts = SSHConnectionPrompts()
+        let transfers = SFTPTransfersViewModel(factory: OpenSSHSFTPClientFactory(credentials: credentials,
+            hostKeys: hostKeys, scanner: OpenSSHHostKeyScanner(), interaction: transferPrompts, helperURL: helperURL),
+            engine: SFTPFileTransferEngine(localFiles: SystemSFTPTransferLocalFiles()), prompts: transferPrompts)
         let files = SFTPBrowserViewModel(factory: OpenSSHSFTPClientFactory(credentials: credentials,
             hostKeys: hostKeys, scanner: OpenSSHHostKeyScanner(), interaction: filePrompts, helperURL: helperURL),
-            prompts: filePrompts)
+            prompts: filePrompts, transfers: transfers)
         return TerminalTabSession(controller: SSHSessionController(transport: transport,
             sleepEvents: MacSystemSleepEvents()), prompts: prompts, files: files)
     }

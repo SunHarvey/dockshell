@@ -85,6 +85,22 @@ public struct WorkspaceView: View {
         .sheet(item: $groupEditor) { route in
             GroupEditorView(model: model, l10n: l10n, id: route.id, isNew: route.isNew, name: route.name)
         }
+        .confirmationDialog(l10n.string(.transferCloseTitle), isPresented: Binding(
+            get: { tabs.transferCloseRequestID != nil }, set: { if !$0 { tabs.dismissTransferClose() } }
+        ), titleVisibility: .visible) {
+            if let id = tabs.transferCloseRequestID {
+                Button(l10n.string(.transferCloseConfirm), role: .destructive) { tabs.confirmTransferClose(id: id) }
+            }
+            Button(l10n.string(.cancel), role: .cancel) { tabs.dismissTransferClose() }
+        } message: { Text(verbatim: l10n.string(.transferCloseBody)) }
+        .alert(l10n.string(.transferCleanupTitle), isPresented: Binding(
+            get: { tabs.transferWarningCloseID != nil }, set: { if !$0 { tabs.dismissWarningClose() } }
+        )) {
+            if let id = tabs.transferWarningCloseID {
+                Button(l10n.string(.transferDiscardAndClose), role: .destructive) { tabs.discardTransferRecordAndClose(id: id) }
+            }
+            Button(l10n.string(.cancel), role: .cancel) { tabs.dismissWarningClose() }
+        } message: { Text(verbatim: l10n.string(.transferCleanupBody)) }
         .confirmationDialog(l10n.string(.deleteConfirm), isPresented: Binding(
             get: { deletion != nil }, set: { if !$0 { deletion = nil } }
         ), titleVisibility: .visible) {

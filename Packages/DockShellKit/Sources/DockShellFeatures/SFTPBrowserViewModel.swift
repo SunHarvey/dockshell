@@ -81,6 +81,7 @@ public enum SFTPBrowserText {
 @MainActor
 public final class SFTPBrowserViewModel: ObservableObject {
     public let prompts: SSHConnectionPrompts
+    public let transfers: SFTPTransfersViewModel?
     @Published public private(set) var profile: SessionProfile?
     @Published public private(set) var phase: SFTPBrowserPhase = .idle
     @Published public private(set) var isLoading = false
@@ -100,10 +101,17 @@ public final class SFTPBrowserViewModel: ObservableObject {
     private var latestIntent = UUID()
     private struct Navigation { let id: UUID; let path: RemotePath }
     private var queuedNavigation: Navigation?
+    private var transferObservation: AnyCancellable?
 
-    public init(factory: any SFTPClientFactory, prompts: SSHConnectionPrompts) {
+    public init(factory: any SFTPClientFactory, prompts: SSHConnectionPrompts, transfers: SFTPTransfersViewModel? = nil) {
         self.factory = factory
         self.prompts = prompts
+        self.transfers = transfers
+        transferObservation = transfers?.$completedRevision.dropFirst().sink { [weak self] _ in
+            guard let self, self.canNavigate,
+                  self.transfers?.jobs.last(where: { $0.phase == .completed })?.request.direction == .upload else { return }
+            self.refresh()
+        }
     }
 
     public var currentPathDisplay: String { currentPath.map { SFTPBrowserText.display($0.bytes) } ?? "" }
@@ -321,7 +329,9 @@ public final class SFTPBrowserViewModel: ObservableObject {
         connectionTask?.cancel(); navigationTask?.cancel()
         let connecting = connectionTask, navigating = navigationTask, client = client, closing = closeTask
         let prompts = prompts
+        let transfers = transfers
         Task { @MainActor in
+            transfers?.close()
             prompts.cancelAll()
             await closing?.value
             await client?.shutdown()
