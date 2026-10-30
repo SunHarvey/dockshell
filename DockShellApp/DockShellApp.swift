@@ -31,6 +31,7 @@ struct DockShellApp: App {
         }
         .defaultSize(width: 1080, height: 720)
         .windowResizability(.contentMinSize)
+        .windowToolbarStyle(.unifiedCompact)
         .commands { BootstrapWorkspaceCommands(bootstrap: bootstrap) }
         Settings {
             if let container = bootstrap.container {
