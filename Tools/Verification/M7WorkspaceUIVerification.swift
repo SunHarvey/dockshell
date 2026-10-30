@@ -105,8 +105,26 @@ enum M7WorkspaceUIVerification {
             return first && second
         }
         // The mounted workspace has returned from its scope before checking weak references.
-        try await waitUntil("A closed tab's terminal view or controller remained retained") {
-            lifetimes.views.allSatisfy { $0.value == nil } && factory.entries.allSatisfy { $0.controller.value == nil }
+        do {
+            try await waitUntil("A closed tab's terminal view or controller remained retained") {
+                let released = lifetimes.views.allSatisfy { $0.value == nil }
+                    && factory.entries.allSatisfy { $0.controller.value == nil }
+                if !released {
+                    // Sleeping Swift tasks need not make AppKit's nextEvent return.
+                    // An event in this test process lets its autorelease pool drain.
+                    if let wake = NSEvent.otherEvent(with: .applicationDefined, location: .zero,
+                        modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: 0, context: nil, subtype: 0, data1: 0, data2: 0) {
+                        NSApplication.shared.postEvent(wake, atStart: false)
+                    }
+                }
+                return released
+            }
+        } catch {
+            let retainedViews = lifetimes.views.compactMap(\.value)
+            let retainedControllers = factory.entries.filter { $0.controller.value != nil }.count
+            let attachedViews = retainedViews.filter { $0.superview != nil || $0.window != nil }.count
+            throw failure("Workspace teardown retained \(retainedViews.count) views (\(attachedViews) attached) and \(retainedControllers) controllers")
         }
         print("PASS M7 workspace UI: independent real terminal surfaces, persistent switch identity, hidden output, focused input isolation, hidden cursor-query replies and per-tab close")
         print("PASS M7 workspace teardown: closeAll reaped synthetic connections and released terminal views/controllers")
@@ -252,13 +270,23 @@ enum M7WorkspaceUIVerification {
                                          l10n: L10n) async throws -> Lifetimes {
         let catalog = WorkspaceViewModel(service: service)
         let offline = LocalTerminalController(factory: VerificationLocalTerminalFactory())
-        let root = NSHostingView(rootView: WorkspaceView(model: catalog, l10n: l10n,
-            terminal: offline, settings: settings, tabs: tabs))
+        let root = NSHostingView(rootView: AnyView(WorkspaceView(model: catalog, l10n: l10n,
+            terminal: offline, settings: settings, tabs: tabs)))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = root
-        defer { tabs.closeAll(); offline.stop(); window.contentView = nil; window.close() }
+        defer {
+            window.makeFirstResponder(nil)
+            tabs.closeAll()
+            offline.stop()
+            // Explicitly unmount the hosted graph before the AppKit window is closed.
+            // SwiftUI on older systems may retain a detached root until a later render.
+            root.rootView = AnyView(EmptyView())
+            root.layoutSubtreeIfNeeded()
+            window.contentView = nil
+            window.close()
+        }
         root.layoutSubtreeIfNeeded()
         return try await exercise(tabs: tabs, factory: factory, root: root, window: window, settings: settings)
     }
