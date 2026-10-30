@@ -1,0 +1,2 @@
+# Preserve upstream formatting and exclude vendored code from language statistics.
+Vendor/SwiftTerm/** -whitespace linguist-vendored

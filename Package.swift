@@ -10,7 +10,7 @@ let package = Package(
         .executable(name: "dockshell-verify", targets: ["DockShellVerification"]),
         .executable(name: "dockshell-ssh-helper", targets: ["DockShellSSHHelper"]),
     ],
-    dependencies: [.package(path: "Packages/DockShellKit")],
+    dependencies: [.package(path: "Packages/DockShellKit"), .package(path: "Vendor/SwiftTerm")],
     targets: [
         .executableTarget(
             name: "DockShellApp",
@@ -33,6 +33,7 @@ let package = Package(
             name: "DockShellVerification",
             dependencies: [
                 "DockShellNetworkTestSupport",
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
                 .product(name: "DockShellTerminalDiagnostics", package: "DockShellKit"),
                 .product(name: "DockShellTerminalUI", package: "DockShellKit"),
                 .product(name: "DockShellDomain", package: "DockShellKit"),

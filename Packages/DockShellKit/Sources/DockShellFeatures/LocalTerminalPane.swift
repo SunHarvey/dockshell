@@ -40,13 +40,6 @@ struct LocalTerminalPane: View {
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             Divider()
-            if controller.hasPendingFontChange(settings.settings) {
-                HStack {
-                    Text(verbatim: l10n.string(.localTerminalFontDeferred)).font(.caption)
-                    Spacer()
-                }
-                .foregroundStyle(.secondary).padding(.horizontal, 12).padding(.vertical, 6)
-            }
             if let error = controller.error {
                 HStack {
                     Text(verbatim: l10n.string(errorKey(error))).font(.callout)
@@ -57,7 +50,7 @@ struct LocalTerminalPane: View {
             }
             TerminalViewRepresentable(
                 controller: controller,
-                settings: controller.presentationSettings(settings.settings),
+                settings: settings.settings,
                 labels: TerminalMenuLabels(
                     copy: l10n.string(.terminalCopy), paste: l10n.string(.terminalPaste),
                     selectAll: l10n.string(.terminalSelectAll),

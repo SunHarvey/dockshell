@@ -1531,23 +1531,6 @@
         }
       }
     },
-    "local.fontdeferred": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Font and size changes will apply when you reopen the local terminal."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "字体和字号将在重新打开本机终端后生效。"
-          }
-        }
-      }
-    },
     "local.restart": {
       "extractionState": "manual",
       "localizations": {
@@ -1786,6 +1769,23 @@
         }
       }
     },
+    "settings.applyhelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving immediately updates fonts, size, theme and scrollback in all open SSH and local terminals."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存后，字体、字号、配色和滚屏历史立即应用到所有已打开的 SSH 和本机终端。"
+          }
+        }
+      }
+    },
     "settings.defaults": {
       "extractionState": "manual",
       "localizations": {
@@ -1945,13 +1945,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Settings saved."
+            "value": "Settings saved. Open terminals will update immediately."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置已保存。"
+            "value": "设置已保存，已打开的终端将立即更新。"
           }
         }
       }
@@ -3431,23 +3431,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "连接失败"
-          }
-        }
-      }
-    },
-    "ssh.fontdeferred": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Font changes take effect on the next connection. Colors and history settings apply now."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "字体与字号将在下次连接时生效；配色与滚屏历史设置即时生效。"
           }
         }
       }

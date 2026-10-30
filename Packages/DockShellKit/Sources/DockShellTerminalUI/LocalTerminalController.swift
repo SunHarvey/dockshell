@@ -33,31 +33,15 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
     private var input: [Data] = []
     private var inputBytes = 0
     private var pendingSize: TerminalSize?
-    private var launchSettings = TerminalSettings.defaults
 
     public init(factory: any LocalTerminalFactory) { self.factory = factory }
 
     public var isBusy: Bool { phase == .starting || phase == .running }
 
-    /// Font changes reset modes in stock SwiftTerm, so they apply on the next shell launch.
-    /// Themes and scrollback remain live while an interactive program is running.
-    public func presentationSettings(_ settings: TerminalSettings) -> TerminalSettings {
-        guard isBusy else { return settings }
-        var result = settings
-        result.fontName = launchSettings.fontName
-        result.fontSize = launchSettings.fontSize
-        return result
-    }
-
-    public func hasPendingFontChange(_ settings: TerminalSettings) -> Bool {
-        isBusy && (settings.fontName != launchSettings.fontName || settings.fontSize != launchSettings.fontSize)
-    }
-
     /// Starts a fresh shell after a native surface is mounted. Calling this again performs
     /// a serialized restart rather than leaving the previous process running in the background.
-    public func start(settings: TerminalSettings) {
+    public func start(settings _: TerminalSettings) {
         stopIO()
-        launchSettings = settings
         phase = .starting
         error = nil
         exitCode = nil

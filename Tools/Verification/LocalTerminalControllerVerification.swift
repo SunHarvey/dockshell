@@ -135,7 +135,7 @@ enum LocalTerminalControllerVerification {
         try await verifySerializedRestart()
         try await verifyStaleOutput()
         try await verifyLifetime()
-        print("PASS local controller: mount-before-launch, ordered bounded input, 4 KiB output, resize, font freeze and final EOF status")
+        print("PASS local controller: mount-before-launch, ordered bounded input, 4 KiB output, resize and final EOF status")
         print("PASS local controller lifecycle: serialized restart, stale output rejection, cancelled launch and weak-owner cleanup")
     }
 
@@ -182,17 +182,6 @@ enum LocalTerminalControllerVerification {
         try require(surface.resets == 1 && surface.focuses == 1, "Local launch did not initialize exactly one surface")
         controller.dismissError()
 
-        var changed = TerminalSettings.defaults
-        changed.fontName = "Monaco"
-        changed.fontSize = 19
-        changed.theme = .paper
-        changed.scrollbackLines = 23_000
-        let displayed = controller.presentationSettings(changed)
-        try require(displayed.fontName == TerminalSettings.defaults.fontName &&
-                    displayed.fontSize == TerminalSettings.defaults.fontSize &&
-                    displayed.theme == .paper && displayed.scrollbackLines == 23_000 &&
-                    controller.hasPendingFontChange(changed),
-                    "An active local program did not freeze only font and size")
         let resized = TerminalSize(columns: 147, rows: 41)
         surface.terminalSize = resized
         controller.resized(to: resized)
@@ -214,8 +203,6 @@ enum LocalTerminalControllerVerification {
                     "Local output bypassed the bounded presentation pump")
         try require(controller.exitCode == 7 && controller.error == nil,
                     "Local EOF did not expose the backend's exit code")
-        try require(!controller.hasPendingFontChange(changed) && controller.presentationSettings(changed) == changed,
-                    "An exited local shell still froze terminal preferences")
         try await waitUntil("The exited local channel was not closed") { await channel.isClosed() }
     }
 

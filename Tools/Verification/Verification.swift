@@ -128,7 +128,7 @@ private enum DockShellVerification {
         print("PASS SwiftTerm resources: explicit application bundle, no build-path fallback")
         let helperURL = appURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")
         let environment = ProcessInfo.processInfo.environment
-        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST"]
+        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST"]
             .filter { environment[$0] == "1" }
         try require(specialModes.count <= 1, "Run each optional verification mode in a separate process")
         if environment["DOCKSHELL_SFTP_TRANSFER_TEST"] == "1" {
@@ -194,6 +194,15 @@ private enum DockShellVerification {
         let snapshot = try await service.load().snapshot
         try require(snapshot.profiles.isEmpty && snapshot.groups.isEmpty, "M1 must not seed fictional servers")
         print("PASS workspace: actor-backed isolated SQLite database")
+
+        if environment["DOCKSHELL_TERMINAL_SETTINGS_TEST"] == "1" {
+            try require(arguments.contains("--ui-smoke"), "Live terminal settings verification requires AppKit")
+            try await TerminalAdapterVerification.run()
+            try await M7WorkspaceUIVerification.run(service: service, l10n: chinese)
+            try await LiveTerminalSettingsVerification.run(helperURL: helperURL, l10n: chinese)
+            await repository.close()
+            return
+        }
 
         if environment["DOCKSHELL_TABS_TEST"] == "1" {
             try await M7TabsVerification.run()

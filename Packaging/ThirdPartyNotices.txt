@@ -1,8 +1,10 @@
 DockShell Third-Party Notices
 
 SwiftTerm 1.19.0
+DockShell local patch: 1.19.0+dockshell.1 (mode-preserving font resize)
 https://github.com/migueldeicaza/SwiftTerm
 Commit: 464df5207fc2432e16c9a23abe538187196daf5f
+Source and patch: Vendor/SwiftTerm in the DockShell source repository
 
 Copyright (c) 2019-2026 Miguel de Icaza (https://github.com/migueldeicaza)
 Copyright (c) 2017-2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)

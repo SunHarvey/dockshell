@@ -95,6 +95,11 @@ jobs:
           sh Scripts/test-dmg-packaging.sh 2>&1 | tee Build/ci-logs/dmg-guards.txt
           sh Scripts/test.sh 2>&1 | tee Build/ci-logs/tests.txt
 
+      - name: Verify live terminal settings and real vim
+        run: |
+          set -euo pipefail
+          sh Scripts/test-terminal-settings.sh 2>&1 | tee Build/ci-logs/terminal-settings.txt
+
       - name: Verify isolated SSH and SFTP integration
         # Manual runs may select an older tag which predates M9.0.
         if: ${{ hashFiles('Scripts/test-sftp.sh') != '' }}

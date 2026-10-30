@@ -67,7 +67,7 @@ Release 的 DMG 附件不会随 Actions Artifact 的保留期到期。需要测�
 
 - **运行目标：macOS 14 或更高版本。** 当前主要在 Apple Silicon 上验证；macOS 14 实机与 Intel 运行仍待验收。
 - **构建工具：Swift 6 工具链与 macOS SDK。** 当前已验证 Swift 6.4、SDK 27.0 的 Command Line Tools 环境。
-- **首次构建需要网络**，用于 Swift Package Manager 下载锁定的依赖。
+- SwiftTerm 的固定源码与获批补丁随仓库提供，通过本地 SPM 包构建，无需再下载上游工具依赖。
 
 可使用 Command Line Tools 构建，**无需安装完整 Xcode，也无需登录 Apple Account**。如果尚未安装命令行工具，先执行：
 
@@ -164,7 +164,9 @@ ssh-agent 认证复用当前用户已有的 agent，密钥需事先加载；Dock
 
 - 选择字体、字号与终端配色主题。
 - 滚屏历史默认 **10000 行**，可设置为 1000–100000 行。
-- 连接期间的字体与字号调整在下一次连接 / 重新打开 Shell 时生效；配色和历史上限即时生效。
+- 点击保存后，字体、字号、配色和历史上限立即应用到所有已打开的终端，包括后台标签；无需重连或重启本机 Shell。
+
+字体变化会自动同步新的行列数。当前源码使用获批的 SwiftTerm 最小补丁，避免字体更新时重置全屏程序的终端模式，说明与验证命令见 [终端设置即时生效](Docs/终端设置即时生效.md)。
 
 ## 当前进度
 
@@ -194,6 +196,13 @@ M9.1 的模型检查加入默认回归；文件面板原生 UI 检查包含在�
 
 M9.2 的引擎、本机文件和队列专项入口及最终结果见 [SFTP 文件传输](Docs/M9/SFTP文件传输.md)。验证只使用合成文件、临时目录与生成的测试密钥，个人敏感文件不作为传输夹具。
 
+字体热更新专项（含真实隔离 PTY 的 vim / top，不连接个人服务器）：
+
+```sh
+sh Scripts/test-terminal-settings.sh
+sh Scripts/test-terminal-settings.sh release
+```
+
 M9.0 的默认回归还包含离线系统 SSH 管道、SFTP 协议与启动策略检查。需要运行生成测试密钥、独立 agent 和回环 sshd 的真实 SFTP 集成时：
 
 ```sh
@@ -212,6 +221,7 @@ sh Scripts/test-sftp.sh release
 ```text
 DockShellApp/             应用入口与依赖组装
 Packages/DockShellKit/    业务、协议、基础设施与原生终端界面
+Vendor/SwiftTerm/        固定上游源码、获批最小补丁与本地 SPM 包
 Localization/            简体中文与英文 String Catalog
 Packaging/               应用信息、图标与分发资源
 Scripts/                 构建、运行、验证与打包脚本
@@ -224,10 +234,9 @@ M0/                      SSH 底层路线的独立技术验证
 
 | 组件 | 版本 / 来源 |
 |---|---|
-| [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | 固定 **1.19.0**，通过 Swift Package Manager 集成 |
+| [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | 基于 **1.19.0** 的本地 SPM 包，补丁标识 **1.19.0+dockshell.1**；[来源与补丁](Vendor/SwiftTerm/UPSTREAM.md) |
 | OpenSSH | macOS 自带的系统工具，通过自有协议和 PTY 适配 |
 | SQLite | macOS 系统库 |
-| [ArgumentParser](https://github.com/apple/swift-argument-parser) | 上游解析依赖 **1.8.2**，不链接进应用 |
 
 M0 中的 Citadel / libssh2 探针与正式应用依赖相互独立。随应用分发的第三方声明见 [ThirdPartyNotices](Packaging/ThirdPartyNotices.txt)。
 

@@ -63,6 +63,8 @@ public struct WorkspaceView: View {
                     moreMenu
                 }
                 .padding(.horizontal, 8)
+                .frame(height: 36)
+                .controlSize(.regular)
                 .buttonStyle(.plain)
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)

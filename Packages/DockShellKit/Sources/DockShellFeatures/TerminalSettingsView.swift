@@ -73,6 +73,8 @@ public struct TerminalSettingsView: View {
                 TextField(l10n.string(.settingsScrollback), text: $history)
                 Text(verbatim: l10n.string(.settingsScrollbackHelp))
                     .font(.caption).foregroundStyle(.secondary)
+                Text(verbatim: l10n.string(.settingsApplyHelp))
+                    .font(.caption).foregroundStyle(.secondary)
             }
             .formStyle(.grouped).disabled(model.isLoading || isSaving)
             if let key = errorKey ?? model.problem.map({ l10n.settingsErrorKey($0) }) {

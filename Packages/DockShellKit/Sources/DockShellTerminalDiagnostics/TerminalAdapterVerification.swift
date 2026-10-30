@@ -62,12 +62,14 @@ public enum TerminalAdapterVerification {
         guard platformView != nil else { throw failure("Adapter did not create a view") }
         // Keep strong casts inside the helper so the lifetime assertion has no local owner left.
         try exercise(platformView!, window: window, capture: capture, settings: settings, labels: labels)
+        try verifyLiveFontModes()
         TerminalViewBridge.shutdown(platformView!)
         window.contentView = nil
         window.close()
         platformView = nil
         try await waitForRelease(releasedView: { lifetime.view })
         print("PASS terminal adapter: split UTF-8, CJK/emoji, 256/TrueColor attributes, themes/font/history, resize, IME, mouse and teardown")
+        print("PASS live font modes: alternate screen, cursor/keypad/origin/wrap/insert/mouse/paste modes, host colors, IME and resize callbacks")
         try await verifyRepresentableLifecycle()
     }
 
@@ -124,8 +126,7 @@ public enum TerminalAdapterVerification {
         try check(abs(Double(view.font.pointSize) - changed.fontSize) < 0.1, "Font size did not update")
         try check(visibleLine(view, row: 0) == historyMarker, "Changing the font discarded terminal history")
         try check(try rgb(view.nativeBackgroundColor) == beforeFontBackground, "Font metrics reset the selected theme")
-        // Stock 1.19.0 soft-resets protocol modes on font changes; no mode-preservation claim here.
-        terminal.applicationCursor = true
+        try check(terminal.applicationCursor, "A live font change reset application-cursor mode")
         let sizeBefore = (terminal.cols, terminal.rows)
         window.setContentSize(NSSize(width: 1_020, height: 620))
         view.layoutSubtreeIfNeeded()
@@ -181,6 +182,74 @@ public enum TerminalAdapterVerification {
         view.mouseDragged(with: try mouse(.leftMouseDragged, location: outside, window: window))
         TerminalViewBridge.shutdown(view)
         try check(capture.input.isEmpty, "Selection-drag teardown generated host input")
+    }
+
+    /// Mode reports exercise the real parser without accessing private library state.
+    /// This uses a disposable view and never sends its replies to a server.
+    private static func verifyLiveFontModes() throws {
+        let capture = TerminalEventCapture()
+        var settings = TerminalSettings(scrollbackLines: 1_000)
+        let platformView = try TerminalViewBridge.makeView(settings: settings,
+            labels: TerminalMenuLabels(copy: "", paste: "", selectAll: "", accessibilityLabel: "Font fixture"),
+            callbacks: TerminalCallbacks(onInput: { capture.input.append($0) }, onResize: { capture.sizes.append($0) }))
+        guard let view = platformView as? SwiftTerm.TerminalView else { throw failure("Missing font fixture view") }
+        let window = hiddenWindow()
+        view.autoresizingMask = [.width, .height]
+        window.contentView = view
+        view.layoutSubtreeIfNeeded()
+        defer { TerminalViewBridge.shutdown(view); window.contentView = nil; window.close() }
+        let terminal = view.getTerminal()
+        view.feed(text: "NORMAL-HISTORY-中文🙂\u{1b}[?1049hLIVE-FONT-中文🙂")
+        view.feed(text: "\u{1b}[?1h\u{1b}[?66h\u{1b}[?6h\u{1b}[?7l\u{1b}[?25l\u{1b}[4h\u{1b}[?1000h\u{1b}[?1006h\u{1b}[?2004h\u{1b}[6 q")
+        view.feed(text: "\u{1b}]10;#abcdef\u{7}\u{1b}]11;#123456\u{7}\u{1b}]12;#fedcba\u{7}\u{1b}[38;2;12;34;56m")
+        let colors = (try rgb(view.nativeForegroundColor), try rgb(view.nativeBackgroundColor), try rgb(view.caretColor))
+        let queries = [1, 6, 7, 25, 47, 66, 1000, 1006, 2004].map { "\u{1b}[?\($0)$p" }.joined() + "\u{1b}[4$p"
+        capture.input.removeAll()
+        view.feed(text: queries)
+        let modes = capture.input
+        try check(terminal.applicationCursor && modes.range(of: Data("\u{1b}[?47;1$y".utf8)) != nil,
+                  "The font fixture did not establish fullscreen state")
+        view.setMarkedText("输入中🙂", selectedRange: NSRange(location: 5, length: 0),
+                           replacementRange: NSRange(location: NSNotFound, length: 0))
+        for (name, size) in [("Monaco", 20.0), ("Menlo", 17.0), ("Monaco", 19.0), ("Menlo", 14.0)] {
+            settings.fontName = name; settings.fontSize = size
+            let previousSize = (terminal.cols, terminal.rows)
+            try TerminalViewBridge.apply(settings: settings, to: view)
+            capture.input.removeAll()
+            view.feed(text: queries)
+            try check(capture.input == modes, "A font change reset a fullscreen terminal mode")
+            try check(view.font.fontName == NSFont(name: name, size: size)?.fontName
+                        && abs(Double(view.font.pointSize) - size) < 0.1,
+                      "A live font/size edit did not reach the renderer")
+            try check(terminal.options.cursorStyle == .steadyBar && view.hasMarkedText(),
+                      "A font edit reset cursor style or interrupted IME composition")
+            let updated = (try rgb(view.nativeForegroundColor), try rgb(view.nativeBackgroundColor), try rgb(view.caretColor))
+            try check(updated == colors, "A font-only edit overwrote host colors")
+            try check(terminal.currentAttribute.fg == .trueColor(red: 12, green: 34, blue: 56),
+                      "A font change reset active SGR attributes")
+            try check(terminal.getBufferAsData(kind: .normal).range(of: Data("NORMAL-HISTORY-".utf8)) != nil
+                        && (0..<terminal.rows).contains(where: { visibleLine(view, row: $0).contains("LIVE-FONT-中文🙂") }),
+                      "A font change lost normal history or alternate-screen output")
+            try check(terminal.cols != previousSize.0 || terminal.rows != previousSize.1,
+                      "Font metrics did not change the terminal grid")
+            try check(capture.sizes.last == TerminalSize(columns: UInt16(terminal.cols), rows: UInt16(terminal.rows)),
+                      "Font-driven resize did not notify the host with the actual grid")
+        }
+        capture.input.removeAll()
+        view.insertText(NSString(string: "输入中🙂"), replacementRange: NSRange(location: NSNotFound, length: 0))
+        try check(!view.hasMarkedText() && capture.input == Data("输入中🙂".utf8),
+                  "IME commit after a font edit was lost or duplicated")
+        capture.input.removeAll()
+        guard let up = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: view.window?.windowNumber ?? 0, context: nil,
+            characters: "\u{f700}", charactersIgnoringModifiers: "\u{f700}", isARepeat: false, keyCode: 126) else {
+            throw failure("Cannot create a fixture arrow-key event")
+        }
+        view.keyDown(with: up)
+        try check(capture.input == Data("\u{1b}OA".utf8), "Application cursor-key encoding changed after a font edit")
+        view.feed(text: "\u{1b}[?1049l")
+        try check((0..<terminal.rows).contains(where: { visibleLine(view, row: $0).contains("NORMAL-HISTORY-中文🙂") }),
+                  "Returning from fullscreen lost normal Unicode output")
     }
 
     private static func clear(_ view: SwiftTerm.TerminalView) {

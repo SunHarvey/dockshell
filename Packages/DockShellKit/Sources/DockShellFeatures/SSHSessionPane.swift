@@ -29,12 +29,8 @@ struct SSHSessionPane: View {
                     Button(l10n.string(.ok)) { controller.dismissError() }
                 }.padding(12).background(.orange.opacity(0.1))
             }
-            if controller.hasPendingFontChange(settings.settings) {
-                Text(verbatim: l10n.string(.sshFontDeferred)).font(.caption)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(10).background(.tint.opacity(0.06))
-            }
             TerminalViewRepresentable(controller: controller,
-                settings: controller.presentationSettings(settings.settings),
+                settings: settings.settings,
                 labels: TerminalMenuLabels(copy: l10n.string(.terminalCopy), paste: l10n.string(.terminalPaste),
                     selectAll: l10n.string(.terminalSelectAll), accessibilityLabel: l10n.string(.terminalAccessibility),
                     unavailable: l10n.string(.terminalUnavailable)), onFocus: onFocus)

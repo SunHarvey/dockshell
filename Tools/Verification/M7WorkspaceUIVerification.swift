@@ -5,6 +5,7 @@ import DockShellFeatures
 import DockShellTerminalUI
 import Foundation
 import SwiftUI
+@preconcurrency import SwiftTerm
 
 private struct M7WorkspaceUIFailure: Error, CustomStringConvertible { let description: String }
 
@@ -18,12 +19,14 @@ private actor M7UIChannel: SSHSessionChannel {
     private let output = BoundedTerminalChannel()
     private var received = Data()
     private var closed = false
+    private var size: TerminalSize?
     func read(maxBytes: Int) async throws -> Data? { try await output.read(maxBytes: maxBytes) }
     func write(_ bytes: Data) throws {
         guard !closed else { throw SSHConnectionError.connectionFailed }
         received.append(bytes)
     }
-    func resize(to size: TerminalSize) {}
+    func resize(to size: TerminalSize) { self.size = size }
+    func lastSize() -> TerminalSize? { size }
     func close() async { closed = true; await output.close() }
     func produce(_ bytes: Data) async throws { try await output.write(bytes) }
     func input() -> Data { received }
@@ -253,13 +256,13 @@ enum M7WorkspaceUIVerification {
         window.contentView = root
         defer { tabs.closeAll(); offline.stop(); window.contentView = nil; window.close() }
         root.layoutSubtreeIfNeeded()
-        return try await exercise(tabs: tabs, factory: factory, root: root, window: window)
+        return try await exercise(tabs: tabs, factory: factory, root: root, window: window, settings: settings)
     }
 
     private struct Lifetimes { let views: [M7UIWeakView] }
 
     private static func exercise(tabs: TerminalTabsViewModel, factory: M7UIFactory, root: NSView,
-                                 window: NSWindow) async throws -> Lifetimes {
+                                 window: NSWindow, settings: TerminalSettingsViewModel) async throws -> Lifetimes {
         let profile = SessionProfile(name: "M7 UI 中文🙂", host: "m7-ui.invalid", username: "fixture",
                                      authentication: .password(credentialID: nil))
         let a = tabs.open(profile: profile, settings: .defaults)
@@ -287,6 +290,38 @@ enum M7WorkspaceUIVerification {
             firstView.isHiddenOrHasHiddenAncestor && !secondView.isHiddenOrHasHiddenAncestor
                 && window.firstResponder === secondView
         }
+        guard let firstTerminal = firstView as? SwiftTerm.TerminalView,
+              let secondTerminal = secondView as? SwiftTerm.TerminalView else {
+            throw failure("The live settings fixture lost its native terminals")
+        }
+        firstTerminal.feed(text: "\u{1b}[?1h")
+        secondTerminal.feed(text: "\u{1b}[?1h")
+        var liveSettings = settings.settings
+        liveSettings.fontName = "Monaco"; liveSettings.fontSize = 19
+        liveSettings.theme = .ocean; liveSettings.scrollbackLines = 12_000
+        try await settings.save(liveSettings)
+        try await waitUntil("Saving settings did not update both current and background terminals") {
+            root.layoutSubtreeIfNeeded()
+            return [firstTerminal, secondTerminal].allSatisfy {
+                $0.font.fontName == NSFont(name: liveSettings.fontName, size: liveSettings.fontSize)?.fontName
+                    && abs(Double($0.font.pointSize) - liveSettings.fontSize) < 0.1
+                    && $0.getTerminal().options.scrollback == liveSettings.scrollbackLines
+                    && $0.getTerminal().applicationCursor
+            }
+        }
+        try await waitUntil("Font-driven sizes did not reach both SSH channels") {
+            let firstSize = await factory.entries[0].connection.channel.lastSize()
+            let secondSize = await factory.entries[1].connection.channel.lastSize()
+            return firstSize == first.controller.size && secondSize == second.controller.size
+                && firstSize?.columns == UInt16(firstTerminal.getTerminal().cols)
+                && firstSize?.rows == UInt16(firstTerminal.getTerminal().rows)
+                && secondSize?.columns == UInt16(secondTerminal.getTerminal().cols)
+                && secondSize?.rows == UInt16(secondTerminal.getTerminal().rows)
+        }
+        try check(factory.entries.count == 2 && first.controller.phase == .connected && second.controller.phase == .connected
+                    && ObjectIdentifier(firstTerminal) == firstIdentity && ObjectIdentifier(secondTerminal) == secondIdentity,
+                  "Saving settings replaced a terminal or its live connection")
+        print("PASS live SSH settings: save updates active/background fonts, theme/history and channel sizes without replacing terminals or connections")
         let initialFirst = first.controller.deliveredBytes
         let background = Data((0..<2_048).map { "BACKGROUND-A-\($0)-中文🙂\r\n" }.joined().utf8)
         try await factory.entries[0].connection.channel.produce(background)

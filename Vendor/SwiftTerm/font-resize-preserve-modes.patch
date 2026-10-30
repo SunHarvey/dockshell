@@ -1,0 +1,19 @@
+--- a/Sources/SwiftTerm/Apple/AppleTerminalView.swift
++++ b/Sources/SwiftTerm/Apple/AppleTerminalView.swift
+@@ -299,13 +299,9 @@
+         resetCaches()
+         self.cellDimension = computeFontDimensions ()
+         if (frame.width > 0) && (frame.height > 0) {
+-            // Use getEffectiveWidth so the scroller's reserved width is taken
+-            // into account, matching processSizeChange(). Computing columns from
+-            // the raw frame width here would over-count by the scroller width,
+-            // so zooming the font in and back out would drift the column count.
+-            let newCols = Int(getEffectiveWidth(size: frame.size) / cellDimension.width)
+-            let newRows = Int(frame.height / cellDimension.height)
+-            resize(cols: newCols, rows: newRows)
++            // DockShell: use the ordinary window-resize path so font changes
++            // preserve terminal modes, attributes, colors and input state.
++            _ = processSizeChange(newSize: frame.size)
+         }
+         updateCaretView()
+         

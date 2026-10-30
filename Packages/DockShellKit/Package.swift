@@ -14,7 +14,7 @@ let package = Package(
         .library(name: "CDockShellPTY", targets: ["CDockShellPTY"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.19.0"),
+        .package(path: "../../Vendor/SwiftTerm"),
     ],
     targets: [
         .systemLibrary(name: "CSQLite"),

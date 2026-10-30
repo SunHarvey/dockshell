@@ -36,7 +36,6 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
     private var input: [Data] = []
     private var inputBytes = 0
     private var pendingSize: TerminalSize?
-    private var connectionSettings = TerminalSettings.defaults
 
     public init(transport: any SSHTransport, sleepEvents: (any SystemSleepEventSource)? = nil) {
         self.transport = transport
@@ -53,22 +52,8 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
 
     public var isBusy: Bool { phase == .connecting || phase == .connected }
 
-    /// Stock SwiftTerm resets modes on a font change: freeze only font/size while a remote program runs.
-    public func presentationSettings(_ settings: TerminalSettings) -> TerminalSettings {
-        guard isBusy else { return settings }
-        var result = settings
-        result.fontName = connectionSettings.fontName
-        result.fontSize = connectionSettings.fontSize
-        return result
-    }
-
-    public func hasPendingFontChange(_ settings: TerminalSettings) -> Bool {
-        isBusy && (connectionSettings.fontName != settings.fontName || connectionSettings.fontSize != settings.fontSize)
-    }
-
-    public func connect(to profile: SessionProfile, settings: TerminalSettings) {
+    public func connect(to profile: SessionProfile, settings _: TerminalSettings) {
         stopIO()
-        self.connectionSettings = settings
         self.profile = profile
         recoveryNotice = nil
         guard !isSystemSleeping else {

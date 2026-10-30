@@ -157,7 +157,7 @@ enum M4FlowVerification {
         try await verifyStaleOutput()
         try await verifyPromptCancellation()
         try await verifyLifetime()
-        print("PASS M4 flow: mount-before-connect, raw UTF-8 input without echo, resize, frozen live font, immediate theme/history and source replacement")
+        print("PASS M4 flow: mount-before-connect, raw UTF-8 input without echo, resize and source replacement")
         print("PASS M4 lifecycle: trust/password cancellation, stale output suppression, 1 MiB input bound, connection cleanup and controller deallocation")
     }
 
@@ -210,15 +210,6 @@ enum M4FlowVerification {
         try await waitUntil("Raw terminal input was not sent to its channel") { await channel.receivedInput() == input }
         try require(first.bytes == remote, "The SSH controller locally echoed terminal input")
 
-        var changed = TerminalSettings.defaults
-        changed.fontName = "Monaco"; changed.fontSize += 2
-        changed.theme = .ocean; changed.scrollbackLines = 2_000
-        let presentation = controller.presentationSettings(changed)
-        try require(presentation.fontName == TerminalSettings.defaults.fontName &&
-                    presentation.fontSize == TerminalSettings.defaults.fontSize &&
-                    presentation.theme == changed.theme && presentation.scrollbackLines == changed.scrollbackLines &&
-                    controller.hasPendingFontChange(changed), "Live SSH font isolation also delayed theme/history or changed a protocol mode")
-
         controller.attach(replacement)
         controller.detach(first)
         try require(controller.phase == .connected && !controller.isAttached(to: first) && controller.isAttached(to: replacement),
@@ -236,8 +227,6 @@ enum M4FlowVerification {
             let closed = await connection.isClosed()
             return controller.phase == .disconnected && closed
         }
-        try require(controller.presentationSettings(changed) == changed && !controller.hasPendingFontChange(changed),
-                    "A disconnected terminal retained the previous connection's frozen font")
     }
 
     @MainActor

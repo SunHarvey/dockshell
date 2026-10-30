@@ -120,11 +120,12 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
         let settings = try settings.validated()
         let fontChanged = configured.fontName != settings.fontName || configured.fontSize != settings.fontSize
         if fontChanged {
-            // Stock 1.19.0 soft-resets terminal modes on font changes. Never assign on every view update.
+            // The approved vendored patch uses ordinary resize, preserving modes.
+            // Avoid assigning unchanged fonts on every SwiftUI view update.
             font = try TerminalFonts.resolve(settings)
         }
         if configured.scrollbackLines != settings.scrollbackLines { changeScrollback(settings.scrollbackLines) }
-        if configured.theme != settings.theme || fontChanged { applyTheme(settings.theme) }
+        if configured.theme != settings.theme { applyTheme(settings.theme) }
         configured = settings
     }
 
