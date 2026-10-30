@@ -31,12 +31,26 @@ struct DockShellApp: App {
         }
         .defaultSize(width: 1080, height: 720)
         .windowResizability(.contentMinSize)
+        .commands { BootstrapWorkspaceCommands(bootstrap: bootstrap) }
         Settings {
             if let container = bootstrap.container {
                 TerminalSettingsView(model: container.settings, l10n: container.l10n)
             } else {
                 ProgressView().task { await bootstrap.load() }
             }
+        }
+    }
+}
+
+/// Observe asynchronous bootstrap inside Commands as well as inside the window.
+/// Menu actions become available when the workspace finishes loading.
+@MainActor
+private struct BootstrapWorkspaceCommands: Commands {
+    @ObservedObject var bootstrap: AppBootstrap
+
+    var body: some Commands {
+        if let container = bootstrap.container {
+            WorkspaceCommands(model: container.workspace, l10n: container.l10n)
         }
     }
 }

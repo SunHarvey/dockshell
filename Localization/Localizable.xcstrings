@@ -1367,13 +1367,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrange all open terminals equally in the selected direction without opening additional connections."
+            "value": "Terminal layout: tabs, side by side, or stacked. Existing connections are kept."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "按所选方向平均排列全部已打开的终端，不新建标签或连接。"
+            "value": "调整终端布局：标签视图、左右并列或上下堆叠，保留现有连接。"
           }
         }
       }
@@ -1595,6 +1595,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "本机终端"
+          }
+        }
+      }
+    },
+    "menu.sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会话"
           }
         }
       }
@@ -4060,6 +4077,91 @@
           "stringUnit": {
             "state": "translated",
             "value": "纸白"
+          }
+        }
+      }
+    },
+    "toolbar.filesunavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a remote connection to browse server files."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开远程连接后可浏览服务器文件。"
+          }
+        }
+      }
+    },
+    "toolbar.more": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More Actions"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更多操作"
+          }
+        }
+      }
+    },
+    "toolbar.morehelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings and actions for the current connection."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "设置与当前连接操作。"
+          }
+        }
+      }
+    },
+    "toolbar.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New or Open Connection"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建或打开连接"
+          }
+        }
+      }
+    },
+    "toolbar.newhelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New session (⌘N), connect selected session (⌘T), or open the local terminal."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建会话（⌘N）、连接选中会话（⌘T）或打开本机终端。"
           }
         }
       }

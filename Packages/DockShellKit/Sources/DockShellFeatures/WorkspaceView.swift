@@ -47,36 +47,32 @@ public struct WorkspaceView: View {
         }
         .navigationTitle(l10n.string(.appName))
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                SettingsLink { Label(l10n.string(.settingsOpen), systemImage: "gearshape") }
-                    .help(l10n.string(.settingsOpen))
-                Button { toggleLocalTerminal() } label: {
-                    Label(l10n.string(showTerminal ? .terminalClose : .terminalOpen), systemImage: "terminal")
-                }.help(l10n.string(showTerminal ? .terminalClose : .terminalOpen))
-                    .disabled(!tabs.tabs.isEmpty || (!showTerminal && !settings.isLoaded))
-                Button {
-                    if let profile = model.selectedProfile { connect(profile) }
-                } label: {
-                    Label(l10n.string(.tabConnect), systemImage: "plus.rectangle.on.rectangle")
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 4) {
+                    newConnectionMenu
+                    Button { tabs.toggleSelectedFiles() } label: {
+                        WorkspaceToolbarIcon(title: l10n.string(tabs.showsSelectedFiles ? .sftpClose : .sftpOpen),
+                                             symbol: "folder", isSelected: tabs.showsSelectedFiles)
+                    }
+                    .help(l10n.string(tabs.selectedSession?.files == nil ? .toolbarFilesUnavailable
+                                      : (tabs.showsSelectedFiles ? .sftpClose : .sftpOpen)))
+                    .accessibilityLabel(Text(verbatim: l10n.string(tabs.showsSelectedFiles ? .sftpClose : .sftpOpen)))
+                    .accessibilityIdentifier("dockshell.sftp.toggle")
+                    .disabled(tabs.selectedSession?.files == nil)
+                    layoutMenu
+                    moreMenu
                 }
-                .help(l10n.string(.tabConnectHelp))
-                .keyboardShortcut("t", modifiers: .command)
-                .disabled(model.selectedProfile == nil || model.isLoading || model.isMutating || model.hasLoadError)
-                Button { tabs.toggleSelectedFiles() } label: {
-                    Label(l10n.string(tabs.showsSelectedFiles ? .sftpClose : .sftpOpen),
-                          systemImage: "folder")
-                }
-                .help(l10n.string(tabs.showsSelectedFiles ? .sftpClose : .sftpOpen))
-                .accessibilityIdentifier("dockshell.sftp.toggle")
-                .disabled(tabs.selectedSession?.files == nil)
-                layoutMenu
-                groupMenu
-                Button { editor = SessionEditorRoute(profile: nil) } label: {
-                    Label(l10n.string(.sessionNew), systemImage: "plus")
-                }
-                .help(l10n.string(.sessionNew)).keyboardShortcut("n", modifiers: .command)
-                .disabled(model.isMutating || model.isLoading || model.hasLoadError)
-                connectionMenu
+                .buttonStyle(.plain)
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+            }
+        }
+        .onReceive(model.commandRequests) { command in
+            guard editor == nil, groupEditor == nil else { return }
+            switch command {
+            case .newSession: editor = SessionEditorRoute(profile: nil)
+            case .connectSelected: if let profile = model.selectedProfile { connect(profile) }
             }
         }
         .sheet(item: $editor) { route in
@@ -137,6 +133,30 @@ public struct WorkspaceView: View {
         .onDisappear { terminal.stop(); tabs.closeAll() }
     }
 
+    private var newConnectionMenu: some View {
+        Menu {
+            Button { editor = SessionEditorRoute(profile: nil) } label: {
+                Label(l10n.string(.sessionNew), systemImage: "plus")
+            }
+            .disabled(model.isMutating || model.isLoading || model.hasLoadError)
+            Button {
+                if let profile = model.selectedProfile { connect(profile) }
+            } label: {
+                Label(l10n.string(.tabConnect), systemImage: "plus.rectangle.on.rectangle")
+            }
+            .disabled(model.selectedProfile == nil || model.isLoading || model.isMutating || model.hasLoadError)
+            Divider()
+            Button { toggleLocalTerminal() } label: {
+                Label(l10n.string(showTerminal ? .terminalClose : .terminalOpen), systemImage: "terminal")
+            }
+            .disabled(!tabs.tabs.isEmpty || (!showTerminal && !settings.isLoaded))
+        } label: {
+            WorkspaceToolbarIcon(title: l10n.string(.toolbarNew), symbol: "plus")
+        }
+        .help(l10n.string(.toolbarNewHelp))
+        .accessibilityIdentifier("dockshell.workspace.new-menu")
+    }
+
     private var layoutMenu: some View {
         Menu {
             layoutOption(.horizontal, title: .layoutHorizontal, identifier: "horizontal")
@@ -144,9 +164,9 @@ public struct WorkspaceView: View {
             Divider()
             layoutOption(.tabs, title: .layoutTabs, identifier: "tabs")
         } label: {
-            Label(l10n.string(.layoutTitle), systemImage: layoutSymbol)
+            WorkspaceToolbarIcon(title: l10n.string(.layoutTitle), symbol: layoutSymbol,
+                                 isSelected: tabs.arrangement != .tabs)
         }
-        .labelStyle(.iconOnly)
         .help(l10n.string(tabs.canTile ? .layoutHelp : .layoutUnavailable))
         .accessibilityIdentifier("dockshell.workspace.layout-menu")
         .accessibilityValue(l10n.string(layoutTitleKey))
@@ -183,15 +203,16 @@ public struct WorkspaceView: View {
 
     /// Existing connection actions target the pane captured when the menu is presented.
     /// Session identity stays in the tab bar rather than taking another terminal row.
-    private var connectionMenu: some View {
+    private var moreMenu: some View {
         Menu {
             if let session = tabs.selectedSession {
                 let controller = session.controller
                 if let profile = controller.profile {
                     Text(verbatim: profile.name)
                     Text(verbatim: profile.username + "@" + profile.host + ":" + String(profile.port))
-                    Divider()
                 }
+                Text(verbatim: l10n.string(l10n.sshPhaseKey(controller.phase)))
+                Divider()
                 if controller.isBusy {
                     Button(l10n.string(controller.phase == .connecting ? .cancel : .sshDisconnect)) {
                         guard tabs.allSessions.contains(where: { $0 === session }) else { return }
@@ -205,20 +226,14 @@ public struct WorkspaceView: View {
                     }
                 }
                 Button(l10n.string(.sshClose)) { tabs.closePane(id: session.id) }
+                Divider()
             }
+            SettingsLink { Label(l10n.string(.settingsOpen), systemImage: "gearshape") }
         } label: {
-            Label {
-                Text(verbatim: l10n.string(l10n.sshPhaseKey(selectedPhase)))
-            } icon: {
-                Circle().fill(selectedPhase == .connected ? Color.accentColor : Color.secondary.opacity(0.6))
-                    .frame(width: 6, height: 6)
-            }
+            WorkspaceToolbarIcon(title: l10n.string(.toolbarMore), symbol: "ellipsis")
         }
-        .labelStyle(.titleAndIcon).font(.system(size: 12)).foregroundStyle(.secondary)
-        .help(l10n.string(.sshActions)).accessibilityLabel(l10n.string(.sshActions))
-        .accessibilityValue(l10n.string(l10n.sshPhaseKey(selectedPhase)))
-        .accessibilityIdentifier("dockshell.connection.actions")
-        .disabled(tabs.selectedSession == nil)
+        .help(l10n.string(.toolbarMoreHelp))
+        .accessibilityIdentifier("dockshell.workspace.more-menu")
     }
 
     private var groupMenu: some View {
@@ -234,9 +249,13 @@ public struct WorkspaceView: View {
                 }
             }
         } label: {
-            Label(l10n.string(.groupsManage), systemImage: "folder.badge.gearshape")
+            WorkspaceToolbarIcon(title: l10n.string(.groupsManage), symbol: "slider.horizontal.3")
         }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
         .help(l10n.string(.groupsManage))
+        .accessibilityIdentifier("dockshell.sidebar.group-actions")
         .disabled(model.isLoading || model.isMutating || model.hasLoadError)
     }
 
@@ -247,6 +266,12 @@ public struct WorkspaceView: View {
                 Text(verbatim: l10n.string(.appName)).font(.system(size: 16, weight: .semibold))
                     .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
             }.padding(.horizontal, 18).padding(.vertical, 20)
+            HStack {
+                Text(verbatim: l10n.string(.fieldGroup)).font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                groupMenu
+            }
+            .padding(.leading, 18).padding(.trailing, 14).padding(.bottom, 4)
             SidebarGroupSelector(
                 options: [
                     SidebarGroupOption(scope: .all, title: l10n.string(.allSessions), symbol: "rectangle.stack"),
@@ -421,8 +446,31 @@ public struct WorkspaceView: View {
         guard showTerminal || settings.isLoaded else { return }
         showTerminal.toggle()
     }
+}
 
-    private var selectedPhase: SSHSessionPhase { tabs.selectedSession?.controller.phase ?? .idle }
+/// Shared icon geometry keeps the toolbar compact. Native Menu/Button controls retain
+/// their keyboard and accessibility behavior; only the label's hover/selection is drawn.
+private struct WorkspaceToolbarIcon: View {
+    let title: String
+    let symbol: String
+    var isSelected = false
+    @Environment(\.isEnabled) private var isEnabled
+    @ViewState<Bool> private var isHovered = false
+
+    var body: some View {
+        Label { Text(verbatim: title) } icon: { Image(systemName: symbol) }
+            .labelStyle(.iconOnly)
+            .font(.system(size: 15))
+            .frame(width: 28, height: 28)
+            .foregroundStyle(isSelected ? Color.accentColor : Color.primary.opacity(0.8))
+            .background {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12)
+                          : Color.primary.opacity(isHovered && isEnabled ? 0.06 : 0))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 7))
+            .onHover { isHovered = $0 }
+    }
 }
 
 /// Uses the approved artwork already decoded during application bootstrap.

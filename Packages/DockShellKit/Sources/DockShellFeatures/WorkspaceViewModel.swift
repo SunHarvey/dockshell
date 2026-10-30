@@ -7,6 +7,8 @@ public enum SessionScope: Hashable {
     case all, ungrouped, group(UUID)
 }
 
+enum WorkspaceCommand { case newSession, connectSelected }
+
 /// Main-actor presentation state; persistence and credentials stay behind the service actor.
 @MainActor
 public final class WorkspaceViewModel: ObservableObject {
@@ -22,6 +24,8 @@ public final class WorkspaceViewModel: ObservableObject {
     @Published public private(set) var loadError: DockShellError?
     @Published public var operationError: DockShellError?
     @Published public private(set) var cleanupPending = false
+    /// Window-owned UI requests keep menu-bar shortcuts independent of popup lifetimes.
+    let commandRequests = PassthroughSubject<WorkspaceCommand, Never>()
     private let service: WorkspaceService
 
     public init(service: WorkspaceService) { self.service = service }
@@ -30,6 +34,11 @@ public final class WorkspaceViewModel: ObservableObject {
     public var hasLoadError: Bool { loadError != nil }
     public var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var isFiltering: Bool { isSearching || scope != .all }
+
+    func request(_ command: WorkspaceCommand) {
+        guard !isLoading, !isMutating, !hasLoadError else { return }
+        commandRequests.send(command)
+    }
 
     public var filteredProfiles: [SessionProfile] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
