@@ -20,6 +20,11 @@ public actor PrivateKeyBookmarks: PrivateKeyFileAccess {
         catch { throw DockShellError.privateKeyUnavailable }
     }
 
+    public func validatedImportBookmark(for url: URL) async throws -> Data {
+        _ = try await inspector.inspect(url)
+        return try bookmark(for: url)
+    }
+
     public func displayName(for bookmark: Data) throws -> String {
         try resolve(for: bookmark).lastPathComponent
     }

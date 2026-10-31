@@ -113,6 +113,18 @@ jobs:
           set -euo pipefail
           sh Scripts/test-batch-commands.sh 2>&1 | tee Build/ci-logs/batch-commands.txt
 
+      - name: Verify SSH configuration import with disposable fixtures
+        if: ${{ hashFiles('Scripts/test-session-import.sh') != '' }}
+        run: |
+          set -euo pipefail
+          sh Scripts/test-session-import.sh 2>&1 | tee Build/ci-logs/session-import.txt
+
+      - name: Verify CSV batch import with disposable fixtures
+        if: ${{ hashFiles('Scripts/test-csv-import.sh') != '' }}
+        run: |
+          set -euo pipefail
+          sh Scripts/test-csv-import.sh 2>&1 | tee Build/ci-logs/csv-import.txt
+
       - name: Verify isolated SSH and SFTP integration
         # Manual runs may select an older tag which predates M9.0.
         if: ${{ hashFiles('Scripts/test-sftp.sh') != '' }}

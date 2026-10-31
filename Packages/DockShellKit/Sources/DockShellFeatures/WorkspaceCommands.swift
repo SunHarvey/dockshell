@@ -19,6 +19,10 @@ public struct WorkspaceCommands: Commands {
             Button(l10n.string(.sessionNew)) { model.request(.newSession) }
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(model.isMutating || model.isLoading || model.hasLoadError)
+            Button(l10n.string(.importTitle)) { model.request(.importSessions) }
+                .disabled(!model.canImportSessions || model.isMutating || model.isLoading || model.hasLoadError)
+            Button(l10n.string(.csvTitle)) { model.request(.importCSV) }
+                .disabled(!model.canImportCSV || model.isMutating || model.isLoading || model.hasLoadError)
             Button(l10n.string(.tabConnect)) { model.request(.connectSelected) }
                 .keyboardShortcut("t", modifiers: .command)
                 .disabled(model.selectedProfile == nil || model.isMutating || model.isLoading || model.hasLoadError)

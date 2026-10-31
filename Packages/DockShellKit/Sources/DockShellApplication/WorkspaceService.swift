@@ -81,6 +81,54 @@ public actor WorkspaceService {
         }
     }
 
+    /// Preview validation references external files only. No database or Keychain writes occur.
+    public func prepareImportRows(_ rows: [SessionImportRow]) async throws -> [SessionImportRow] {
+        guard rows.count <= 1000 else { throw SessionImportError.limitExceeded }
+        var result: [SessionImportRow] = []
+        var bookmarks: [String: Data] = [:]
+        for var row in rows {
+            try Task.checkCancellation()
+            row.keyBookmark = nil; row.keyError = nil; row.keyAuthenticationError = nil
+            if row.authentication == .privateKey && !row.keyPath.isEmpty {
+                do {
+                    guard row.keyPath.hasPrefix("/"), !row.keyPath.contains("\0") else { throw DockShellError.privateKeyUnavailable }
+                    if let bookmark = bookmarks[row.keyPath] { row.keyBookmark = bookmark }
+                    else {
+                        let bookmark = try await privateKeys.validatedImportBookmark(for: URL(fileURLWithPath: row.keyPath))
+                        bookmarks[row.keyPath] = bookmark; row.keyBookmark = bookmark
+                    }
+                } catch is CancellationError { throw CancellationError() }
+                catch let error as SSHAuthenticationError {
+                    row.keyError = error == .privateKeyUnavailable ? .privateKeyUnavailable : .unsupportedPrivateKey
+                    row.keyAuthenticationError = error
+                }
+                catch { row.keyError = (error as? DockShellError) ?? .unsupportedPrivateKey }
+            }
+            result.append(row)
+        }
+        return result
+    }
+
+    /// Metadata-only imports commit atomically. Authentication secrets are supplied on first connection.
+    public func importSessions(_ rows: [SessionImportRow], into group: SessionImportGroup) async throws -> (WorkspaceState, SessionImportReceipt) {
+        await acquire()
+        defer { release() }
+        let selected = rows.filter(\.selected)
+        guard !selected.isEmpty else { throw SessionImportError.nothingSelected }
+        guard let importer = repository as? any SessionImportRepository else { throw DockShellError.storageUnavailable }
+        let prepared = try await prepareImportRows(selected)
+        var profiles: [SessionProfile] = []
+        for row in prepared {
+            guard row.issues.isEmpty else { throw SessionImportError.invalidText }
+            guard !row.authenticationNeedsSelection else { throw SessionImportError.invalidText }
+            if let error = row.validationError { throw error }
+            profiles.append(try row.draft().validated(credentialID: nil))
+        }
+        try Task.checkCancellation()
+        let receipt = try await importer.importProfiles(profiles, into: group)
+        return (try await state(), receipt)
+    }
+
     private func persist(_ draft: SessionDraft, snapshot: SessionSnapshot) async throws -> WorkspaceState {
         let old = snapshot.profiles.first { $0.id == draft.id }
         let previousID = old?.authentication.kind == draft.authentication ? old?.authentication.credentialID : nil

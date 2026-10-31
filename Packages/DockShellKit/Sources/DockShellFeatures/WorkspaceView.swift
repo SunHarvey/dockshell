@@ -13,6 +13,11 @@ private struct GroupEditorRoute: Identifiable {
     let isNew: Bool
 }
 
+private struct SessionImportRoute: Identifiable {
+    let id = UUID()
+    let kind: SessionImportKind
+}
+
 private enum DeletionTarget {
     case session(SessionProfile)
     case group(SessionGroup)
@@ -29,6 +34,7 @@ public struct WorkspaceView: View {
     @ViewState<SessionEditorRoute?> private var editor: SessionEditorRoute?
     @ViewState<GroupEditorRoute?> private var groupEditor: GroupEditorRoute?
     @ViewState<DeletionTarget?> private var deletion: DeletionTarget?
+    @ViewState<SessionImportRoute?> private var importRoute: SessionImportRoute?
 
     public init(model: WorkspaceViewModel, l10n: L10n, terminal: LocalTerminalController,
                 settings: TerminalSettingsViewModel, tabs: TerminalTabsViewModel) {
@@ -73,10 +79,12 @@ public struct WorkspaceView: View {
             .withoutSharedBackground()
         }
         .onReceive(model.commandRequests) { command in
-            guard editor == nil, groupEditor == nil else { return }
+            guard editor == nil, groupEditor == nil, importRoute == nil else { return }
             switch command {
             case .newSession: editor = SessionEditorRoute(profile: nil)
             case .connectSelected: if let profile = model.selectedProfile { connect(profile) }
+            case .importSessions: importRoute = SessionImportRoute(kind: .sshConfiguration)
+            case .importCSV: importRoute = SessionImportRoute(kind: .csv)
             }
         }
         .sheet(item: $editor) { route in
@@ -84,6 +92,9 @@ public struct WorkspaceView: View {
         }
         .sheet(item: $groupEditor) { route in
             GroupEditorView(model: model, l10n: l10n, id: route.id, isNew: route.isNew, name: route.name)
+        }
+        .sheet(item: $importRoute) { route in
+            SessionImportView(model: SessionImportViewModel(workspace: model, kind: route.kind), l10n: l10n)
         }
         .confirmationDialog(l10n.string(.transferCloseTitle), isPresented: Binding(
             get: { tabs.transferCloseRequestID != nil }, set: { if !$0 { tabs.dismissTransferClose() } }
@@ -143,6 +154,14 @@ public struct WorkspaceView: View {
                 Label(l10n.string(.sessionNew), systemImage: "plus")
             }
             .disabled(model.isMutating || model.isLoading || model.hasLoadError)
+            Button { importRoute = SessionImportRoute(kind: .sshConfiguration) } label: {
+                Label(l10n.string(.importTitle), systemImage: "square.and.arrow.down")
+            }
+            .disabled(!model.canImportSessions || model.isMutating || model.isLoading || model.hasLoadError)
+            Button { importRoute = SessionImportRoute(kind: .csv) } label: {
+                Label(l10n.string(.csvTitle), systemImage: "tablecells")
+            }
+            .disabled(!model.canImportCSV || model.isMutating || model.isLoading || model.hasLoadError)
             Button {
                 if let profile = model.selectedProfile { connect(profile) }
             } label: {

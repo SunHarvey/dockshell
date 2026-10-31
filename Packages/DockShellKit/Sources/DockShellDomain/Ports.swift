@@ -26,6 +26,8 @@ public protocol CredentialStore: Sendable {
 /// Passwords and private-key passphrases remain in CredentialStore.
 public protocol PrivateKeyFileAccess: Sendable {
     func bookmark(for url: URL) async throws -> Data
+    /// Preflights external key format/permissions during import without reading a passphrase.
+    func validatedImportBookmark(for url: URL) async throws -> Data
     func displayName(for bookmark: Data) async throws -> String
     /// Resolves a user-approved reference; a stale or missing file is a visible error.
     func resolve(for bookmark: Data) async throws -> URL
@@ -41,6 +43,7 @@ public protocol PrivateKeyFileAccess: Sendable {
 
 /// External-file-only implementations and verification doubles need no import support.
 public extension PrivateKeyFileAccess {
+    func validatedImportBookmark(for url: URL) async throws -> Data { try await bookmark(for: url) }
     func importKey(_ text: String) async throws -> Data { throw DockShellError.unsupportedPrivateKey }
     func removeImportedKey(for bookmark: Data) async throws {}
     func removeUnusedImportedKeys(referencedBy bookmarks: [Data]) async throws {}

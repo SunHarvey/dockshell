@@ -128,9 +128,25 @@ private enum DockShellVerification {
         print("PASS SwiftTerm resources: explicit application bundle, no build-path fallback")
         let helperURL = appURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")
         let environment = ProcessInfo.processInfo.environment
-        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
+        let specialModes = ["DOCKSHELL_CSV_IMPORT_TEST", "DOCKSHELL_SESSION_IMPORT_TEST", "DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
             .filter { environment[$0] == "1" }
         try require(specialModes.count <= 1, "Run each optional verification mode in a separate process")
+        if environment["DOCKSHELL_CSV_IMPORT_TEST"] == "1" {
+            try require(arguments.contains("--ui-smoke"), "CSV verification requires AppKit")
+            try await M122CSVVerification.run()
+            try await M122CSVVerification.runUI(l10n: chinese)
+            try await M122CSVVerification.runUI(l10n: english)
+            print("PASS M12.2 CSV import completed")
+            return
+        }
+        if environment["DOCKSHELL_SESSION_IMPORT_TEST"] == "1" {
+            try require(arguments.contains("--ui-smoke"), "Import verification requires AppKit")
+            try await M12SessionImportVerification.run()
+            try await M12SessionImportVerification.runUI(l10n: chinese)
+            try await M12SessionImportVerification.runUI(l10n: english)
+            print("PASS M12.1 session import completed")
+            return
+        }
         if environment["DOCKSHELL_BATCH_COMMAND_TEST"] == "1" {
             try require(arguments.contains("--ui-smoke"), "Batch command verification requires AppKit")
             try await M11BatchCommandVerification.run()

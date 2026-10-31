@@ -766,6 +766,329 @@
         }
       }
     },
+    "csv.change": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change CSV"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更换 CSV"
+          }
+        }
+      }
+    },
+    "csv.chooseauth": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose authentication"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请选择认证方式"
+          }
+        }
+      }
+    },
+    "csv.error.auth": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid or empty auth value. Expand Connection details and choose Password, Private key, or SSH agent."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "auth 为空或无效，请展开连接详情，选择密码、私钥或 SSH agent。"
+          }
+        }
+      }
+    },
+    "csv.error.columns": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This row has {actual} fields; the header has {expected}. Correct the CSV source and preview again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此行有 {actual} 列，表头为 {expected} 列。请修正 CSV 原文后重新预览。"
+          }
+        }
+      }
+    },
+    "csv.error.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No server rows found. Add a header and at least one server."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到服务器数据，请填写表头和至少一台服务器。"
+          }
+        }
+      }
+    },
+    "csv.error.encoding": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV must use UTF-8 encoding and cannot contain NUL characters."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 必须为 UTF-8 编码，且不能包含空字符。"
+          }
+        }
+      }
+    },
+    "csv.error.headers": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid header. Required: name, host, username, auth. Optional: port, key_path. Duplicate or other columns are not accepted."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表头无效。必需列：name、host、username、auth；可选列：port、key_path。不能有重复列或其他列。"
+          }
+        }
+      }
+    },
+    "csv.error.limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV exceeds a limit: 2 MB total, 1,000 servers, 16 KB per field, or 32 fields per record."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 超过限制：总计 2 MB、1000 台服务器、单字段 16 KB 或单条记录 32 列。"
+          }
+        }
+      }
+    },
+    "csv.error.malformed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid CSV quoting near line {line}. Enclose fields in double quotes and escape an inner quote as two double quotes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 第 {line} 行附近引号格式无效。字段用双引号包围，字段内的双引号需写成两个双引号。"
+          }
+        }
+      }
+    },
+    "csv.error.read": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot read this CSV file. Check its location and permissions."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取 CSV 文件，请检查文件路径和读取权限。"
+          }
+        }
+      }
+    },
+    "csv.example": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use example"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用示例"
+          }
+        }
+      }
+    },
+    "csv.formathelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One server per row, with a header. auth: agent / password / key. A blank port uses 22. key_path is used only for key authentication; use an absolute path or ~/."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "首行为表头，每行一台服务器。auth 填 agent / password / key；端口留空使用 22。key_path 仅用于 key 认证，填写绝对路径或 ~/ 路径。"
+          }
+        }
+      }
+    },
+    "csv.inputhelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-8 CSV · up to 1,000 servers / 2 MB. Use double quotes around values containing commas. Passwords and passphrases are entered when connecting."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "UTF-8 CSV，最多 1000 台服务器、2 MB；含逗号的字段需用双引号包围。密码和私钥口令在连接时输入。"
+          }
+        }
+      }
+    },
+    "csv.paste": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV contents"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 内容"
+          }
+        }
+      }
+    },
+    "csv.preview": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preview servers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "预览服务器"
+          }
+        }
+      }
+    },
+    "csv.previewhelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit names and connection details before importing. Only checked, valid rows will be created; same-name sessions in the destination group are skipped."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认前可修改名称和连接详情。仅创建已勾选且有效的会话；目标分组内同名会话会跳过。"
+          }
+        }
+      }
+    },
+    "csv.source": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a CSV file or paste its contents below"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 CSV 文件，或在下方粘贴内容"
+          }
+        }
+      }
+    },
+    "csv.sourceline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV line {line}"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 第 {line} 行"
+          }
+        }
+      }
+    },
+    "csv.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create servers from CSV…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CSV 批量创建服务器…"
+          }
+        }
+      }
+    },
     "delete.confirm": {
       "extractionState": "manual",
       "localizations": {
@@ -1527,6 +1850,482 @@
           "stringUnit": {
             "state": "translated",
             "value": "管理分组"
+          }
+        }
+      }
+    },
+    "import.choose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose file…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择文件…"
+          }
+        }
+      }
+    },
+    "import.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import sessions"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入会话"
+          }
+        }
+      }
+    },
+    "import.defaultpath": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.ssh/config"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~/.ssh/config"
+          }
+        }
+      }
+    },
+    "import.duplicate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These names already exist in the destination group. Rename them in a new preview to import."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以下名称在目标分组中已存在。可重新预览并修改名称后导入。"
+          }
+        }
+      }
+    },
+    "import.duplicateshort": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate · will skip"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同名 · 将跳过"
+          }
+        }
+      }
+    },
+    "import.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection details"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接详情"
+          }
+        }
+      }
+    },
+    "import.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No concrete hosts found"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到具体主机配置"
+          }
+        }
+      }
+    },
+    "import.error.cycle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An Include cycle was found. Remove the recursive inclusion and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "发现 Include 循环引用，请修正后重试。"
+          }
+        }
+      }
+    },
+    "import.error.limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configuration exceeds the import limit (2 MB, 128 files, 16 levels or 1,000 hosts)."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "配置超过导入上限（总计 2 MB、128 个文件、16 层包含或 1000 台主机）。"
+          }
+        }
+      }
+    },
+    "import.error.path": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An Include path uses unsupported tokens, environment variables or another user’s home directory. Use an absolute path or ~/."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include 路径包含暂不支持的动态变量或其他用户主目录，请改用绝对路径或 ~/。"
+          }
+        }
+      }
+    },
+    "import.error.read": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot read the configuration or an included file. Check its location and permissions."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法读取配置或包含的文件，请检查路径和读取权限。"
+          }
+        }
+      }
+    },
+    "import.error.text": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid SSH configuration. Check UTF-8 encoding, quotes and directive arguments."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SSH 配置格式无效，请检查 UTF-8 编码、引号和配置参数。"
+          }
+        }
+      }
+    },
+    "import.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review the inferred authentication method. Only checked, valid rows will be imported; duplicates in the destination group are skipped. Passwords and passphrases are requested when connecting."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请核对推断的认证方式。仅导入已勾选且有效的会话；目标分组内同名会话会跳过。密码和私钥口令在连接时输入。"
+          }
+        }
+      }
+    },
+    "import.ignored": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not copied (DockShell settings apply):"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以下选项不导入，使用 DockShell 的设置："
+          }
+        }
+      }
+    },
+    "import.keychoice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose one identity"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择一把私钥"
+          }
+        }
+      }
+    },
+    "import.keypath": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Absolute key path"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "私钥绝对路径"
+          }
+        }
+      }
+    },
+    "import.match": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file uses Match rules. Automatic import is blocked because their conditions cannot be evaluated safely. Choose a configuration containing only Host rules."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此配置包含 Match 条件规则，无法安全还原其连接行为，已禁止自动导入。请另选仅含 Host 规则的配置文件。"
+          }
+        }
+      }
+    },
+    "import.newgroup": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New group / reuse by name"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建分组 / 复用同名分组"
+          }
+        }
+      }
+    },
+    "import.patterns": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wildcard rules supply defaults for concrete hosts; they do not create sessions."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通配规则用于补全具体主机，不会单独创建会话。"
+          }
+        }
+      }
+    },
+    "import.previewcount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count} entries · {ready} ready to import"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共 {count} 项 · 可导入 {ready} 项"
+          }
+        }
+      }
+    },
+    "import.result": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imported {count} · skipped {skipped} duplicates"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已导入 {count} 项 · 跳过同名 {skipped} 项"
+          }
+        }
+      }
+    },
+    "import.select": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import this session"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入此会话"
+          }
+        }
+      }
+    },
+    "import.selectall": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select all"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全选"
+          }
+        }
+      }
+    },
+    "import.selectnone": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deselect all"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全不选"
+          }
+        }
+      }
+    },
+    "import.syntax": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid directive at {location}."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{location} 的配置格式无效。"
+          }
+        }
+      }
+    },
+    "import.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import SSH configuration…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导入 SSH 配置…"
+          }
+        }
+      }
+    },
+    "import.unsupported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot import this entry: unsupported option {option}."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法导入此项：暂不支持配置选项 {option}。"
+          }
+        }
+      }
+    },
+    "import.validate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Validate keys"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "校验私钥"
           }
         }
       }

@@ -1,0 +1,4 @@
+name,host,port,username,auth,key_path
+web-01,192.0.2.11,22,root,agent,
+app-01,192.0.2.12,2222,admin,password,
+db-01,192.0.2.13,22,ubuntu,key,~/.ssh/id_ed25519

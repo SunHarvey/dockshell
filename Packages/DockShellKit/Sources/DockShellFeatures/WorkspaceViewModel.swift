@@ -7,7 +7,7 @@ public enum SessionScope: Hashable {
     case all, ungrouped, group(UUID)
 }
 
-enum WorkspaceCommand { case newSession, connectSelected }
+enum WorkspaceCommand { case newSession, connectSelected, importSessions, importCSV }
 
 /// Main-actor presentation state; persistence and credentials stay behind the service actor.
 @MainActor
@@ -27,8 +27,32 @@ public final class WorkspaceViewModel: ObservableObject {
     /// Window-owned UI requests keep menu-bar shortcuts independent of popup lifetimes.
     let commandRequests = PassthroughSubject<WorkspaceCommand, Never>()
     private let service: WorkspaceService
+    let configurationReader: (any SSHConfigurationReading)?
+    let csvReader: (any SessionCSVReading)?
 
-    public init(service: WorkspaceService) { self.service = service }
+    public init(service: WorkspaceService, configurationReader: (any SSHConfigurationReading)? = nil,
+                csvReader: (any SessionCSVReading)? = nil) {
+        self.service = service; self.configurationReader = configurationReader; self.csvReader = csvReader
+    }
+
+    public var canImportSessions: Bool { configurationReader != nil }
+    public var canImportCSV: Bool { csvReader != nil }
+
+    public func prepareImportRows(_ rows: [SessionImportRow]) async throws -> [SessionImportRow] {
+        try await service.prepareImportRows(rows)
+    }
+
+    public func importSessions(_ rows: [SessionImportRow], into group: SessionImportGroup) async throws -> SessionImportReceipt {
+        guard !isMutating else { throw DockShellError.storageUnavailable }
+        isMutating = true
+        defer { isMutating = false }
+        let (state, receipt) = try await service.importSessions(rows, into: group)
+        apply(state)
+        searchText = ""
+        if let id = receipt.groupID { scope = .group(id) }
+        selectedProfileID = receipt.insertedIDs.first
+        return receipt
+    }
 
     public var selectedProfile: SessionProfile? { profiles.first { $0.id == selectedProfileID } }
     public var hasLoadError: Bool { loadError != nil }

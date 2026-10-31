@@ -212,7 +212,7 @@ private final class SQLiteConnection {
 
 /// Actor-confined SQLite handle, prepared statements, schema migration and durable cleanup.
 /// A lifetime process lock prevents a second app instance from cleaning an in-flight credential.
-public actor SQLiteSessionRepository: SessionRepository {
+public actor SQLiteSessionRepository: SessionImportRepository {
     private let url: URL
     private var connection: SQLiteConnection?
 
@@ -295,6 +295,64 @@ public actor SQLiteSessionRepository: SessionRepository {
             let old = try credentialID(for: id, db: db)
             try db.execute("DELETE FROM sessions WHERE id=?", [.text(id.uuidString)])
             if let old { try enqueue(old, db: db) }
+        }
+    }
+
+    public func importProfiles(_ profiles: [SessionProfile], into target: SessionImportGroup) throws -> SessionImportReceipt {
+        guard !profiles.isEmpty, profiles.count <= 1000 else { throw SessionImportError.nothingSelected }
+        let db = try database()
+        return try db.transaction {
+            try Task.checkCancellation()
+            var group: SessionGroup
+            var createGroup = false
+            switch target {
+            case .existing(let id):
+                guard let found = try db.rows("SELECT id,name FROM session_groups WHERE id=?", [.text(id.uuidString)], read: {
+                    SessionGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
+                }).first else { throw DockShellError.missingGroup }
+                group = found
+            case .named(let name):
+                let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty, !name.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else {
+                    throw DockShellError.invalidGroupName
+                }
+                let found = try db.rows("SELECT id,name FROM session_groups WHERE normalized_name=?",
+                    [.text(SessionImportNames.normalized(name))]) {
+                    SessionGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
+                }.first
+                group = found ?? SessionGroup(name: name)
+                createGroup = found == nil
+            }
+            var names = Set(try db.rows("SELECT name FROM sessions WHERE group_id=?", [.text(group.id.uuidString)]) {
+                SessionImportNames.normalized(try SQLiteConnection.text($0, 0))
+            })
+            var inserted: [UUID] = [], skipped: [String] = []
+            for input in profiles {
+                try Task.checkCancellation()
+                guard input.authentication.credentialID == nil else { throw DockShellError.storageUnavailable }
+                var draft = SessionDraft(profile: input); draft.groupID = group.id
+                let profile = try draft.validated(credentialID: nil)
+                guard names.insert(SessionImportNames.normalized(profile.name)).inserted else {
+                    skipped.append(profile.name); continue
+                }
+                if createGroup {
+                    try db.execute("INSERT INTO session_groups(id,name,normalized_name) VALUES(?,?,?)",
+                        [.text(group.id.uuidString), .text(group.name), .text(SessionImportNames.normalized(group.name))])
+                    createGroup = false
+                }
+                let bookmark: SQLValue
+                if case .privateKey(let value, _) = profile.authentication { bookmark = .blob(value) } else { bookmark = .null }
+                // Plain INSERT is deliberate: even an unexpected UUID collision must roll back, never update.
+                try db.execute("""
+                    INSERT INTO sessions(id,name,host,port,username,auth_kind,key_bookmark,credential_id,group_id)
+                    VALUES(?,?,?,?,?,?,?,NULL,?)
+                    """, [.text(profile.id.uuidString), .text(profile.name), .text(profile.host),
+                        .integer(Int64(profile.port)), .text(profile.username), .text(profile.authentication.kind.rawValue),
+                        bookmark, .text(group.id.uuidString)])
+                inserted.append(profile.id)
+            }
+            try Task.checkCancellation()
+            return SessionImportReceipt(insertedIDs: inserted, skippedNames: skipped, groupID: createGroup ? nil : group.id)
         }
     }
 
