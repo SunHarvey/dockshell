@@ -1,11 +1,14 @@
 import DockShellFeatures
 import DockShellApplication
 import DockShellInfrastructure
+import DockShellTerminalUI
+import AppKit
 import SwiftUI
 
 @main
 @MainActor
 struct DockShellApp: App {
+    @NSApplicationDelegateAdaptor(DockShellTerminationDelegate.self) private var termination
     @StateObject private var bootstrap = AppBootstrap()
 
     var body: some Scene {
@@ -27,7 +30,7 @@ struct DockShellApp: App {
             }
             .frame(minWidth: 800, minHeight: 520)
             .tint(Color(red: 0.18, green: 0.48, blue: 0.51))
-            .task { await bootstrap.load() }
+            .task { await bootstrap.load(); termination.l10n = bootstrap.container?.l10n }
         }
         .defaultSize(width: 1080, height: 720)
         .windowResizability(.contentMinSize)
@@ -40,6 +43,32 @@ struct DockShellApp: App {
                 ProgressView().task { await bootstrap.load() }
             }
         }
+    }
+}
+
+/// SwiftUI's view teardown is too late to await pending file writes before process exit.
+@MainActor
+private final class DockShellTerminationDelegate: NSObject, NSApplicationDelegate {
+    var l10n: L10n?
+    private var draining = false
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !draining else { return .terminateLater }
+        draining = true
+        Task { @MainActor in
+            let success = await TerminalLogLifecycle.shared.finishAll()
+            if !success, let l10n {
+                let alert = NSAlert()
+                alert.messageText = l10n.string(.logQuitError)
+                alert.addButton(withTitle: l10n.string(.logQuitAnyway))
+                // Draining has already finalized the logs. Acknowledge the error
+                // before completing the user's quit; do not return to live sessions
+                // with their log stores silently closed.
+                alert.runModal()
+            }
+            self.draining = false
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 

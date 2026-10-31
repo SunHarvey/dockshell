@@ -21,6 +21,7 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
     public private(set) var deliveredBytes: UInt64 = 0
 
     private let factory: any LocalTerminalFactory
+    public let logging: TerminalLogController?
     private weak var surface: (any TerminalSurface)?
     private var channel: (any LocalTerminalChannel)?
     private var startupTask: Task<Void, Never>?
@@ -34,14 +35,17 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
     private var inputBytes = 0
     private var pendingSize: TerminalSize?
 
-    public init(factory: any LocalTerminalFactory) { self.factory = factory }
+    public init(factory: any LocalTerminalFactory, logging: TerminalLogController? = nil) {
+        self.factory = factory; self.logging = logging
+    }
 
     public var isBusy: Bool { phase == .starting || phase == .running }
 
     /// Starts a fresh shell after a native surface is mounted. Calling this again performs
     /// a serialized restart rather than leaving the previous process running in the background.
-    public func start(settings _: TerminalSettings) {
+    public func start(settings: TerminalSettings) {
         stopIO()
+        logging?.apply(settings)
         phase = .starting
         error = nil
         exitCode = nil
@@ -69,6 +73,7 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
                 try Task.checkCancellation()
                 guard self?.generation == token else { return }
                 self?.phase = .running
+                self?.logging?.start()
                 self?.surface?.focus()
                 self?.startPump(channel, token: token)
                 self?.drainInput()
@@ -89,12 +94,14 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
 
     public func attach(_ surface: any TerminalSurface) {
         self.surface = surface
+        logging?.attach(surface)
         mount.open()
         resized(to: surface.terminalSize)
     }
 
     public func detach(_ surface: any TerminalSurface) {
         guard self.surface === surface else { return }
+        logging?.detach(surface)
         self.surface = nil
         // Dismantling a native view must not synchronously publish SwiftUI state.
         // A replacement for the same presentation may attach before this task resumes.
@@ -113,6 +120,7 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
                 _ = try await TerminalIOPump().run(channel: channel) { [weak self] bytes in
                     guard let self, self.generation == token else { return }
                     self.surface?.feed(Array(bytes)[...])
+                    self.logging?.collect()
                     self.deliveredBytes += UInt64(bytes.count)
                 }
                 // Preserve all final PTY bytes before presenting the shell's exit status.
@@ -217,6 +225,7 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
     }
 
     private func stopIO() {
+        logging?.finish()
         generation = UUID()
         let starting = startupTask
         starting?.cancel()

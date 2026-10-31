@@ -128,9 +128,23 @@ private enum DockShellVerification {
         print("PASS SwiftTerm resources: explicit application bundle, no build-path fallback")
         let helperURL = appURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")
         let environment = ProcessInfo.processInfo.environment
-        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST"]
+        let specialModes = ["DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
             .filter { environment[$0] == "1" }
         try require(specialModes.count <= 1, "Run each optional verification mode in a separate process")
+        if environment["DOCKSHELL_BATCH_COMMAND_TEST"] == "1" {
+            try require(arguments.contains("--ui-smoke"), "Batch command verification requires AppKit")
+            try await M11BatchCommandVerification.run()
+            try await M11BatchCommandUIVerification.run(l10n: chinese)
+            try await M11BatchCommandUIVerification.run(l10n: english)
+            try await M11BatchCommandPTYVerification.run(helperURL: helperURL)
+            print("PASS M11 batch commands completed")
+            return
+        }
+        if environment["DOCKSHELL_TERMINAL_LOG_TEST"] == "1" {
+            try require(arguments.contains("--ui-smoke"), "Application logging verification requires AppKit")
+            try await M101TerminalLoggingVerification.run(helperURL: helperURL, l10n: chinese, english: english)
+            return
+        }
         if environment["DOCKSHELL_SFTP_TRANSFER_TEST"] == "1" {
             try await M92TransferQueueVerification.run()
             try await M92FileTransferVerification.run()

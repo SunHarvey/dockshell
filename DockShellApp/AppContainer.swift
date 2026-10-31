@@ -19,11 +19,14 @@ final class AppContainer {
         self.l10n = l10n
         workspace = WorkspaceViewModel(service: service)
         settings = TerminalSettingsViewModel(service: settingsService)
+        let logStorage = FileTerminalLogStorage()
         terminal = LocalTerminalController(factory: SystemLocalTerminalFactory(
-            helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")))
+            helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")),
+            logging: TerminalLogController(storage: logStorage, labels: l10n.terminalLogLabels))
         tabs = TerminalTabsViewModel(factory: OpenSSHTerminalSessionFactory(
             credentials: credentials, hostKeys: OpenSSHHostKeyStore(url: knownHostsURL),
-            helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")))
+            helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper"),
+            logStorage: logStorage, logLabels: l10n.terminalLogLabels))
     }
 }
 
@@ -33,9 +36,13 @@ private final class OpenSSHTerminalSessionFactory: TerminalSessionFactory {
     private let credentials: any CredentialStore
     private let hostKeys: any HostKeyTrustStore
     private let helperURL: URL
+    private let logStorage: any TerminalLogStorage
+    private let logLabels: TerminalLogLabels
 
-    init(credentials: any CredentialStore, hostKeys: any HostKeyTrustStore, helperURL: URL) {
+    init(credentials: any CredentialStore, hostKeys: any HostKeyTrustStore, helperURL: URL,
+         logStorage: any TerminalLogStorage, logLabels: TerminalLogLabels) {
         self.credentials = credentials; self.hostKeys = hostKeys; self.helperURL = helperURL
+        self.logStorage = logStorage; self.logLabels = logLabels
     }
 
     func makeSession() -> TerminalTabSession {
@@ -51,6 +58,7 @@ private final class OpenSSHTerminalSessionFactory: TerminalSessionFactory {
             hostKeys: hostKeys, scanner: OpenSSHHostKeyScanner(), interaction: filePrompts, helperURL: helperURL),
             prompts: filePrompts, transfers: transfers)
         return TerminalTabSession(controller: SSHSessionController(transport: transport,
-            sleepEvents: MacSystemSleepEvents()), prompts: prompts, files: files)
+            sleepEvents: MacSystemSleepEvents(),
+            logging: TerminalLogController(storage: logStorage, labels: logLabels)), prompts: prompts, files: files)
     }
 }

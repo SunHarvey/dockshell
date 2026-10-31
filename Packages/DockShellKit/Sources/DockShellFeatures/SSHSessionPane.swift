@@ -12,6 +12,7 @@ struct SSHSessionPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let logging = controller.logging { TerminalLogNotice(log: logging, l10n: l10n) }
             if controller.recoveryNotice != nil {
                 HStack(alignment: .top) {
                     Image(systemName: "moon.zzz").foregroundStyle(.secondary)
@@ -31,9 +32,7 @@ struct SSHSessionPane: View {
             }
             TerminalViewRepresentable(controller: controller,
                 settings: settings.settings,
-                labels: TerminalMenuLabels(copy: l10n.string(.terminalCopy), paste: l10n.string(.terminalPaste),
-                    selectAll: l10n.string(.terminalSelectAll), accessibilityLabel: l10n.string(.terminalAccessibility),
-                    unavailable: l10n.string(.terminalUnavailable)), onFocus: onFocus)
+                labels: l10n.terminalMenuLabels, onFocus: onFocus)
                 .allowsHitTesting(prompts.hostRequest == nil && prompts.passwordRequest == nil)
                 .overlay {
                     // An overlay never increases the terminal's minimum height. A short

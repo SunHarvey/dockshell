@@ -5,6 +5,26 @@ import Foundation
 
 /// Typed keys are checked against the generated tables by dockshell-verify.
 public enum L10nKey: String, CaseIterable, Sendable {
+    case batchOpen = "batch.open"
+    case batchTitle = "batch.title"
+    case batchClose = "batch.close"
+    case batchPlaceholder = "batch.placeholder"
+    case batchExecute = "batch.execute"
+    case batchExecuteHelp = "batch.execute.help"
+    case batchTargets = "batch.targets"
+    case batchHelp = "batch.help"
+    case batchNone = "batch.none"
+    case batchSummary = "batch.summary"
+    case batchDetails = "batch.details"
+    case batchQueued = "batch.queued"
+    case batchDisconnected = "batch.disconnected"
+    case batchAuthentication = "batch.authentication"
+    case batchQueueFull = "batch.queuefull"
+    case batchErrorEmpty = "batch.error.empty"
+    case batchErrorMultiline = "batch.error.multiline"
+    case batchErrorControls = "batch.error.controls"
+    case batchErrorLarge = "batch.error.large"
+
     case transferTitle = "transfer.title"
     case transferUpload = "transfer.upload"
     case transferDownload = "transfer.download"
@@ -244,6 +264,35 @@ public enum L10nKey: String, CaseIterable, Sendable {
     case settingsApplyHelp = "settings.applyhelp"
     case settingsDefaults = "settings.defaults"
     case settingsSaved = "settings.saved"
+    case settingsLogEnabled = "settings.log.enabled"
+    case settingsLogLimit = "settings.log.limit"
+    case settingsLogHelp = "settings.log.help"
+    case settingsInvalidLogLimit = "settings.error.loglimit"
+    case logStart = "log.start"
+    case logPause = "log.pause"
+    case logExport = "log.export"
+    case logExportTitle = "log.export.title"
+    case logStatusOff = "log.status.off"
+    case logStatusStarting = "log.status.starting"
+    case logStatusRecording = "log.status.recording"
+    case logStatusRetained = "log.status.retained"
+    case logStatusFailed = "log.status.failed"
+    case logStarted = "log.marker.started"
+    case logEnded = "log.marker.ended"
+    case logAlternateEntered = "log.marker.alternateentered"
+    case logAlternateExited = "log.marker.alternateexited"
+    case logOmitted = "log.marker.omitted"
+    case logTruncated = "log.marker.truncated"
+    case logIncomplete = "log.marker.incomplete"
+    case logOlderRemoved = "log.marker.olderremoved"
+    case logErrorWrite = "log.error.write"
+    case logErrorQueue = "log.error.queue"
+    case logErrorCapture = "log.error.capture"
+    case logErrorExport = "log.error.export"
+    case logErrorExists = "log.error.exists"
+    case logErrorUnavailable = "log.error.unavailable"
+    case logQuitError = "log.quit.error"
+    case logQuitAnyway = "log.quit.anyway"
     case themeGraphite = "theme.graphite"
     case themeOcean = "theme.ocean"
     case themePaper = "theme.paper"
@@ -428,6 +477,7 @@ public extension L10n {
         case .invalidFont: .settingsInvalidFont
         case .invalidFontSize: .settingsInvalidSize
         case .invalidScrollback: .settingsInvalidHistory
+        case .invalidLogLimit: .settingsInvalidLogLimit
         case .storageUnavailable: .settingsStorageError
         case .unsupportedVersion: .settingsVersionError
         }

@@ -1,4 +1,5 @@
 import Combine
+import DockShellApplication
 import DockShellDomain
 import DockShellTerminalUI
 import Foundation
@@ -58,6 +59,9 @@ public final class TerminalTabsViewModel: ObservableObject {
     @Published public private(set) var fileBrowserIDs: Set<UUID> = []
     @Published public private(set) var transferCloseRequestID: UUID?
     @Published public private(set) var transferWarningCloseID: UUID?
+    @Published public private(set) var showsBatchCommands = false
+    @Published public private(set) var batchCommandReport: BatchCommandReport?
+    @Published public private(set) var batchCommandError: BatchCommandValidationError?
     private var drainingTabIDs: Set<UUID> = []
     private let factory: any TerminalSessionFactory
     private var observations: [UUID: Set<AnyCancellable>] = [:]
@@ -77,6 +81,46 @@ public final class TerminalTabsViewModel: ObservableObject {
     public var canTile: Bool { tabs.count > 1 }
     public var isTiled: Bool { arrangement != .tabs }
     public var showsSelectedFiles: Bool { selectedID.map { fileBrowserIDs.contains($0) } ?? false }
+
+    public var batchConnectedCount: Int {
+        allSessions.filter {
+            $0.controller.phase == .connected && $0.prompts.hostRequest == nil && $0.prompts.passwordRequest == nil
+        }.count
+    }
+
+    public func toggleBatchCommands() {
+        guard !tabs.isEmpty else { return }
+        if showsBatchCommands { hideBatchCommands() }
+        else { showsBatchCommands = true; synchronizePresentationActivity() }
+    }
+
+    public func hideBatchCommands() {
+        showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil
+        synchronizePresentationActivity()
+        if let session = selectedSession, session.prompts.hostRequest == nil, session.prompts.passwordRequest == nil {
+            session.controller.focusTerminal()
+        }
+    }
+
+    /// Explicit command-bar submission only. Typing in a terminal remains single-session.
+    /// Reports queue admission, skips and rejection without retaining the command itself.
+    @discardableResult
+    public func sendBatchCommand(_ text: String) -> Bool {
+        do {
+            let command = try BatchCommand(text)
+            let recipients = tabs.enumerated().map { index, tab in
+                BatchCommandRecipient(id: tab.id, name: tab.controller.profile?.name ?? "", ordinal: index + 1,
+                    authenticationPending: tab.prompts.hostRequest != nil || tab.prompts.passwordRequest != nil,
+                    input: tab.controller)
+            }
+            let report = BatchCommandDispatcher().send(command, to: recipients)
+            batchCommandError = nil; batchCommandReport = report
+            return report.queuedCount > 0
+        } catch {
+            batchCommandReport = nil; batchCommandError = error
+            return false
+        }
+    }
 
     /// File browsing is lazy and owned by the same stable tab as its terminal.
     /// Hiding the panel retains its directory and connection; closing the tab ends both.
@@ -197,6 +241,7 @@ public final class TerminalTabsViewModel: ObservableObject {
         disown(closing)
         fileBrowserIDs.remove(id)
         tabs.remove(at: index)
+        if tabs.isEmpty { showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil }
         if selectedID == id { selectedID = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)].id }
         if !canTile && isTiled { arrangement = .tabs }
         synchronizePresentationActivity()
@@ -205,6 +250,7 @@ public final class TerminalTabsViewModel: ObservableObject {
 
     /// Window teardown cancels every pending decision before ending all connections.
     public func closeAll() {
+        showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil
         transferCloseRequestID = nil; transferWarningCloseID = nil; drainingTabIDs.removeAll()
         let closing = Array(ownedSessions.values)
         ownedSessions.removeAll(); observations.removeAll()
@@ -246,7 +292,9 @@ public final class TerminalTabsViewModel: ObservableObject {
     }
 
     private func synchronizePresentationActivity() {
-        for tab in tabs { tab.controller.setPresentationActive(tab.id == selectedID) }
+        // Explicit terminal clicks/input remain independent. Suppress only automatic
+        // terminal focus while a batch draft may be in progress, including on reconnect.
+        for tab in tabs { tab.controller.setPresentationActive(!showsBatchCommands && tab.id == selectedID) }
     }
 
     private func stop(_ session: TerminalTabSession) {

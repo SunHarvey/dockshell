@@ -40,6 +40,7 @@ struct LocalTerminalPane: View {
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             Divider()
+            if let logging = controller.logging { TerminalLogNotice(log: logging, l10n: l10n) }
             if let error = controller.error {
                 HStack {
                     Text(verbatim: l10n.string(errorKey(error))).font(.callout)
@@ -51,12 +52,7 @@ struct LocalTerminalPane: View {
             TerminalViewRepresentable(
                 controller: controller,
                 settings: settings.settings,
-                labels: TerminalMenuLabels(
-                    copy: l10n.string(.terminalCopy), paste: l10n.string(.terminalPaste),
-                    selectAll: l10n.string(.terminalSelectAll),
-                    accessibilityLabel: l10n.string(.terminalAccessibility),
-                    unavailable: l10n.string(.terminalUnavailable)
-                )
+                labels: l10n.terminalMenuLabels
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

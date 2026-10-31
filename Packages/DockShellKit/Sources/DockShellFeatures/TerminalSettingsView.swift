@@ -75,6 +75,17 @@ public struct TerminalSettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Text(verbatim: l10n.string(.settingsApplyHelp))
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle(l10n.string(.settingsLogEnabled), isOn: $draft.logEnabled)
+                    .accessibilityIdentifier("dockshell.settings.log-enabled")
+                Stepper(value: $draft.logLimitMB, in: TerminalSettings.logLimitRange) {
+                    HStack {
+                        Text(verbatim: l10n.string(.settingsLogLimit))
+                        Spacer()
+                        Text(verbatim: String(draft.logLimitMB) + " MB")
+                    }
+                }.accessibilityIdentifier("dockshell.settings.log-limit")
+                Text(verbatim: l10n.string(.settingsLogHelp))
+                    .font(.caption).foregroundStyle(.secondary)
             }
             .formStyle(.grouped).disabled(model.isLoading || isSaving)
             if let key = errorKey ?? model.problem.map({ l10n.settingsErrorKey($0) }) {

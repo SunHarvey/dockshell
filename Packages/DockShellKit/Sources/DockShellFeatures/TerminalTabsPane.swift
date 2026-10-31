@@ -145,6 +145,10 @@ private struct TerminalTabsContent: View {
                 sessions: model.allSessions, selectedID: model.selectedID, arrangement: model.arrangement,
                 model: model, settings: settings, l10n: l10n)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if model.showsBatchCommands {
+                Divider()
+                BatchCommandBar(model: model, l10n: l10n)
+            }
         }
     }
 
@@ -317,7 +321,9 @@ private final class PersistentTerminalGridView: NSView {
         if selectedID != nextID {
             focusTask?.cancel(); focusTask = nil
             let target = nextID.flatMap { panes[$0]?.bodyHost }
-            if !Self.containsResponder(window?.firstResponder, in: target) { window?.makeFirstResponder(nil) }
+            if !model.showsBatchCommands && !Self.containsResponder(window?.firstResponder, in: target) {
+                window?.makeFirstResponder(nil)
+            }
         }
         let valid = Set(ids)
         for id in Array(panes.keys) where !valid.contains(id) {
@@ -331,7 +337,8 @@ private final class PersistentTerminalGridView: NSView {
                 addSubview(pane)
                 panes[session.id] = pane
             }
-            session.controller.setPresentationActive(session.id == nextID)
+            // Automatic focus belongs to the workspace model, including its batch
+            // composer policy. Geometry updates must not override that decision.
             panes[session.id]?.present(inGrid: nextArrangement != .tabs, isActive: session.id == nextID)
             panes[session.id]?.isHidden = nextArrangement == .tabs && session.id != nextID
         }

@@ -101,6 +101,18 @@ jobs:
           set -euo pipefail
           sh Scripts/test-terminal-settings.sh 2>&1 | tee Build/ci-logs/terminal-settings.txt
 
+      - name: Verify terminal logging integration and real vim
+        if: ${{ hashFiles('Scripts/test-terminal-logging-integration.sh') != '' }}
+        run: |
+          set -euo pipefail
+          sh Scripts/test-terminal-logging-integration.sh 2>&1 | tee Build/ci-logs/terminal-logging.txt
+
+      - name: Verify batch commands and isolated shell execution
+        if: ${{ hashFiles('Scripts/test-batch-commands.sh') != '' }}
+        run: |
+          set -euo pipefail
+          sh Scripts/test-batch-commands.sh 2>&1 | tee Build/ci-logs/batch-commands.txt
+
       - name: Verify isolated SSH and SFTP integration
         # Manual runs may select an older tag which predates M9.0.
         if: ${{ hashFiles('Scripts/test-sftp.sh') != '' }}

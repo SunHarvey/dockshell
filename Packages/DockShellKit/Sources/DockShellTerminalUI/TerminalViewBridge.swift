@@ -9,11 +9,22 @@ public struct TerminalMenuLabels: Sendable {
     public let selectAll: String
     public let accessibilityLabel: String
     public let unavailable: String
+    public let logging: TerminalLogMenuLabels?
 
-    public init(copy: String, paste: String, selectAll: String, accessibilityLabel: String, unavailable: String = "") {
+    public init(copy: String, paste: String, selectAll: String, accessibilityLabel: String, unavailable: String = "",
+                logging: TerminalLogMenuLabels? = nil) {
         self.copy = copy; self.paste = paste; self.selectAll = selectAll
         self.accessibilityLabel = accessibilityLabel
         self.unavailable = unavailable
+        self.logging = logging
+    }
+}
+
+public struct TerminalLogMenuLabels: Sendable {
+    public let export, title, save, start, pause: String
+    public let states: [TerminalLogPhase: String]
+    public init(export: String, title: String, save: String, start: String, pause: String, states: [TerminalLogPhase: String]) {
+        self.export = export; self.title = title; self.save = save; self.start = start; self.pause = pause; self.states = states
     }
 }
 
@@ -61,8 +72,9 @@ public enum TerminalFonts {
 @MainActor
 public enum TerminalViewBridge {
     public static func makeView(settings: TerminalSettings, labels: TerminalMenuLabels,
-                                callbacks: TerminalCallbacks) throws -> NSView {
-        try DockShellTerminalView(settings: settings, labels: labels, callbacks: callbacks)
+                                callbacks: TerminalCallbacks,
+                                logExportDestination: (any TerminalLogExportDestinationChoosing)? = nil) throws -> NSView {
+        try DockShellTerminalView(settings: settings, labels: labels, callbacks: callbacks, logExportDestination: logExportDestination)
     }
 
     public static func apply(settings: TerminalSettings, to view: NSView) throws {
@@ -81,12 +93,23 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
     private let bridgeDelegate: BridgeDelegate
     private var configured: TerminalSettings
     private var focusNotification: Task<Void, Never>?
+    private weak var logging: TerminalLogController?
+    private var logCapture: TerminalTextCapture?
+    private var logBoundaries = TerminalFeedBoundaries()
+    private var logResizeDepth = 0
+    private let logMenuLabels: TerminalLogMenuLabels?
+    private var logMenuDelegate: LogContextMenuDelegate?
+    private var exportTask: Task<Void, Never>?
+    private let logExportDestination: any TerminalLogExportDestinationChoosing
 
-    init(settings: TerminalSettings, labels: TerminalMenuLabels, callbacks: TerminalCallbacks) throws {
+    init(settings: TerminalSettings, labels: TerminalMenuLabels, callbacks: TerminalCallbacks,
+         logExportDestination: (any TerminalLogExportDestinationChoosing)?) throws {
         let settings = try settings.validated()
         let font = try TerminalFonts.resolve(settings)
         bridgeDelegate = BridgeDelegate(callbacks: callbacks)
         configured = settings
+        logMenuLabels = labels.logging
+        self.logExportDestination = logExportDestination ?? NativeTerminalLogExportDestination()
         var options = TerminalOptions.default
         options.termName = "xterm-256color"
         options.scrollback = settings.scrollbackLines
@@ -114,11 +137,118 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
                             rows: UInt16(clamping: max(1, terminal.rows)))
     }
 
-    func feed(_ bytes: ArraySlice<UInt8>) { feed(byteArray: bytes) }
+    func feed(_ bytes: ArraySlice<UInt8>) {
+        guard let logCapture else { feed(byteArray: bytes); return }
+        for segment in logBoundaries.segments(bytes) {
+            feed(byteArray: segment)
+            logCapture.didFeed(getTerminal())
+        }
+    }
+
+    func bindLogging(_ logging: TerminalLogController?) {
+        self.logging = logging
+        guard let labels = logMenuLabels, let menu, logging != nil, logMenuDelegate == nil else { return }
+        menu.addItem(.separator())
+        let status = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        status.identifier = .init("dockshell.log.status")
+        menu.addItem(status)
+        let toggle = NSMenuItem(title: "", action: #selector(toggleLogging), keyEquivalent: "")
+        toggle.identifier = .init("dockshell.log.toggle"); toggle.target = self
+        menu.addItem(toggle)
+        let item = NSMenuItem(title: labels.export, action: #selector(exportLog), keyEquivalent: "")
+        item.identifier = .init("dockshell.log.export"); item.target = self
+        menu.addItem(item)
+        let delegate = LogContextMenuDelegate(view: self)
+        logMenuDelegate = delegate; menu.delegate = delegate
+    }
+
+    func beginLogCapture(enabled: Bool, limit: Int) {
+        logCapture = TerminalTextCapture(maximumLineBytes: limit)
+        logCapture?.begin(getTerminal())
+        logBoundaries = TerminalFeedBoundaries()
+        if !enabled { logCapture?.pause(getTerminal()); _ = logCapture?.takeEvents() }
+    }
+    func setLogCapture(enabled: Bool, limit: Int) {
+        guard let logCapture else { return }
+        logCapture.updateBudget(limit)
+        if enabled { logCapture.resume(getTerminal()) } else { logCapture.pause(getTerminal()) }
+    }
+    func takeLogEvents() -> [TerminalLogEvent] { logCapture?.takeEvents() ?? [] }
+    func logTail() -> TerminalLogTail { logCapture?.pendingSnapshot(getTerminal()) ?? .empty }
+
+    override func linefeed(source: SwiftTerm.Terminal) {
+        super.linefeed(source: source)
+        if logResizeDepth == 0 { logCapture?.linefeed(source) }
+    }
+    override func scrolled(source: SwiftTerm.Terminal, yDisp: Int) {
+        super.scrolled(source: source, yDisp: yDisp)
+        if logResizeDepth == 0 { logCapture?.scrolled(source) }
+    }
+    override func bufferActivated(source: SwiftTerm.Terminal) {
+        super.bufferActivated(source: source)
+        if logResizeDepth == 0 { logCapture?.bufferActivated(source, at: Date()) }
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        let pending = logResizeDepth == 0 ? logCapture?.willResize(getTerminal()) : nil
+        logResizeDepth += 1
+        super.setFrameSize(newSize)
+        logResizeDepth -= 1
+        if let pending { logCapture?.didResize(getTerminal(), pending: pending) }
+    }
+
+    fileprivate func updateLogMenu() {
+        guard let menu, let labels = logMenuLabels else { return }
+        for item in menu.items {
+            if item.identifier?.rawValue == "dockshell.log.status" {
+                item.title = labels.states[logging?.currentPhase ?? .off] ?? ""
+            } else if item.identifier?.rawValue == "dockshell.log.export" {
+                item.isEnabled = logging?.canExport == true && exportTask == nil
+            } else if item.identifier?.rawValue == "dockshell.log.toggle" {
+                item.title = logging?.isRecordingEnabled == true ? labels.pause : labels.start
+                item.isEnabled = logging?.canChangeRecording == true
+            }
+        }
+    }
+
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        if item.action == #selector(exportLog) { return logging?.canExport == true && exportTask == nil }
+        if item.action == #selector(toggleLogging) { return logging?.canChangeRecording == true }
+        return super.validateUserInterfaceItem(item)
+    }
+
+    @objc private func toggleLogging() {
+        guard let logging else { return }
+        logging.setRecording(!logging.isRecordingEnabled)
+    }
+
+    @objc private func exportLog() {
+        guard exportTask == nil, let logging, let labels = logMenuLabels, let window else { return }
+        exportTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.exportTask = nil }
+            do {
+                let snapshot = try await logging.snapshot()
+                guard !Task.isCancelled else { return }
+                let clock = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+                let proposedName = "DockShell_" + clock + "_" + UUID().uuidString.prefix(6) + ".log"
+                guard let destination = try await self.logExportDestination.choose(proposedName: proposedName,
+                    labels: labels, window: window), !Task.isCancelled else { return }
+                try await logging.export(snapshot, to: destination)
+            } catch { logging.reportExportFailure(error) }
+        }
+    }
 
     func apply(settings: TerminalSettings) throws {
         let settings = try settings.validated()
         let fontChanged = configured.fontName != settings.fontName || configured.fontSize != settings.fontSize
+        let reflows = fontChanged || configured.scrollbackLines != settings.scrollbackLines
+        let pending = reflows ? logCapture?.willResize(getTerminal()) : nil
+        logResizeDepth += 1
+        defer {
+            logResizeDepth -= 1
+            if let pending { logCapture?.didResize(getTerminal(), pending: pending) }
+        }
         if fontChanged {
             // The approved vendored patch uses ordinary resize, preserving modes.
             // Avoid assigning unchanged fonts on every SwiftUI view update.
@@ -130,6 +260,8 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
     }
 
     func reset() {
+        logCapture = nil
+        logBoundaries = TerminalFeedBoundaries()
         selectNone()
         getTerminal().resetToInitialState()
         getTerminal().silentLog = true
@@ -177,6 +309,9 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
     }
 
     func shutdown() {
+        logExportDestination.cancel()
+        exportTask?.cancel()
+        menu?.delegate = nil; logMenuDelegate = nil
         focusNotification?.cancel(); focusNotification = nil
         cancelSelectionDrag()
         if window?.firstResponder === self { window?.makeFirstResponder(nil) }
@@ -215,6 +350,13 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
         selectedTextForegroundColor = palette.foreground
         installColors(palette.ansi.map { SwiftTerm.Color(nsColor: $0) })
     }
+}
+
+@MainActor
+private final class LogContextMenuDelegate: NSObject, NSMenuDelegate {
+    weak var view: DockShellTerminalView?
+    init(view: DockShellTerminalView) { self.view = view }
+    func menuNeedsUpdate(_ menu: NSMenu) { view?.updateLogMenu() }
 }
 
 @MainActor
@@ -281,11 +423,13 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
     public let settings: TerminalSettings
     public let labels: TerminalMenuLabels
     public let onFocus: () -> Void
+    public let logExportDestination: (any TerminalLogExportDestinationChoosing)?
 
     public init(controller: any TerminalViewController, settings: TerminalSettings, labels: TerminalMenuLabels,
+                logExportDestination: (any TerminalLogExportDestinationChoosing)? = nil,
                 onFocus: @escaping () -> Void = {}) {
         self.controller = controller; self.settings = settings; self.labels = labels
-        self.onFocus = onFocus
+        self.onFocus = onFocus; self.logExportDestination = logExportDestination
     }
 
     public func makeCoordinator() -> any TerminalViewController { controller }
@@ -305,7 +449,7 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
                 }, onFocus: { [weak controller, source, onFocus] in
                     guard let controller, let surface = source.surface, controller.isAttached(to: surface) else { return }
                     onFocus()
-                }))
+                }), logExportDestination: logExportDestination)
             if let surface = view as? any TerminalSurface {
                 source.surface = surface
                 controller.attach(surface)
@@ -319,6 +463,8 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
     public func updateNSView(_ nsView: NSView, context: Context) {
         do { try TerminalViewBridge.apply(settings: settings, to: nsView) }
         catch { Task { @MainActor [weak controller] in controller?.settingsFailed() } }
+        controller.logging?.apply(settings)
+        controller.logging?.collect()
     }
 
     public static func dismantleNSView(_ nsView: NSView, coordinator: any TerminalViewController) {

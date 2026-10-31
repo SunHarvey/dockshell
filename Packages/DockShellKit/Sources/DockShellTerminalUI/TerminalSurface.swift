@@ -11,6 +11,19 @@ public protocol TerminalSurface: AnyObject {
     func apply(settings: TerminalSettings) throws
     func reset()
     func focus()
+    func bindLogging(_ logging: TerminalLogController?)
+    func beginLogCapture(enabled: Bool, limit: Int)
+    func setLogCapture(enabled: Bool, limit: Int)
+    func takeLogEvents() -> [TerminalLogEvent]
+    func logTail() -> TerminalLogTail
+}
+
+public extension TerminalSurface {
+    func bindLogging(_ logging: TerminalLogController?) {}
+    func beginLogCapture(enabled: Bool, limit: Int) {}
+    func setLogCapture(enabled: Bool, limit: Int) {}
+    func takeLogEvents() -> [TerminalLogEvent] { [] }
+    func logTail() -> TerminalLogTail { .empty }
 }
 
 /// View lifecycle and byte input shared by offline diagnostics and real SSH sessions.
@@ -18,6 +31,7 @@ public protocol TerminalSurface: AnyObject {
 public protocol TerminalViewController: AnyObject {
     /// Limits programmatic focus; inactive visible panes still accept deliberate user input.
     var isPresentationActive: Bool { get }
+    var logging: TerminalLogController? { get }
     func attach(_ surface: any TerminalSurface)
     func detach(_ surface: any TerminalSurface)
     func isAttached(to source: any TerminalSurface) -> Bool
@@ -29,4 +43,5 @@ public protocol TerminalViewController: AnyObject {
 public extension TerminalViewController {
     /// Standalone and offline presentations have no competing pane by default.
     var isPresentationActive: Bool { true }
+    var logging: TerminalLogController? { nil }
 }

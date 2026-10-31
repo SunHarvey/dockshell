@@ -232,6 +232,13 @@ public struct WorkspaceView: View {
                 Button(l10n.string(.sshClose)) { tabs.closePane(id: session.id) }
                 Divider()
             }
+            Button { tabs.toggleBatchCommands() } label: {
+                Label(l10n.string(tabs.showsBatchCommands ? .batchClose : .batchOpen), systemImage: "arrow.triangle.branch")
+            }
+            .help(l10n.string(.batchExecuteHelp))
+            .disabled(tabs.tabs.isEmpty)
+            .accessibilityIdentifier("dockshell.batch.toggle")
+            Divider()
             SettingsLink { Label(l10n.string(.settingsOpen), systemImage: "gearshape") }
         } label: {
             WorkspaceToolbarIcon(title: l10n.string(.toolbarMore), symbol: "ellipsis")

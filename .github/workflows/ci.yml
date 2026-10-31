@@ -61,6 +61,16 @@ jobs:
           set -euo pipefail
           sh Scripts/test-terminal-settings.sh 2>&1 | tee Build/ci-logs/terminal-settings.txt
 
+      - name: Verify terminal logging integration and real vim
+        run: |
+          set -euo pipefail
+          sh Scripts/test-terminal-logging-integration.sh 2>&1 | tee Build/ci-logs/terminal-logging.txt
+
+      - name: Verify batch commands and isolated shell execution
+        run: |
+          set -euo pipefail
+          sh Scripts/test-batch-commands.sh 2>&1 | tee Build/ci-logs/batch-commands.txt
+
       - name: Verify isolated SSH and SFTP integration
         run: |
           set -euo pipefail

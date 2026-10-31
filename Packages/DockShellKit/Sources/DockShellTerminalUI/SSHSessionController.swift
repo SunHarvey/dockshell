@@ -9,7 +9,7 @@ public enum SSHSessionPhase: Sendable, Equatable {
 
 /// Owns exactly one remote terminal and its bounded IO tasks; no SSH implementation reaches the view.
 @MainActor
-public final class SSHSessionController: ObservableObject, TerminalViewController {
+public final class SSHSessionController: ObservableObject, TerminalViewController, BatchCommandTarget {
     @Published public private(set) var profile: SessionProfile?
     @Published public private(set) var phase: SSHSessionPhase = .idle
     @Published public private(set) var error: (any Error)?
@@ -19,6 +19,7 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
     /// Workspace focus policy only; never used to filter input or terminal protocol replies.
     public private(set) var isPresentationActive = true
     private let transport: any SSHTransport
+    public let logging: TerminalLogController?
     private weak var surface: (any TerminalSurface)?
     private var connection: (any SSHConnection)?
     private var channel: (any SSHSessionChannel)?
@@ -37,8 +38,10 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
     private var inputBytes = 0
     private var pendingSize: TerminalSize?
 
-    public init(transport: any SSHTransport, sleepEvents: (any SystemSleepEventSource)? = nil) {
+    public init(transport: any SSHTransport, sleepEvents: (any SystemSleepEventSource)? = nil,
+                logging: TerminalLogController? = nil) {
         self.transport = transport
+        self.logging = logging
         if let sleepEvents {
             sleepTask = Task { [weak self, sleepEvents] in
                 let events = await sleepEvents.events()
@@ -52,8 +55,9 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
 
     public var isBusy: Bool { phase == .connecting || phase == .connected }
 
-    public func connect(to profile: SessionProfile, settings _: TerminalSettings) {
+    public func connect(to profile: SessionProfile, settings: TerminalSettings) {
         stopIO()
+        logging?.apply(settings)
         self.profile = profile
         recoveryNotice = nil
         guard !isSystemSleeping else {
@@ -87,6 +91,7 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
                 }
                 self?.channel = channel
                 self?.phase = .connected
+                self?.logging?.start()
                 self?.focusTerminal()
                 if let latest = self?.surface?.terminalSize { try await channel.resize(to: latest) }
                 self?.startPump(channel, token: token)
@@ -101,12 +106,14 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
 
     public func attach(_ surface: any TerminalSurface) {
         self.surface = surface
+        logging?.attach(surface)
         mount.open()
         resized(to: surface.terminalSize)
     }
 
     public func detach(_ surface: any TerminalSurface) {
         guard self.surface === surface else { return }
+        logging?.detach(surface)
         self.surface = nil
         // Publishing synchronously from dismantleNSView is forbidden. A replacement may attach first.
         let token = generation
@@ -134,6 +141,7 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
                 _ = try await TerminalIOPump().run(channel: channel) { [weak self] bytes in
                     guard let self, self.generation == token else { return }
                     self.surface?.feed(Array(bytes)[...])
+                    self.logging?.collect()
                     self.deliveredBytes += UInt64(bytes.count)
                 }
                 let outcome = await (channel as? any SSHSessionOutcome)?.completionError()
@@ -146,10 +154,22 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
     }
 
     public func receiveInput(_ bytes: Data) {
-        guard phase == .connected, channel != nil, !bytes.isEmpty else { return }
-        guard bytes.count <= 1_048_576 - inputBytes else { error = SSHConnectionError.inputLimit; return }
+        guard !bytes.isEmpty else { return }
+        if enqueueInput(bytes) == .queueFull { error = SSHConnectionError.inputLimit }
+    }
+
+    /// Uses the same queue as ordinary terminal input, preserving ordering and bounds.
+    /// A queued command may still fail if the connection closes before it is written.
+    public func enqueueBatchCommand(_ command: BatchCommand) -> BatchCommandAdmission {
+        enqueueInput(command.bytes)
+    }
+
+    private func enqueueInput(_ bytes: Data) -> BatchCommandAdmission {
+        guard phase == .connected, channel != nil else { return .notConnected }
+        guard bytes.count <= 1_048_576 - inputBytes else { return .queueFull }
         input.append(bytes); inputBytes += bytes.count
         drainInput()
+        return .queued
     }
 
     private func drainInput() {
@@ -249,6 +269,7 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
     }
 
     private func stopIO() {
+        logging?.finish()
         generation = UUID()
         let connecting = connectionTask
         connecting?.cancel(); connectionTask = nil

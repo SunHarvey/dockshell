@@ -239,6 +239,329 @@
         }
       }
     },
+    "batch.authentication": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipped: authentication pending"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已跳过：等待认证"
+          }
+        }
+      }
+    },
+    "batch.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Batch Command Bar"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关闭批量命令栏"
+          }
+        }
+      }
+    },
+    "batch.details": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Submission Details"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次发送详情"
+          }
+        }
+      }
+    },
+    "batch.disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skipped: not connected"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已跳过：未连接"
+          }
+        }
+      }
+    },
+    "batch.error.controls": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The command contains control characters. Check it and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命令包含控制字符，请检查后重试。"
+          }
+        }
+      }
+    },
+    "batch.error.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a command."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请输入命令。"
+          }
+        }
+      }
+    },
+    "batch.error.large": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The command exceeds 16 KiB. Shorten it and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "命令超过 16 KiB 上限，请缩短后重试。"
+          }
+        }
+      }
+    },
+    "batch.error.multiline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send one line at a time. Remove line breaks and try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每次发送一行命令，请移除换行后重试。"
+          }
+        }
+      }
+    },
+    "batch.execute": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Run in All"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "执行到全部"
+          }
+        }
+      }
+    },
+    "batch.execute.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press Return or click to send the command and one Return to every connected SSH tab."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按回车或点击，将命令和一次回车发送到全部已连接的 SSH 标签。"
+          }
+        }
+      }
+    },
+    "batch.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use when terminals are at a shell prompt. Commands enter each input queue; see each terminal for results."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请在各终端回到命令提示符后使用。命令进入各自的输入队列，执行结果请在对应终端查看。"
+          }
+        }
+      }
+    },
+    "batch.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No connected SSH sessions."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无已连接的 SSH 会话。"
+          }
+        }
+      }
+    },
+    "batch.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch Execute Commands"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批量执行命令"
+          }
+        }
+      }
+    },
+    "batch.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One command for all connected SSH tabs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输入单行命令，发送到全部已连接的 SSH 标签"
+          }
+        }
+      }
+    },
+    "batch.queued": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queued for sending"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已加入发送队列"
+          }
+        }
+      }
+    },
+    "batch.queuefull": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: input queue full"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未发送：输入队列已满"
+          }
+        }
+      }
+    },
+    "batch.summary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Queued: {queued} · Skipped: {skipped} · Queue full: {full}"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已排队 {queued} · 已跳过 {skipped} · 队列已满 {full}"
+          }
+        }
+      }
+    },
+    "batch.targets": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected: {connected} / Open: {open}"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已连接 {connected} / 已打开 {open}"
+          }
+        }
+      }
+    },
+    "batch.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Batch Commands"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "批量命令"
+          }
+        }
+      }
+    },
     "connection.disconnected": {
       "extractionState": "manual",
       "localizations": {
@@ -1582,6 +1905,431 @@
         }
       }
     },
+    "log.error.capture": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A terminal redraw could not be captured reliably. Recording stopped; retained output can still be exported."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "终端重绘内容未能可靠提取，日志记录已停止；仍可导出已保留的内容。"
+          }
+        }
+      }
+    },
+    "log.error.exists": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A file already exists at that location. Choose another filename; the existing file was not changed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目标文件已存在，请使用其他文件名；已有文件未被修改。"
+          }
+        }
+      }
+    },
+    "log.error.export": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The log could not be exported. Check the destination and available disk space; the original log is retained."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志导出失败，请检查目标位置权限和磁盘空间；原日志仍保留。"
+          }
+        }
+      }
+    },
+    "log.error.queue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The log writer could not keep up. Recording stopped and the log is incomplete; the terminal connection continues."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志写入未能跟上输出，记录已停止，日志不完整；终端连接继续。"
+          }
+        }
+      }
+    },
+    "log.error.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No retained log is available for this connection yet."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前连接暂无可导出的日志。"
+          }
+        }
+      }
+    },
+    "log.error.write": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some terminal log data could not be saved. Recording for the affected connection stopped; the terminal remains connected. Reconnect to try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分终端日志未能保存，受影响的日志记录已停止，终端连接继续。可重连后重试。"
+          }
+        }
+      }
+    },
+    "log.export": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export Terminal Log…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出终端日志…"
+          }
+        }
+      }
+    },
+    "log.export.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export Retained Terminal Log"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "导出已保留的终端日志"
+          }
+        }
+      }
+    },
+    "log.marker.alternateentered": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entered alternate screen; screen contents are omitted."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进入备用屏幕，略过画面内容。"
+          }
+        }
+      }
+    },
+    "log.marker.alternateexited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Returned to the normal screen; text logging resumes."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "返回普通屏幕，恢复文字记录。"
+          }
+        }
+      }
+    },
+    "log.marker.ended": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection log ended."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "连接日志结束。"
+          }
+        }
+      }
+    },
+    "log.marker.incomplete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some output could not be recorded; this log is incomplete."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分输出未能记录，此日志不完整。"
+          }
+        }
+      }
+    },
+    "log.marker.olderremoved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Older output was removed by the configured size limit."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "较早内容已按容量上限滚动移除。"
+          }
+        }
+      }
+    },
+    "log.marker.omitted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An existing partial line was omitted when recording resumed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "恢复记录时略过已有半行，避免补录关闭期间的内容。"
+          }
+        }
+      }
+    },
+    "log.marker.started": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection log started."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始记录连接日志。"
+          }
+        }
+      }
+    },
+    "log.marker.truncated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The beginning of an over-limit logical line was removed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "超长逻辑行的较早内容已按上限移除。"
+          }
+        }
+      }
+    },
+    "log.pause": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause Log Recording"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂停日志记录"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "log.quit.anyway": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Anyway"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仍要退出"
+          }
+        }
+      }
+    },
+    "log.quit.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some terminal logs could not be saved completely. Retained logs remain on disk. The application will now quit."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "部分终端日志未能完整保存。已保留的日志仍在磁盘中，应用将继续退出。"
+          }
+        }
+      }
+    },
+    "log.start": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start Log Recording"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "开始日志记录"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "log.status.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log: incomplete; recording stopped"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志：记录不完整，已停止"
+          }
+        }
+      }
+    },
+    "log.status.off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log: off"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志：已关闭"
+          }
+        }
+      }
+    },
+    "log.status.recording": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log: recording (right-click to export)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志：正在记录，右键可导出"
+          }
+        }
+      }
+    },
+    "log.status.retained": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log: stopped; retained output can be exported"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志：已停止，保留内容可导出"
+          }
+        }
+      }
+    },
+    "log.status.starting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log: preparing storage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志：正在准备记录"
+          }
+        }
+      }
+    },
     "menu.sessions": {
       "extractionState": "manual",
       "localizations": {
@@ -1837,6 +2585,23 @@
         }
       }
     },
+    "settings.error.loglimit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a log limit between 1 and 100 MB."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志上限须为 1 至 100 MB。"
+          }
+        }
+      }
+    },
     "settings.error.size": {
       "extractionState": "manual",
       "localizations": {
@@ -1918,6 +2683,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "字号"
+          }
+        }
+      }
+    },
+    "settings.log.enabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record terminal output automatically"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动记录终端输出"
+          }
+        }
+      }
+    },
+    "settings.log.help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1–100 MB per connection (1 MB = 1,000,000 bytes). Older output is removed when full. Changes apply now. Right-click the terminal to export. Output may contain sensitive information."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个连接保留 1–100 MB（1 MB = 1,000,000 字节），超限移除较早内容。保存后立即生效，右键终端可导出。终端输出可能包含敏感信息。"
+          }
+        }
+      }
+    },
+    "settings.log.limit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log limit per connection"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个连接的日志上限"
           }
         }
       }
@@ -4104,13 +4920,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Settings and actions for the current connection."
+            "value": "Settings, connection actions and batch commands."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置与当前连接操作。"
+            "value": "设置、当前连接操作和批量命令。"
           }
         }
       }
