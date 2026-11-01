@@ -4,6 +4,24 @@
 
 原生 macOS SSH 终端客户端。Swift 6、SwiftUI / AppKit、SPM，最低系统 macOS 14。
 
+## 2026-11-01：v0.4.1 发布准备
+
+用户批准将“服务器”术语调整提交并发布为 **v0.4.1 / build 26**，Release 标题只使用 **v0.4.1**。README 下载入口和当前版本说明更新，发布正文见 [v0.4.1](ReleaseNotes/v0.4.1.md)。沿用 SunHarvey 作者与 SSH 签名、arm64 的现有 Actions 流程和 `DockShell-0.4.1-arm64.dmg` 安装附件；签名与公证状态按现有构建清单说明。
+
+本次变更兼容原有 SQLite 数据与凭据引用，不增加依赖或第三方补丁，不移动历史标签。实际发布完成情况以对应 Actions、Release 元数据与公开下载校验结果为准。
+
+0.4.1 / build 26 下的 Release SSH / CSV 导入专项、中英文原生预览、默认回归与独立副本搬迁、发布守卫、工作流 YAML 与文件链接检查通过。实际 DMG 的镜像完整性、正常 /Volumes 只读重新挂载、品牌布局、嵌套签名及 SHA256SUMS 校验通过；包内版本与中英文服务器文案已核对。此处记录本机发布准备，云端发布结果以工作流及公开附件为准。
+
+## 2026-11-01：服务器术语统一
+
+保存和导入的连接配置统一称为“服务器”。首页、分组筛选、搜索、新建/编辑/删除、系统菜单、SSH / CSV 导入预览、认证提示和错误信息的中英文文案同步更新，String Catalog 与类型化键保持一致。实际运行的 SSH / PTY / 终端连接仍使用协议中的 session 语义。
+
+领域模型、仓储协议、SQLite 实现、编辑/导入界面与测试改用 `ServerProfile`、`ServerDraft`、`ServerRepository`、`ServerImport*`、`ServerCSV*` 等命名，完整文件名、README、导入指南和 CI / Release 脚本引用同步调整。SSH 导入验证入口改为 `sh Scripts/test-server-import.sh`。
+
+为兼容已有配置，保留 `sessions.sqlite` 文件名、schema v1、`sessions` / `session_groups` 表与凭据 UUID；不迁移或重写用户数据，Keychain 服务名称及读写实现不变。实际比较确认持久化 SQL、路径与 Keychain 实现未变。未新增依赖、第三方补丁或发布版本。
+
+Debug 编译、SSH 配置导入和 CSV 专项的中英文原生预览/确认/取消、默认回归及独立副本资源搬迁通过，覆盖同名跳过、原子回滚、分组搜索、密码/私钥/agent 配置、凭据引用和重启读取。验证只使用隔离的临时配置、数据库与合成凭据，不访问个人服务器或已保存数据。工作流 YAML、脚本语法、String Catalog 键和改名后的文档引用检查通过。
+
 ## 2026-11-01：统一 DMG 附件命名
 
 按用户要求，公开安装包统一为 `DockShell-版本号-架构.dmg`，移除文件名中的构建号与 `local-preview`。内部目录、ZIP、应用信息及构建清单仍保留原有构建与签名信息；CI / Release 的输出、上传、校验和匿名下载规则同步更新。新增统一文件名脚本与参数边界检查，README、发布说明与分发文档同步调整。

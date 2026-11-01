@@ -119,7 +119,7 @@ private actor M4FlowTransport: SSHTransport {
     private let connections: [M4FlowConnection]
     private var calls = 0
     init(_ connections: [M4FlowConnection]) { self.connections = connections }
-    func connect(to profile: SessionProfile) throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) throws -> any SSHConnection {
         guard calls < connections.count else { throw SSHConnectionError.connectionFailed }
         let result = connections[calls]; calls += 1
         return result
@@ -131,7 +131,7 @@ private struct M4PromptFlowTransport: SSHTransport {
     let prompts: SSHConnectionPrompts
     let request: SSHHostTrustRequest
     let connection: M4FlowConnection
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         let currentRequest = SSHHostTrustRequest(endpoint: request.endpoint, keys: request.keys)
         guard try await prompts.confirmHost(currentRequest) else { throw SSHConnectionError.hostRejected }
         try Task.checkCancellation()
@@ -161,8 +161,8 @@ enum M4FlowVerification {
         print("PASS M4 lifecycle: trust/password cancellation, stale output suppression, 1 MiB input bound, connection cleanup and controller deallocation")
     }
 
-    private static var profile: SessionProfile {
-        SessionProfile(name: "M4 protocol fixture", host: "probe.invalid", username: "fixture", authentication: .password(credentialID: nil))
+    private static var profile: ServerProfile {
+        ServerProfile(name: "M4 protocol fixture", host: "probe.invalid", username: "fixture", authentication: .password(credentialID: nil))
     }
 
     private static func require(_ condition: Bool, _ message: String) throws {

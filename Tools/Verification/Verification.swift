@@ -128,7 +128,7 @@ private enum DockShellVerification {
         print("PASS SwiftTerm resources: explicit application bundle, no build-path fallback")
         let helperURL = appURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")
         let environment = ProcessInfo.processInfo.environment
-        let specialModes = ["DOCKSHELL_CSV_IMPORT_TEST", "DOCKSHELL_SESSION_IMPORT_TEST", "DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
+        let specialModes = ["DOCKSHELL_CSV_IMPORT_TEST", "DOCKSHELL_SERVER_IMPORT_TEST", "DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
             .filter { environment[$0] == "1" }
         try require(specialModes.count <= 1, "Run each optional verification mode in a separate process")
         if environment["DOCKSHELL_CSV_IMPORT_TEST"] == "1" {
@@ -139,12 +139,12 @@ private enum DockShellVerification {
             print("PASS M12.2 CSV import completed")
             return
         }
-        if environment["DOCKSHELL_SESSION_IMPORT_TEST"] == "1" {
+        if environment["DOCKSHELL_SERVER_IMPORT_TEST"] == "1" {
             try require(arguments.contains("--ui-smoke"), "Import verification requires AppKit")
-            try await M12SessionImportVerification.run()
-            try await M12SessionImportVerification.runUI(l10n: chinese)
-            try await M12SessionImportVerification.runUI(l10n: english)
-            print("PASS M12.1 session import completed")
+            try await M12ServerImportVerification.run()
+            try await M12ServerImportVerification.runUI(l10n: chinese)
+            try await M12ServerImportVerification.runUI(l10n: english)
+            print("PASS M12.1 server import completed")
             return
         }
         if environment["DOCKSHELL_BATCH_COMMAND_TEST"] == "1" {
@@ -219,7 +219,7 @@ private enum DockShellVerification {
         print("PASS SQLite: system library \(SQLiteRuntime.version)")
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("dockshell-ui-\(UUID())")
         defer { try? FileManager.default.removeItem(at: scratch) }
-        let repository = SQLiteSessionRepository(url: scratch.appendingPathComponent("sessions.sqlite"))
+        let repository = SQLiteServerRepository(url: scratch.appendingPathComponent("sessions.sqlite"))
         let service = WorkspaceService(repository: repository, credentials: TestCredentialStore(), privateKeys: PrivateKeyBookmarks())
         let snapshot = try await service.load().snapshot
         try require(snapshot.profiles.isEmpty && snapshot.groups.isEmpty, "M1 must not seed fictional servers")
@@ -321,7 +321,7 @@ private enum DockShellVerification {
 }
 
 private struct VerificationSSHTransport: SSHTransport {
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         throw SSHConnectionError.connectionFailed
     }
 }

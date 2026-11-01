@@ -19,7 +19,7 @@ enum M9SFTPPolicyVerification {
              .privateKey(URL(fileURLWithPath: "/private/tmp/private key % ' $ filename"))),
             (.agent, .agent(URL(fileURLWithPath: "/private/tmp/agent socket")))
         ] {
-            let profile = SessionProfile(name: "policy", host: endpoint.host, port: endpoint.port,
+            let profile = ServerProfile(name: "policy", host: endpoint.host, port: endpoint.port,
                                          username: "tester", authentication: method)
             let arguments = try OpenSSHCommand.arguments(profile: profile, endpoint: endpoint,
                 acceptedKeys: [key], knownHostsURL: knownHosts, helperURL: helperURL,

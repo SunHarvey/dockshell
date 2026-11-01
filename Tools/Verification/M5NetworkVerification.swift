@@ -57,7 +57,7 @@ enum M5NetworkVerification {
         let store = OpenSSHHostKeyStore(url: directory.appendingPathComponent("known_hosts"))
         let transport = OpenSSHTransport(credentials: M5NoCredentials(), hostKeys: store,
             scanner: scanner, interaction: interaction, helperURL: helperURL, agent: M5NoAgent())
-        let profile = SessionProfile(name: "Authorized M5 verification", host: configuration.endpoint.host,
+        let profile = ServerProfile(name: "Authorized M5 verification", host: configuration.endpoint.host,
             port: configuration.endpoint.port, username: configuration.username,
             authentication: .privateKey(fileBookmark: bookmark, passphraseCredentialID: nil))
 
@@ -121,7 +121,7 @@ enum M5NetworkVerification {
             let transport = OpenSSHTransport(credentials: M5NoCredentials(), hostKeys: store,
                 scanner: M5PinnedScanner(key: key), interaction: M5PinnedInteraction(key: key), helperURL: helperURL,
                 agent: OpenSSHAgentProvider(environment: ["SSH_AUTH_SOCK": socket.path], allowLaunchctlFallback: false))
-            let profile = SessionProfile(name: "Authorized isolated agent", host: configuration.endpoint.host,
+            let profile = ServerProfile(name: "Authorized isolated agent", host: configuration.endpoint.host,
                 port: configuration.endpoint.port, username: configuration.username, authentication: .agent)
             let connection = try await transport.connect(to: profile)
             do {
@@ -144,7 +144,7 @@ enum M5NetworkVerification {
             helperURL: helperURL, agent: M5NoAgent())
         // Discovery has already checked the target's exact external fingerprint. The final
         // handshake through this test-only relay must still match that same key strictly.
-        let profile = SessionProfile(name: "Authorized blackhole verification", host: endpoint.host,
+        let profile = ServerProfile(name: "Authorized blackhole verification", host: endpoint.host,
             port: endpoint.port, username: configuration.username,
             authentication: .privateKey(fileBookmark: bookmark, passphraseCredentialID: nil))
         var connection: (any SSHConnection)?
@@ -250,10 +250,10 @@ private struct M5PinnedInteraction: SSHInteraction {
         }
         return true
     }
-    func password(for profile: SessionProfile) async throws -> Data {
+    func password(for profile: ServerProfile) async throws -> Data {
         throw M5NetworkFailure(description: "The private-key verification unexpectedly requested a password")
     }
-    func passphrase(for profile: SessionProfile) async throws -> Data {
+    func passphrase(for profile: ServerProfile) async throws -> Data {
         throw M5NetworkFailure(description: "The unattended private-key verification requested a passphrase")
     }
 }

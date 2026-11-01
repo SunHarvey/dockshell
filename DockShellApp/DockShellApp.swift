@@ -100,7 +100,7 @@ private final class AppBootstrap: ObservableObject {
             let (l10n, service, settingsService, credentials, knownHostsURL) = try await Task.detached(priority: .userInitiated) {
                 let l10n = try L10n.load()
                 for key in L10nKey.allCases { _ = l10n.string(key) }
-                let repository = SQLiteSessionRepository(url: try AppPaths.sessionDatabaseURL())
+                let repository = SQLiteServerRepository(url: try AppPaths.serverDatabaseURL())
                 let credentials = KeychainCredentialStore()
                 let service = WorkspaceService(repository: repository, credentials: credentials,
                                                privateKeys: PrivateKeyBookmarks(), performInitialPrivateKeyCleanup: true)

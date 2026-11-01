@@ -1,18 +1,18 @@
 import Foundation
 
 /// Structural errors never include CSV contents, key paths, or credential values.
-public enum SessionCSVError: Error, Equatable, Sendable {
+public enum ServerCSVError: Error, Equatable, Sendable {
     case empty, unreadable, invalidEncoding, invalidHeaders, malformed(line: Int), limitExceeded
 }
 
 /// CSV decoding and file IO run outside the UI actor. Parsing must have no persistence or network effects.
-public protocol SessionCSVReading: Sendable {
-    func read(from url: URL) async throws -> SessionImportDocument
-    func parse(_ text: String) async throws -> SessionImportDocument
+public protocol ServerCSVReading: Sendable {
+    func read(from url: URL) async throws -> ServerImportDocument
+    func parse(_ text: String) async throws -> ServerImportDocument
 }
 
 /// Locale-independent field identifiers and non-secret documentation data.
-public enum SessionCSVFormat {
+public enum ServerCSVFormat {
     public static let columns = ["name", "host", "port", "username", "auth", "key_path"]
     public static let requiredColumns: Set<String> = ["name", "host", "username", "auth"]
     public static let header = columns.joined(separator: ",")

@@ -5,12 +5,12 @@ import UniformTypeIdentifiers
 private enum PrivateKeyInput: Hashable { case file, paste }
 
 /// Secrets remain ephemeral form state. Editing metadata never reads a saved Keychain item.
-struct SessionEditorView: View {
+struct ServerEditorView: View {
     @ObservedObject var model: WorkspaceViewModel
     let l10n: L10n
-    let original: SessionProfile?
+    let original: ServerProfile?
     @Environment(\.dismiss) private var dismiss
-    @ViewState<SessionDraft> private var draft: SessionDraft
+    @ViewState<ServerDraft> private var draft: ServerDraft
     @ViewState<String> private var secret = ""
     @ViewState<Bool> private var rememberSecret = true
     @ViewState<String> private var keyName = ""
@@ -21,17 +21,17 @@ struct SessionEditorView: View {
     @ViewState<Bool> private var isSaving = false
     @ViewState<L10nKey?> private var errorKey: L10nKey?
 
-    init(model: WorkspaceViewModel, l10n: L10n, profile: SessionProfile?) {
+    init(model: WorkspaceViewModel, l10n: L10n, profile: ServerProfile?) {
         self.model = model
         self.l10n = l10n
         original = profile
-        _draft = State(initialValue: SessionDraft(profile: profile))
+        _draft = State(initialValue: ServerDraft(profile: profile))
         _rememberSecret = State(initialValue: profile == nil || profile?.authentication.credentialID != nil)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text(verbatim: l10n.string(original == nil ? .sessionNew : .sessionEdit))
+            Text(verbatim: l10n.string(original == nil ? .serverNew : .serverEdit))
                 .font(.title2.weight(.semibold))
             Form {
                 TextField(l10n.string(.fieldName), text: $draft.name)
@@ -53,7 +53,7 @@ struct SessionEditorView: View {
                         Text(verbatim: l10n.string(.keySourcePaste)).tag(PrivateKeyInput.paste)
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityIdentifier("session.key.source")
+                    .accessibilityIdentifier("server.key.source")
                     if keyInput == .file {
                         HStack {
                             Text(verbatim: keyName.isEmpty ? l10n.string(.keyNotSelected) : keyName)
@@ -74,7 +74,7 @@ struct SessionEditorView: View {
                                 .background(.background, in: RoundedRectangle(cornerRadius: 6))
                                 .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(nsColor: .separatorColor), lineWidth: 1))
                                 .accessibilityLabel(Text(verbatim: l10n.string(.keyPasteContents)))
-                                .accessibilityIdentifier("session.key.contents")
+                                .accessibilityIdentifier("server.key.contents")
                                 .privacySensitive()
                             Text(verbatim: l10n.string(.keyPasteHelp)).font(.caption).foregroundStyle(.secondary)
                         }

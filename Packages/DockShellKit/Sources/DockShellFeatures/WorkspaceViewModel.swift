@@ -3,22 +3,22 @@ import DockShellApplication
 import DockShellDomain
 import Foundation
 
-public enum SessionScope: Hashable {
+public enum ServerScope: Hashable {
     case all, ungrouped, group(UUID)
 }
 
-enum WorkspaceCommand { case newSession, connectSelected, importSessions, importCSV }
+enum WorkspaceCommand { case newServer, connectSelected, importServers, importCSV }
 
 /// Main-actor presentation state; persistence and credentials stay behind the service actor.
 @MainActor
 public final class WorkspaceViewModel: ObservableObject {
     @Published public var searchText = ""
-    @Published public var scope: SessionScope = .all {
+    @Published public var scope: ServerScope = .all {
         didSet { if scope != oldValue { selectedProfileID = nil } }
     }
     @Published public var selectedProfileID: UUID?
-    @Published public private(set) var profiles: [SessionProfile] = []
-    @Published public private(set) var groups: [SessionGroup] = []
+    @Published public private(set) var profiles: [ServerProfile] = []
+    @Published public private(set) var groups: [ServerGroup] = []
     @Published public private(set) var isLoading = false
     @Published public private(set) var isMutating = false
     @Published public private(set) var loadError: DockShellError?
@@ -28,25 +28,25 @@ public final class WorkspaceViewModel: ObservableObject {
     let commandRequests = PassthroughSubject<WorkspaceCommand, Never>()
     private let service: WorkspaceService
     let configurationReader: (any SSHConfigurationReading)?
-    let csvReader: (any SessionCSVReading)?
+    let csvReader: (any ServerCSVReading)?
 
     public init(service: WorkspaceService, configurationReader: (any SSHConfigurationReading)? = nil,
-                csvReader: (any SessionCSVReading)? = nil) {
+                csvReader: (any ServerCSVReading)? = nil) {
         self.service = service; self.configurationReader = configurationReader; self.csvReader = csvReader
     }
 
-    public var canImportSessions: Bool { configurationReader != nil }
+    public var canImportServers: Bool { configurationReader != nil }
     public var canImportCSV: Bool { csvReader != nil }
 
-    public func prepareImportRows(_ rows: [SessionImportRow]) async throws -> [SessionImportRow] {
+    public func prepareImportRows(_ rows: [ServerImportRow]) async throws -> [ServerImportRow] {
         try await service.prepareImportRows(rows)
     }
 
-    public func importSessions(_ rows: [SessionImportRow], into group: SessionImportGroup) async throws -> SessionImportReceipt {
+    public func importServers(_ rows: [ServerImportRow], into group: ServerImportGroup) async throws -> ServerImportReceipt {
         guard !isMutating else { throw DockShellError.storageUnavailable }
         isMutating = true
         defer { isMutating = false }
-        let (state, receipt) = try await service.importSessions(rows, into: group)
+        let (state, receipt) = try await service.importServers(rows, into: group)
         apply(state)
         searchText = ""
         if let id = receipt.groupID { scope = .group(id) }
@@ -54,7 +54,7 @@ public final class WorkspaceViewModel: ObservableObject {
         return receipt
     }
 
-    public var selectedProfile: SessionProfile? { profiles.first { $0.id == selectedProfileID } }
+    public var selectedProfile: ServerProfile? { profiles.first { $0.id == selectedProfileID } }
     public var hasLoadError: Bool { loadError != nil }
     public var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public var isFiltering: Bool { isSearching || scope != .all }
@@ -64,7 +64,7 @@ public final class WorkspaceViewModel: ObservableObject {
         commandRequests.send(command)
     }
 
-    public var filteredProfiles: [SessionProfile] {
+    public var filteredProfiles: [ServerProfile] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         return profiles.filter { profile in
             let matchesGroup: Bool
@@ -90,7 +90,7 @@ public final class WorkspaceViewModel: ObservableObject {
         catch { loadError = (error as? DockShellError) ?? .storageUnavailable }
     }
 
-    public func save(_ draft: SessionDraft) async throws {
+    public func save(_ draft: ServerDraft) async throws {
         isMutating = true
         defer { isMutating = false }
         do { apply(try await service.save(draft)) }
@@ -110,10 +110,10 @@ public final class WorkspaceViewModel: ObservableObject {
         apply(try await service.saveGroup(id: id, name: name))
     }
 
-    public func deleteSession(id: UUID) async {
+    public func deleteServer(id: UUID) async {
         isMutating = true
         defer { isMutating = false }
-        do { apply(try await service.deleteSession(id: id)) }
+        do { apply(try await service.deleteServer(id: id)) }
         catch { operationError = (error as? DockShellError) ?? .storageUnavailable }
     }
 

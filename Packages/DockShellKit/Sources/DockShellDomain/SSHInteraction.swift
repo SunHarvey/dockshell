@@ -15,12 +15,12 @@ public struct SSHHostTrustRequest: Identifiable, Sendable {
 /// Implementations must cancel pending prompts when the requesting task is cancelled.
 public protocol SSHInteraction: Sendable {
     func confirmHost(_ request: SSHHostTrustRequest) async throws -> Bool
-    func password(for profile: SessionProfile) async throws -> Data
-    func passphrase(for profile: SessionProfile) async throws -> Data
+    func password(for profile: ServerProfile) async throws -> Data
+    func passphrase(for profile: ServerProfile) async throws -> Data
 }
 
 public extension SSHInteraction {
-    func passphrase(for profile: SessionProfile) async throws -> Data {
+    func passphrase(for profile: ServerProfile) async throws -> Data {
         throw SSHConnectionError.passphraseRequired
     }
 }

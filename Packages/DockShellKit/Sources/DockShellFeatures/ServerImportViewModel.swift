@@ -2,12 +2,12 @@ import Combine
 import DockShellDomain
 import Foundation
 
-public enum SessionImportKind: Sendable { case sshConfiguration, csv }
+public enum ServerImportKind: Sendable { case sshConfiguration, csv }
 
 /// Import-only presentation state. Reading and key validation stay behind actor/protocol boundaries.
 @MainActor
-public final class SessionImportViewModel: ObservableObject {
-    @Published public var rows: [SessionImportRow] = []
+public final class ServerImportViewModel: ObservableObject {
+    @Published public var rows: [ServerImportRow] = []
     @Published public var existingGroupID: UUID?
     @Published public var groupName = "local-ssh-config"
     @Published public private(set) var isLoading = false
@@ -15,20 +15,20 @@ public final class SessionImportViewModel: ObservableObject {
     @Published public private(set) var sourceURL: URL?
     @Published public private(set) var patternRuleCount = 0
     @Published public private(set) var error: L10nKey?
-    @Published public private(set) var receipt: SessionImportReceipt?
+    @Published public private(set) var receipt: ServerImportReceipt?
     @Published public var csvText = ""
     @Published public private(set) var showsCSVInput: Bool
     @Published public private(set) var errorLine: Int?
     public let workspace: WorkspaceViewModel
-    public let kind: SessionImportKind
+    public let kind: ServerImportKind
 
-    public init(workspace: WorkspaceViewModel, kind: SessionImportKind = .sshConfiguration) {
+    public init(workspace: WorkspaceViewModel, kind: ServerImportKind = .sshConfiguration) {
         self.workspace = workspace; self.kind = kind; showsCSVInput = kind == .csv
         if kind == .csv { groupName = "csv-import" }
     }
 
-    public var target: SessionImportGroup {
-        existingGroupID.map(SessionImportGroup.existing) ?? .named(groupName)
+    public var target: ServerImportGroup {
+        existingGroupID.map(ServerImportGroup.existing) ?? .named(groupName)
     }
     public var hasValidGroup: Bool {
         if let id = existingGroupID { return workspace.groups.contains { $0.id == id } }
@@ -39,18 +39,18 @@ public final class SessionImportViewModel: ObservableObject {
     /// Recompute against the destination group, including duplicate names earlier in this preview.
     public var duplicateIDs: Set<UUID> {
         let groupID = existingGroupID ?? workspace.groups.first {
-            SessionImportNames.normalized($0.name) == SessionImportNames.normalized(groupName)
+            ServerImportNames.normalized($0.name) == ServerImportNames.normalized(groupName)
         }?.id
         var names = Set(workspace.profiles.filter { groupID != nil && $0.groupID == groupID }
-            .map { SessionImportNames.normalized($0.name) })
+            .map { ServerImportNames.normalized($0.name) })
         var duplicates: Set<UUID> = []
         for row in rows where row.selected && row.isValidForImport {
-            if !names.insert(SessionImportNames.normalized(row.name)).inserted { duplicates.insert(row.id) }
+            if !names.insert(ServerImportNames.normalized(row.name)).inserted { duplicates.insert(row.id) }
         }
         return duplicates
     }
 
-    public var importableRows: [SessionImportRow] {
+    public var importableRows: [ServerImportRow] {
         rows.filter { $0.selected && $0.isValidForImport }
     }
     public var readyCount: Int { importableRows.count - duplicateIDs.count }
@@ -64,13 +64,13 @@ public final class SessionImportViewModel: ObservableObject {
         isLoading = true; error = nil; errorLine = nil; receipt = nil; rows = []; sourceURL = url; patternRuleCount = 0
         defer { isLoading = false }
         do {
-            let document: SessionImportDocument
+            let document: ServerImportDocument
             if kind == .csv {
-                guard let reader = workspace.csvReader, let url else { throw SessionCSVError.unreadable }
+                guard let reader = workspace.csvReader, let url else { throw ServerCSVError.unreadable }
                 csvText = ""; showsCSVInput = true
                 document = try await reader.read(from: url)
             } else {
-                guard let reader = workspace.configurationReader else { throw SessionImportError.unreadable }
+                guard let reader = workspace.configurationReader else { throw ServerImportError.unreadable }
                 document = try await reader.read(from: url)
             }
             let prepared = try await workspace.prepareImportRows(document.rows)
@@ -87,7 +87,7 @@ public final class SessionImportViewModel: ObservableObject {
         isLoading = true; error = nil; errorLine = nil; receipt = nil; rows = []; sourceURL = nil
         defer { isLoading = false }
         do {
-            guard let reader = workspace.csvReader else { throw SessionCSVError.unreadable }
+            guard let reader = workspace.csvReader else { throw ServerCSVError.unreadable }
             let document = try await reader.parse(csvText)
             let prepared = try await workspace.prepareImportRows(document.rows)
             try Task.checkCancellation()
@@ -118,18 +118,18 @@ public final class SessionImportViewModel: ObservableObject {
         guard canSave else { return }
         isSaving = true; error = nil
         defer { isSaving = false }
-        do { receipt = try await workspace.importSessions(importableRows, into: target); csvText = "" }
+        do { receipt = try await workspace.importServers(importableRows, into: target); csvText = "" }
         catch is CancellationError { }
         catch { recordError(error) }
     }
 
     private func recordError(_ error: any Error) {
         self.error = Self.errorKey(error); errorLine = nil
-        if case .malformed(let line)? = error as? SessionCSVError { errorLine = line }
+        if case .malformed(let line)? = error as? ServerCSVError { errorLine = line }
     }
 
     private static func errorKey(_ error: any Error) -> L10nKey {
-        if let error = error as? SessionCSVError {
+        if let error = error as? ServerCSVError {
             return switch error {
             case .empty: .csvErrorEmpty
             case .unreadable: .csvErrorRead
@@ -139,7 +139,7 @@ public final class SessionImportViewModel: ObservableObject {
             case .limitExceeded: .csvErrorLimit
             }
         }
-        if let error = error as? SessionImportError {
+        if let error = error as? ServerImportError {
             return switch error {
             case .unreadable: .importErrorRead
             case .invalidText: .importErrorText

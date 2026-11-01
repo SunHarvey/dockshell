@@ -41,7 +41,7 @@ private actor M92QueueFactory: SFTPClientFactory {
     func release() { let value = gate; gate = nil; value?.resume() }
     func count() -> Int { calls }
     func serialCleanup() -> Bool { previousRetired }
-    func connect(to profile: SessionProfile) async throws -> any SFTPClient {
+    func connect(to profile: ServerProfile) async throws -> any SFTPClient {
         let index = calls
         calls += 1
         guard index < clients.count else { throw SSHConnectionError.connectionFailed }
@@ -133,7 +133,7 @@ private actor M92QueueEngine: SFTPFileTransferring {
 }
 
 private struct M92UnattachedTerminalTransport: SSHTransport {
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         throw SSHConnectionError.connectionFailed
     }
 }
@@ -180,8 +180,8 @@ enum M92TransferQueueVerification {
         print("PASS M9.2 queue lifecycle: cooperative/forced cancellation, stale passwords, late-client retirement and owner cleanup")
     }
 
-    private static func profile(_ name: String = "queue") -> SessionProfile {
-        SessionProfile(name: name, host: "queue.invalid", username: "fixture", authentication: .agent)
+    private static func profile(_ name: String = "queue") -> ServerProfile {
+        ServerProfile(name: name, host: "queue.invalid", username: "fixture", authentication: .agent)
     }
     private static func request(_ name: String = "file") throws -> SFTPTransferRequest {
         SFTPTransferRequest(direction: .upload, localURL: URL(fileURLWithPath: "/selected/" + name),

@@ -110,10 +110,10 @@ enum ManagedPrivateKeyVerification {
         let database = root.appendingPathComponent("database/sessions.sqlite")
         let keys = PrivateKeyBookmarks(managedDirectory: directory)
         let credentials = TestCredentialStore()
-        let repository = SQLiteSessionRepository(url: database)
+        let repository = SQLiteServerRepository(url: database)
         let faults = ManagedKeyFailingRepository(base: repository)
         let service = WorkspaceService(repository: faults, credentials: credentials, privateKeys: keys)
-        var draft = SessionDraft()
+        var draft = ServerDraft()
         draft.name = "Pasted private key fixture"; draft.host = "example.invalid"; draft.username = "tester"
         draft.authentication = .privateKey; draft.privateKeyText = plain
         var state = try await service.save(draft)
@@ -123,7 +123,7 @@ enum ManagedPrivateKeyVerification {
         try check(try Data(contentsOf: firstFile) == Data(plain.utf8), "Service did not save the pasted key")
         let before = try entries(directory)
 
-        var replacement = SessionDraft(profile: first)
+        var replacement = ServerDraft(profile: first)
         replacement.privateKeyText = encrypted
         replacement.secret = .replace(String(decoding: phrase, as: UTF8.self))
         await faults.setFailure(.beforeCommit)
@@ -153,25 +153,25 @@ enum ManagedPrivateKeyVerification {
         try noSecrets(in: database.deletingLastPathComponent(), secrets: [plain, encrypted, String(decoding: phrase, as: UTF8.self)])
         await repository.close()
 
-        let reopened = SQLiteSessionRepository(url: database)
+        let reopened = SQLiteServerRepository(url: database)
         let restarted = WorkspaceService(repository: reopened, credentials: credentials, privateKeys: keys,
                                           performInitialPrivateKeyCleanup: true)
         state = try await restarted.load()
         try check(state.snapshot.profiles == [current], "Restart lost a pasted-key session")
         try check(!FileManager.default.fileExists(atPath: firstFile.path)
                   && FileManager.default.fileExists(atPath: currentFile.path), "Startup cleanup did not retain exactly the referenced key")
-        _ = try await restarted.deleteSession(id: current.id)
+        _ = try await restarted.deleteServer(id: current.id)
         _ = try await restarted.load()
         try check(FileManager.default.fileExists(atPath: currentFile.path), "Ordinary reload deleted a potentially active key")
         await reopened.close()
-        let emptyRepository = SQLiteSessionRepository(url: database)
+        let emptyRepository = SQLiteServerRepository(url: database)
         let cleanStartup = WorkspaceService(repository: emptyRepository, credentials: credentials, privateKeys: keys,
                                             performInitialPrivateKeyCleanup: true)
         _ = try await cleanStartup.load()
         try check(try entries(directory).isEmpty, "Deleted session's key survived the next startup cleanup")
         await emptyRepository.close()
 
-        let uncertainRepository = SQLiteSessionRepository(url: root.appendingPathComponent("uncertain/sessions.sqlite"))
+        let uncertainRepository = SQLiteServerRepository(url: root.appendingPathComponent("uncertain/sessions.sqlite"))
         let uncertainFaults = ManagedKeyFailingRepository(base: uncertainRepository)
         let uncertainService = WorkspaceService(repository: uncertainFaults, credentials: credentials, privateKeys: keys)
         await uncertainFaults.setFailure(.afterCommit)
@@ -184,7 +184,7 @@ enum ManagedPrivateKeyVerification {
         await uncertainRepository.close()
     }
 
-    private static func keyBookmark(_ profile: SessionProfile) throws -> Data {
+    private static func keyBookmark(_ profile: ServerProfile) throws -> Data {
         guard case .privateKey(let bookmark, _) = profile.authentication else {
             throw ManagedKeyFailure(description: "Pasted private-key session changed authentication kind")
         }
@@ -226,20 +226,20 @@ enum ManagedPrivateKeyVerification {
     }
 }
 
-private actor ManagedKeyFailingRepository: SessionRepository {
+private actor ManagedKeyFailingRepository: ServerRepository {
     enum Failure: Sendable { case none, beforeCommit, afterCommit }
-    let base: SQLiteSessionRepository
+    let base: SQLiteServerRepository
     private var failure = Failure.none
-    init(base: SQLiteSessionRepository) { self.base = base }
+    init(base: SQLiteServerRepository) { self.base = base }
     func setFailure(_ failure: Failure) { self.failure = failure }
-    func snapshot() async throws -> SessionSnapshot { try await base.snapshot() }
-    func save(_ profile: SessionProfile) async throws {
+    func snapshot() async throws -> ServerSnapshot { try await base.snapshot() }
+    func save(_ profile: ServerProfile) async throws {
         if failure == .beforeCommit { throw DockShellError.storageUnavailable }
         try await base.save(profile)
         if failure == .afterCommit { throw DockShellError.storageUnavailable }
     }
-    func deleteSession(id: UUID) async throws { try await base.deleteSession(id: id) }
-    func saveGroup(_ group: SessionGroup) async throws { try await base.saveGroup(group) }
+    func deleteServer(id: UUID) async throws { try await base.deleteServer(id: id) }
+    func saveGroup(_ group: ServerGroup) async throws { try await base.saveGroup(group) }
     func deleteGroup(id: UUID) async throws { try await base.deleteGroup(id: id) }
     func stageCredentialCleanup(_ ids: [UUID]) async throws { try await base.stageCredentialCleanup(ids) }
     func pendingCredentialCleanup() async throws -> [UUID] { try await base.pendingCredentialCleanup() }

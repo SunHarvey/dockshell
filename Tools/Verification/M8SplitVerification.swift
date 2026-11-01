@@ -59,7 +59,7 @@ private actor SplitTransport: SSHTransport {
     init(connection: SplitConnection, prompts: SSHConnectionPrompts, authentication: SplitAuthentication) {
         self.connection = connection; self.prompts = prompts; self.authentication = authentication
     }
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         calls += 1; connectedProfileID = profile.id
         do {
             switch authentication {
@@ -118,9 +118,9 @@ private final class WeakSplitModel {
 /// channels. No remote server, agent, private key or Keychain item is accessed.
 @MainActor
 enum M8SplitVerification {
-    private static let alpha = SessionProfile(name: "M8 网格 中文🙂", host: "alpha.tiling.invalid", username: "fixture",
+    private static let alpha = ServerProfile(name: "M8 网格 中文🙂", host: "alpha.tiling.invalid", username: "fixture",
                                              authentication: .password(credentialID: nil))
-    private static let beta = SessionProfile(name: "M8 第二连接", host: "beta.tiling.invalid", username: "fixture",
+    private static let beta = ServerProfile(name: "M8 第二连接", host: "beta.tiling.invalid", username: "fixture",
                                             authentication: .password(credentialID: nil))
 
     static func run() async throws {

@@ -30,7 +30,7 @@ enum M4TransportVerification {
         let keyA = try makeKey()
         let keyB = try makeKey()
         let credentialID = UUID()
-        let profile = SessionProfile(name: "M4 test", host: "test.example.invalid", username: "m4-user",
+        let profile = ServerProfile(name: "M4 test", host: "test.example.invalid", username: "m4-user",
                                      authentication: .password(credentialID: credentialID))
 
         let rejected = Fixture(keys: [keyA], credentials: [credentialID: testPassword], decision: .reject)
@@ -134,7 +134,7 @@ enum M4TransportVerification {
         print("PASS M4 OpenSSH policy: isolated config/identities, strict pinned algorithms, secret-free argv, offline LocalCommand quoting, typed open failures")
     }
 
-    private static func verifyArguments(profile: SessionProfile, key: SSHHostKey, helperURL: URL) async throws {
+    private static func verifyArguments(profile: ServerProfile, key: SSHHostKey, helperURL: URL) async throws {
         let endpoint = try SSHHostEndpoint(host: profile.host, port: profile.port)
         let knownURL = URL(fileURLWithPath: "/private/tmp/known hosts % \" \\ ${literal}/fixture_known_hosts")
         let arguments = try OpenSSHCommand.arguments(profile: profile, endpoint: endpoint,
@@ -197,7 +197,7 @@ enum M4TransportVerification {
         }
     }
 
-    private static func verifyEarlyOpenErrors(profile: SessionProfile, key: SSHHostKey, helperURL: URL) async throws {
+    private static func verifyEarlyOpenErrors(profile: ServerProfile, key: SSHHostKey, helperURL: URL) async throws {
         let invalidPassword = Fixture(known: [key], keys: [key], password: Data([65, 10, 66]))
         let invalidConnection = try await invalidPassword.transport(helperURL).connect(to: profile)
         do {
@@ -355,7 +355,7 @@ enum M4TransportVerification {
                 return true
             }
         }
-        func password(for profile: SessionProfile) async throws -> Data {
+        func password(for profile: ServerProfile) async throws -> Data {
             await trace.add("password")
             guard let response else { throw CancellationError() }
             return response

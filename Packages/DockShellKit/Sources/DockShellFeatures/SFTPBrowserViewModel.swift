@@ -82,7 +82,7 @@ public enum SFTPBrowserText {
 public final class SFTPBrowserViewModel: ObservableObject {
     public let prompts: SSHConnectionPrompts
     public let transfers: SFTPTransfersViewModel?
-    @Published public private(set) var profile: SessionProfile?
+    @Published public private(set) var profile: ServerProfile?
     @Published public private(set) var phase: SFTPBrowserPhase = .idle
     @Published public private(set) var isLoading = false
     @Published public private(set) var currentPath: RemotePath?
@@ -123,7 +123,7 @@ public final class SFTPBrowserViewModel: ObservableObject {
 
     /// Reopening a hidden panel never reauthenticates an existing or failed file
     /// connection. A failed connection requires the explicit reconnect action.
-    public func start(profile: SessionProfile) {
+    public func start(profile: ServerProfile) {
         guard self.profile != profile || phase == .idle else { return }
         let changed = self.profile != profile
         self.profile = profile
@@ -175,7 +175,7 @@ public final class SFTPBrowserViewModel: ObservableObject {
         phase = .idle; isLoading = false; error = nil
     }
 
-    private func beginConnection(profile: SessionProfile) {
+    private func beginConnection(profile: ServerProfile) {
         stop()
         phase = .connecting; isLoading = true; error = nil
         let token = generation, factory = factory, closing = closeTask

@@ -1,19 +1,19 @@
 import Foundation
 
 /// Non-secret configuration and durable credential cleanup; mutations are transactional.
-public protocol SessionRepository: Sendable {
-    func snapshot() async throws -> SessionSnapshot
-    func save(_ profile: SessionProfile) async throws
-    func deleteSession(id: UUID) async throws
-    func saveGroup(_ group: SessionGroup) async throws
-    /// Moves member sessions to the ungrouped collection in the same transaction.
+public protocol ServerRepository: Sendable {
+    func snapshot() async throws -> ServerSnapshot
+    func save(_ profile: ServerProfile) async throws
+    func deleteServer(id: UUID) async throws
+    func saveGroup(_ group: ServerGroup) async throws
+    /// Moves member servers to the ungrouped collection in the same transaction.
     func deleteGroup(id: UUID) async throws
     func stageCredentialCleanup(_ ids: [UUID]) async throws
     func pendingCredentialCleanup() async throws -> [UUID]
     func finishCredentialCleanup(id: UUID) async throws
 }
 
-/// Passwords and passphrases stay in memory and Keychain, never in SessionRepository.
+/// Passwords and passphrases stay in memory and Keychain, never in ServerRepository.
 public protocol CredentialStore: Sendable {
     /// Creates an immutable item. Updates use a fresh UUID.
     func store(_ secret: Data, id: UUID) async throws
@@ -65,7 +65,7 @@ public struct TerminalSize: Equatable, Sendable {
 /// Implementations receive credential and host-trust services through dependency injection.
 /// A connection must verify host identity before sending authentication material.
 public protocol SSHTransport: Sendable {
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection
 }
 
 /// Separates an SSH connection from its channels for future SFTP and forwarding adapters.

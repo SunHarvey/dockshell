@@ -20,7 +20,7 @@ enum M11BatchCommandUIVerification {
         NSApp.finishLaunching()
         let factory = M11Factory()
         let tabs = TerminalTabsViewModel(factory: factory)
-        let profile = SessionProfile(name: "UI 中文", host: "ui-batch.invalid", username: "fixture", authentication: .agent)
+        let profile = ServerProfile(name: "UI 中文", host: "ui-batch.invalid", username: "fixture", authentication: .agent)
         _ = tabs.open(profile: profile, settings: .defaults)
         _ = tabs.open(profile: profile, settings: .defaults)
         let settings = TerminalSettingsViewModel(service: SettingsService(repository: M11UISettings()))

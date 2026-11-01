@@ -24,7 +24,7 @@ public struct SFTPTransferJob: Identifiable, Sendable {
     public fileprivate(set) var failure: SFTPTransferFailure?
     public fileprivate(set) var connectionError: (any Error)?
     public fileprivate(set) var resolvedDestination: SFTPTransferLocation?
-    fileprivate let profile: SessionProfile
+    fileprivate let profile: ServerProfile
 
     fileprivate var hasWarning: Bool {
         guard let failure else { return false }
@@ -82,7 +82,7 @@ private actor TransferConnectionOwner {
     private let factory: any SFTPClientFactory
     private let prompts: SSHConnectionPrompts
     private var client: (any SFTPClient)?
-    private var profile: SessionProfile?
+    private var profile: ServerProfile?
     private var connecting: Task<any SFTPClient, any Error>?
     private var retiring: Task<Void, Never>?
     private var generation = UUID()
@@ -92,7 +92,7 @@ private actor TransferConnectionOwner {
         self.factory = factory; self.prompts = prompts
     }
 
-    func acquire(to profile: SessionProfile) async throws -> any SFTPClient {
+    func acquire(to profile: ServerProfile) async throws -> any SFTPClient {
         if self.profile != nil, self.profile != profile { await retire() }
         await retiring?.value
         try Task.checkCancellation()
@@ -178,7 +178,7 @@ public final class SFTPTransfersViewModel: ObservableObject {
 
     /// Batches are accepted atomically. Finished clean history is pruned before
     /// the 100-item limit, while uncertain outcomes remain visible until reviewed.
-    public func enqueue(_ requests: [SFTPTransferRequest], profile: SessionProfile) {
+    public func enqueue(_ requests: [SFTPTransferRequest], profile: ServerProfile) {
         enqueueError = nil
         guard acceptsNewJobs else { enqueueError = .notConnected; return }
         guard !requests.isEmpty else { return }

@@ -5,11 +5,11 @@
 <h1 align="center">DockShell</h1>
 
 <p align="center">为 macOS 打造的原生 SSH 终端客户端</p>
-<p align="center">多标签与分屏 · SFTP 文件传输 · 批量命令 · SSH / CSV 会话导入</p>
+<p align="center">多标签与分屏 · SFTP 文件传输 · 批量命令 · SSH / CSV 服务器导入</p>
 
-DockShell 将 SSH 会话、终端标签、分屏和远程文件面板集中在一个窗口中，支持简体中文与英文。
+DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集中在一个窗口中，支持简体中文与英文。
 
-**v0.4.0** 新增 `~/.ssh/config` 导入和 CSV 批量创建，支持分组选择、预览编辑、勾选导入与同组同名跳过。[版本说明](Docs/ReleaseNotes/v0.4.0.md)
+**v0.4.1** 将首页、菜单、新建/编辑和 SSH / CSV 导入中的“会话”统一改为“服务器”，已有配置和凭据可继续使用。保留 `~/.ssh/config` 导入、CSV 批量创建及原有终端功能。[版本说明](Docs/ReleaseNotes/v0.4.1.md)
 
 [下载 DMG](https://github.com/SunHarvey/dockshell/releases/latest) · [功能](#功能) · [界面](#界面) · [安装](#安装) · [使用](#使用) · [从源码运行](#从源码运行)
 
@@ -17,7 +17,7 @@ DockShell 将 SSH 会话、终端标签、分屏和远程文件面板集中在�
 
 | 功能 | 支持范围 |
 |---|---|
-| 会话管理 | 新建、编辑、删除、分组、搜索，双击会话连接 |
+| 服务器管理 | 新建、编辑、删除、分组、搜索，双击服务器连接 |
 | SSH 配置导入 | 默认读取 `~/.ssh/config`，可选择文件；预览编辑后导入指定分组 |
 | CSV 批量创建 | 文件或粘贴输入，支持密码、私钥、ssh-agent 三种认证配置；同组同名跳过 |
 | SSH 认证 | 密码、文件或粘贴私钥、本机 ssh-agent；密码和私钥口令可保存到 Keychain |
@@ -32,7 +32,7 @@ DockShell 将 SSH 会话、终端标签、分屏和远程文件面板集中在�
 
 ## 界面
 
-截图使用演示会话与示例输出；工具栏等细节以当前版本为准。
+截图使用演示服务器与示例输出；工具栏等细节以当前版本为准。
 
 ### 多标签工作区
 
@@ -45,7 +45,7 @@ DockShell 将 SSH 会话、终端标签、分屏和远程文件面板集中在�
 ## 安装
 
 - **运行目标：macOS 14 或更高版本。** 当前提供 **Apple Silicon / arm64** 安装包；macOS 14 实机仍待验证，暂不提供 Intel 安装包。
-- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.0-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.0/DockShell-0.4.0-arm64.dmg)**。
+- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.1-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.1/DockShell-0.4.1-arm64.dmg)**。
 - 打开 DMG，将左侧 **DockShell.app** 拖到右侧 **Applications（应用程序）**，复制完成后推出磁盘映像，再从应用程序启动。
 
 当前安装包采用 **ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证**，首次启动可能被 macOS 拦截。分发状态及人工待验范围见 [分发说明](Docs/M6/分发准备.md) 与 [验收记录](Docs/M6/验收矩阵.md)。
@@ -58,9 +58,9 @@ shasum -a 256 -c SHA256SUMS
 
 ## 使用
 
-### 创建与连接会话
+### 创建与连接服务器
 
-点击 **＋ → 新建会话**，填写主机、端口、用户名和认证方式。保存后双击侧栏会话，或选中后按 **⌘T** 连接。首次连接时核对服务器的 SHA-256 主机指纹。
+点击 **＋ → 新建服务器**，填写主机、端口、用户名和认证方式。保存后双击侧栏服务器，或选中后按 **⌘T** 连接。首次连接时核对服务器的 SHA-256 主机指纹。
 
 私钥可以选择外部文件或直接粘贴。外部文件仅保存引用；粘贴私钥会保存为仅当前用户可读的应用管理文件。私钥口令单独保存在 Keychain。支持已识别的 OpenSSH 与部分 PEM 私钥；PuTTY `.ppk` 需先转换。[认证与格式范围](Docs/M5/私钥Agent与连接恢复.md)
 
@@ -77,7 +77,7 @@ ssh-add -l
 
 选择 **＋ → 导入 SSH 配置…**，默认读取 `~/.ssh/config`，也可选择其他文件。默认目标分组为 `local-ssh-config`，支持选择已有分组或填写新名称。
 
-预览中可编辑连接信息、勾选需要的会话；同组同名跳过，改名后可导入。`Host` 通配规则用于补全具体主机，`Include` 支持有界递归与文件通配。暂不支持的 `Match`、跳板机等配置会明确提示，避免误导入为直连。[完整支持范围](Docs/M12/SSH配置导入.md)
+预览中可编辑连接信息、勾选需要的服务器；同组同名跳过，改名后可导入。`Host` 通配规则用于补全具体主机，`Include` 支持有界递归与文件通配。暂不支持的 `Match`、跳板机等配置会明确提示，避免误导入为直连。[完整支持范围](Docs/M12/SSH配置导入.md)
 
 ### CSV 批量创建
 
@@ -92,11 +92,11 @@ db-01,192.0.2.13,22,ubuntu,key,~/.ssh/id_ed25519
 
 `auth` 使用 `agent`、`password` 或 `key`；端口留空时使用 22，私钥路径支持绝对路径和 `~/`。**CSV 不填写密码或私钥口令**，连接时再输入。预览可修改名称和连接信息，只有已勾选且有效的行会导入；同组及批内重名跳过并显示明细。
 
-支持 UTF-8 CSV，最多 1000 台服务器、2 MB。含逗号的字段用双引号包围。导入不会自动连接，也不会覆盖已有会话。[格式说明](Docs/M12/CSV批量创建.md) · [示例文件](Examples/servers.csv)
+支持 UTF-8 CSV，最多 1000 台服务器、2 MB。含逗号的字段用双引号包围。导入不会自动连接，也不会覆盖已有服务器。[格式说明](Docs/M12/CSV批量创建.md) · [示例文件](Examples/servers.csv)
 
 ### 标签、分屏与工具栏
 
-- **＋**：新建、导入、连接会话及打开本机终端；**⌘N** 新建，**⌘T** 连接所选会话。
+- **＋**：新建、导入、连接服务器及打开本机终端；**⌘N** 新建，**⌘T** 连接所选服务器。
 - **文件夹**：展开或收起当前标签的远程文件面板。
 - **布局**：将全部已打开连接平均排成左右并列或上下堆叠，也可返回标签视图。
 - **⋯**：设置、当前连接操作、手动重连与批量命令；悬停按钮可查看用途。
@@ -113,7 +113,7 @@ db-01,192.0.2.13,22,ubuntu,key,~/.ssh/id_ed25519
 
 ### 批量命令、日志与设置
 
-通过 **⋯ → 批量执行命令** 展开命令栏，将单行命令发送到全部已连接的 SSH 标签，包括后台和分屏标签。等待认证、连接中和断线会话会跳过；“已排队”表示命令已进入本机发送队列。[批量命令说明](Docs/M11/批量命令.md)
+通过 **⋯ → 批量执行命令** 展开命令栏，将单行命令发送到全部已连接的 SSH 标签，包括后台和分屏标签。等待认证、正在连接或已断开的标签会跳过；“已排队”表示命令已进入本机发送队列。[批量命令说明](Docs/M11/批量命令.md)
 
 SSH 与本机终端默认记录日志，每连接保留最近 **5 MB**，超限滚动删除旧内容。终端内右键可暂停、恢复或导出。vim 等备用屏幕内容会略过，仅记录进入、退出时间；服务器回显的敏感内容仍可能被记录。[终端日志说明](Docs/M10/终端日志接入与验收.md)
 
@@ -145,7 +145,7 @@ SwiftUI / AppKit、MVVM 分层、async/await / Actor；协议层通过接口隔�
 | 构建应用 | `sh Scripts/build.sh` 或 `sh Scripts/build.sh release` |
 | 默认回归与资源搬迁 | `sh Scripts/test.sh` |
 | 原生界面 | `DOCKSHELL_UI_SMOKE=1 sh Scripts/test.sh` |
-| SSH 配置导入 | `sh Scripts/test-session-import.sh` |
+| SSH 配置导入 | `sh Scripts/test-server-import.sh` |
 | CSV 批量创建 | `sh Scripts/test-csv-import.sh` |
 | SSH / SFTP 隔离集成 | `sh Scripts/test-sftp.sh` |
 

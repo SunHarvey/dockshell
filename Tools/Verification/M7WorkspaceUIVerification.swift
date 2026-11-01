@@ -46,7 +46,7 @@ private actor M7UIConnection: SSHConnection {
 
 private struct M7UITransport: SSHTransport {
     let connection: M7UIConnection
-    func connect(to profile: SessionProfile) -> any SSHConnection { connection }
+    func connect(to profile: ServerProfile) -> any SSHConnection { connection }
 }
 
 @MainActor
@@ -133,19 +133,19 @@ enum M7WorkspaceUIVerification {
     /// Uses only the verifier's temporary catalog and synthetic transports. Actual native
     /// row mouse events exercise List's primary action instead of calling connect directly.
     private static func verifySidebarActivation(service: WorkspaceService, l10n: L10n, interactive: Bool) async throws {
-        let first = SessionProfile(name: "M7 Sidebar A", host: "sidebar-a.invalid", username: "fixture",
+        let first = ServerProfile(name: "M7 Sidebar A", host: "sidebar-a.invalid", username: "fixture",
                                    authentication: .agent)
-        let second = SessionProfile(name: "M7 Sidebar B", host: "sidebar-b.invalid", username: "fixture",
+        let second = ServerProfile(name: "M7 Sidebar B", host: "sidebar-b.invalid", username: "fixture",
                                     authentication: .agent)
         let profiles = [first, second]
         do {
-            for profile in profiles { _ = try await service.save(SessionDraft(profile: profile)) }
+            for profile in profiles { _ = try await service.save(ServerDraft(profile: profile)) }
             try await mountAndActivateSidebar(profiles: profiles, service: service, l10n: l10n, interactive: interactive)
         } catch {
-            for profile in profiles { _ = try? await service.deleteSession(id: profile.id) }
+            for profile in profiles { _ = try? await service.deleteServer(id: profile.id) }
             throw error
         }
-        for profile in profiles { _ = try await service.deleteSession(id: profile.id) }
+        for profile in profiles { _ = try await service.deleteServer(id: profile.id) }
         if interactive {
             print("PASS sidebar native double-click: CUA single-click only selected A; real double-clicks connected B then A exactly once each with correct profile identities")
         } else {
@@ -153,7 +153,7 @@ enum M7WorkspaceUIVerification {
         }
     }
 
-    private static func mountAndActivateSidebar(profiles: [SessionProfile], service: WorkspaceService,
+    private static func mountAndActivateSidebar(profiles: [ServerProfile], service: WorkspaceService,
                                                 l10n: L10n, interactive: Bool) async throws {
         try check(NSApplication.shared.isRunning, "Native sidebar activation requires the AppKit verification run loop")
         let factory = M7UIFactory()
@@ -295,7 +295,7 @@ enum M7WorkspaceUIVerification {
 
     private static func exercise(tabs: TerminalTabsViewModel, factory: M7UIFactory, root: NSView,
                                  window: NSWindow, settings: TerminalSettingsViewModel) async throws -> Lifetimes {
-        let profile = SessionProfile(name: "M7 UI 中文🙂", host: "m7-ui.invalid", username: "fixture",
+        let profile = ServerProfile(name: "M7 UI 中文🙂", host: "m7-ui.invalid", username: "fixture",
                                      authentication: .password(credentialID: nil))
         let a = tabs.open(profile: profile, settings: .defaults)
         try await waitUntil("The first workspace terminal did not connect") {

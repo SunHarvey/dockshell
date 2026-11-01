@@ -57,7 +57,7 @@ private actor TabsTransport: SSHTransport {
     init(connection: TabsConnection, prompts: SSHConnectionPrompts?) {
         self.connection = connection; self.prompts = prompts
     }
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         calls += 1
         do {
             if let prompts {
@@ -133,7 +133,7 @@ private final class WeakTabsModel {
 
 /// Verifies tab isolation with the product controllers and bounded pumps, without a network or Keychain.
 enum M7TabsVerification {
-    private static let profile = SessionProfile(name: "M7 same saved server", host: "tabs.invalid", username: "fixture",
+    private static let profile = ServerProfile(name: "M7 same saved server", host: "tabs.invalid", username: "fixture",
                                                 authentication: .password(credentialID: nil))
 
     private static func require(_ condition: Bool, _ message: String) throws {

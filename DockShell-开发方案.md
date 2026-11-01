@@ -21,7 +21,7 @@
 - 最低系统版本为 macOS 14。
 - UI 以 SwiftUI 为主，终端等复杂交互通过 AppKit 与 `NSViewRepresentable` 桥接。
 - 终端模拟使用 SwiftTerm；用户已依据 M0 选择系统 OpenSSH，协议层通过自定义 protocol 隔离进程与协议细节。第二阶段 SFTP 的结构化适配单独设计。
-- 系统 SQLite 保存会话配置（2026-10-27 已批准替代 SwiftData），Keychain 保存密码和私钥口令。
+- 系统 SQLite 保存服务器配置（2026-10-27 已批准替代 SwiftData），Keychain 保存密码和私钥口令。
 - 第三方依赖通过 Swift Package Manager 管理。
 - 分发目标为 Developer ID 签名和公证，存储路径通过系统 API 获取。
 - 用户可见字符串使用 String Catalog，支持简体中文和英文。
@@ -64,15 +64,15 @@ M0 仅编写无 UI 的最小验证代码，并对比三条路线。不预先选�
 │       ├── Sources/
 │       │   ├── DockShellDomain/
 │       │   │   ├── Models/
-│       │   │   │   ├── SessionProfile.swift
-│       │   │   │   ├── SessionGroup.swift
+│       │   │   │   ├── ServerProfile.swift
+│       │   │   │   ├── ServerGroup.swift
 │       │   │   │   ├── AuthenticationMethod.swift
 │       │   │   │   ├── ConnectionState.swift
 │       │   │   │   └── TerminalSize.swift
 │       │   │   ├── Ports/
 │       │   │   │   ├── SSHTransport.swift
 │       │   │   │   ├── SSHSessionChannel.swift
-│       │   │   │   ├── SessionRepository.swift
+│       │   │   │   ├── ServerRepository.swift
 │       │   │   │   ├── CredentialStore.swift
 │       │   │   │   ├── HostKeyStore.swift
 │       │   │   │   ├── SSHAgentClient.swift
@@ -80,16 +80,16 @@ M0 仅编写无 UI 的最小验证代码，并对比三条路线。不预先选�
 │       │   │   └── Errors/
 │       │   │       └── DockShellError.swift
 │       │   ├── DockShellApplication/
-│       │   │   ├── Sessions/SessionService.swift
+│       │   │   ├── Servers/ServerService.swift
 │       │   │   ├── Connections/ConnectionCoordinator.swift
 │       │   │   ├── Connections/HostKeyVerificationService.swift
 │       │   │   ├── Terminal/TerminalIOPump.swift
 │       │   │   └── Settings/SettingsService.swift
 │       │   ├── DockShellInfrastructure/
 │       │   │   ├── Persistence/
-│       │   │   │   ├── SessionRecord.swift
-│       │   │   │   ├── SessionGroupRecord.swift
-│       │   │   │   └── SwiftDataSessionRepository.swift
+│       │   │   │   ├── ServerRecord.swift
+│       │   │   │   ├── ServerGroupRecord.swift
+│       │   │   │   └── SwiftDataServerRepository.swift
 │       │   │   ├── Security/
 │       │   │   │   ├── KeychainCredentialStore.swift
 │       │   │   │   └── KnownHostsFileStore.swift
@@ -105,7 +105,7 @@ M0 仅编写无 UI 的最小验证代码，并对比三条路线。不预先选�
 │       │   │   └── TerminalViewRepresentable.swift
 │       │   └── DockShellFeatures/
 │       │       ├── Workspace/
-│       │       ├── Sessions/
+│       │       ├── Servers/
 │       │       ├── Connections/
 │       │       ├── Settings/
 │       │       └── Resources/Localizable.xcstrings
@@ -136,8 +136,8 @@ M0 仅编写无 UI 的最小验证代码，并对比三条路线。不预先选�
 
 | 模块 | 职责与边界 |
 |---|---|
-| `DockShellDomain` | 定义会话、认证配置、连接状态、终端尺寸、错误和协议。使用可跨并发边界传递的值类型，不依赖 SQLite、具体 SSH 后端或 SwiftTerm。 |
-| `DockShellApplication` | 实现会话管理、连接流程、主机验证、凭据协调和终端数据流。仅依赖领域模型与协议。 |
+| `DockShellDomain` | 定义服务器配置、认证配置、连接状态、终端尺寸、错误和协议。使用可跨并发边界传递的值类型，不依赖 SQLite、具体 SSH 后端或 SwiftTerm。 |
+| `DockShellApplication` | 实现服务器管理、连接流程、主机验证、凭据协调和终端数据流。仅依赖领域模型与协议。 |
 | `DockShellInfrastructure` | 实现系统 OpenSSH、SQLite、Keychain、known_hosts 和设置存储适配器；agent 交互委托给系统 OpenSSH。C 指针和进程细节限制在这里。 |
 | `DockShellTerminalUI` | 封装 SwiftTerm 的 AppKit 视图，处理终端显示、文本输入、鼠标和尺寸事件，通过 `NSViewRepresentable` 接入 SwiftUI。 |
 | `DockShellFeatures` | SwiftUI 页面及 `@MainActor` ViewModel。负责展示和用户操作，不处理 SSH 库对象或数据库对象。 |
@@ -163,7 +163,7 @@ DockShellApp：组装上述模块，通过协议注入具体实现
 | `SSHSessionChannel` | 请求 PTY、启动 shell、收发原始字节、更新窗口尺寸、报告通道结束。与连接本身分离，为未来多通道留出空间。 |
 | `ConnectionCoordinator` actor | 管理连接状态机、取消、断线、手动重连和资源释放；防止旧连接事件影响重连后的连接。 |
 | `TerminalIOPump` | 按序传输终端字节，实施有界缓冲与背压，协调输入和输出。 |
-| `SessionRepository` | 管理会话和分组；SQLite 连接与持久化记录不直接传入 UI。 |
+| `ServerRepository` | 管理服务器和分组；SQLite 连接与持久化记录不直接传入 UI。 |
 | `CredentialStore` | 管理密码和私钥口令，业务层使用凭据引用访问。 |
 | `HostKeyStore` | 持久化已信任主机的公钥、算法和匹配信息。 |
 | `HostKeyVerificationService` | 比较已保存主机公钥，协调首次信任确认与密钥变化处理。 |
@@ -236,7 +236,7 @@ DockShellApp：组装上述模块，通过协议注入具体实现
 
 ## 5. 界面方向
 
-建议采用原生侧栏、单终端工作区和紧凑连接状态区；会话编辑使用独立表单。
+建议采用原生侧栏、单终端工作区和紧凑连接状态区；服务器编辑使用独立表单。
 
 三套原创主题暂定为：
 
@@ -259,7 +259,7 @@ DockShellApp：组装上述模块，通过协议注入具体实现
 | **M4：密码 SSH 与主机信任（已交付）** | 密码认证、交互 shell、首次指纹确认、known_hosts、连接状态和主动断开。 | 登录 Linux；验证接受、取消、再次连接及主机密钥不匹配流程；拒绝信任时不继续认证。 |
 | **M5：私钥、agent 与连接恢复（已交付）** | 已确认格式的私钥及口令认证、本机 ssh-agent 认证、keepalive 心跳断线检测、超时和手动重连。 | 分别用密码、私钥和 agent 登录；测试错误口令、agent 不可用、黑洞网络、睡眠唤醒后的手动重连、反复重连后的资源释放，以及不支持的私钥格式提示。 |
 | **M6：MVP 验收与分发准备（本机交付，目标环境待验）** | 全屏程序、中文及高吞吐验证，真实 Keychain 新进程验收、持久化路径防护、内存和空闲 CPU 测量；Apple Silicon 本地预览及签名、公证准备。 | 运行 vim、top、htop 并连续缩放；大输出校验字节完整性及内存稳定性；重启后从 Keychain 取凭据。实际公证需要用户的开发者签名环境。 |
-| **M7：多标签（已交付本机预览）** | 原生 AppKit 标签栏、同一窗口的多个独立 SSH 终端、每标签认证 / 状态 / 重连、后台持续接收及独立关闭。 | 同一保存会话双开；切换不重连、不重建视图；输入与信任确认隔离；后台输出及协议回复正确；关闭一项不影响其他项，全部关闭后释放资源。 |
+| **M7：多标签（已交付本机预览）** | 原生 AppKit 标签栏、同一窗口的多个独立 SSH 终端、每标签认证 / 状态 / 重连、后台持续接收及独立关闭。 | 同一服务器配置双开；切换不重连、不重建视图；输入与信任确认隔离；后台输出及协议回复正确；关闭一项不影响其他项，全部关闭后释放资源。 |
 | **M8：横排 / 竖排与标签排序** | 一个连接对应一个原有标签，全部终端可横排 1×N 或竖排 N×1；编号位于最左侧、名称居中、标签支持拖动重排；移除底部两栏，将高度交给终端。 | 三连接严格三列或三行；重排与模式切换不增加连接或重挂终端；编号从 1 连续更新、面板按同序重排；PTY、输入、认证及 DSR 隔离。 |
 
 用户于 2026-10-27 选择系统 OpenSSH，并批准将持久化改为系统 SQLite。2026-10-28 已完成 M6、M7 和 M8 多个本机预览；用户最新明确要求分屏可选横排或竖排，任意已打开数量均严格排成一行或一列，不新增标签或连接。build 7 按此语义替换自动网格。2026-10-29 的 build 8 按新确认加入标签左侧编号、居中名称、拖动排序及底栏移除；最新状态见[标签排序与终端空间说明](Docs/M8/标签排序与终端空间.md)，旧 build 实测保留为历史记录。没有 macOS 14 验收环境及 Developer ID 证书，M6 的相应待验项继续保留。若以后需要补丁、fork 或额外依赖，仍先列明具体变更和维护代价供用户批准；不得提前实施。
@@ -375,7 +375,7 @@ M0 报告见 [SSH 底层路线对比与推荐](Docs/M0/SSH底层路线对比.md)
 
 ## M12 导入迭代（2026-10-31 更新）
 
-用户确认：批量创建首版采用 CSV；目标分组内同名会话跳过并显示明细，可修改名称后再导入。
+用户确认：批量创建首版采用 CSV；目标分组内同名服务器跳过并显示明细，可修改名称后再导入。
 
 - **M12.1**：SSH config 静态读取、可编辑预览、目标分组（默认 `local-ssh-config`）、私钥预检与 SQLite 原子批量保存。配置快照不执行 Match / 脚本，不自动连接；未知连接行为明确阻止导入。
 - **M12.2（已实现，build 24 未发布）**：CSV 文件和粘贴输入，表头加每行一台服务器，复用预览与事务保存。首版只导入元数据和外部私钥路径，密码/口令继续通过既有安全流程输入。

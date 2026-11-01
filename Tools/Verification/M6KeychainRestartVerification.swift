@@ -59,7 +59,7 @@ enum M6KeychainRestartVerification {
         let root = try temporaryRoot()
         let service = servicePrefix + UUID().uuidString
         let credentials = RestartTrackedCredentials(base: KeychainCredentialStore(service: service))
-        let repository = SQLiteSessionRepository(url: databaseURL(root))
+        let repository = SQLiteServerRepository(url: databaseURL(root))
         var credentialIDs: [UUID] = []
         var server: M5AuthenticationFixtureProcess?
         do {
@@ -105,7 +105,7 @@ enum M6KeychainRestartVerification {
 
             let workspace = WorkspaceService(repository: repository, credentials: credentials, privateKeys: PrivateKeyBookmarks())
             _ = try await workspace.load()
-            var passwordDraft = SessionDraft()
+            var passwordDraft = ServerDraft()
             passwordDraft.name = "M6 密码持久化🙂"
             passwordDraft.host = endpoint.host; passwordDraft.port = String(port); passwordDraft.username = NSUserName()
             passwordDraft.secret = .replace(password)
@@ -115,7 +115,7 @@ enum M6KeychainRestartVerification {
                 throw M6RestartFailure(description: "The password profile did not contain an opaque credential reference")
             }
             credentialIDs.append(passwordID)
-            var keyDraft = SessionDraft()
+            var keyDraft = ServerDraft()
             keyDraft.name = "M6 加密私钥重启🙂"
             keyDraft.host = endpoint.host; keyDraft.port = String(port); keyDraft.username = NSUserName()
             keyDraft.authentication = .privateKey
@@ -210,7 +210,7 @@ enum M6KeychainRestartVerification {
         try validateOwned(databaseURL(root), directory: false)
         try validateOwned(databaseURL(root).deletingLastPathComponent(), directory: true)
         try validateOwned(knownHostsURL(root), directory: false)
-        let repository = SQLiteSessionRepository(url: databaseURL(root))
+        let repository = SQLiteServerRepository(url: databaseURL(root))
         do {
             let keychain = KeychainCredentialStore(service: manifest.service)
             let credentials = RestartReadOnlyCredentials(base: keychain, allowed: [manifest.passwordCredentialID, manifest.passphraseCredentialID])
@@ -407,8 +407,8 @@ private actor RestartTrackedCredentials: CredentialStore {
 
 private actor RestartNoPrompts: SSHInteraction {
     func confirmHost(_ request: SSHHostTrustRequest) throws -> Bool { throw M6RestartFailure(description: "Restart unexpectedly requested host approval") }
-    func password(for profile: SessionProfile) throws -> Data { throw M6RestartFailure(description: "Restart unexpectedly requested a password") }
-    func passphrase(for profile: SessionProfile) throws -> Data { throw M6RestartFailure(description: "Restart unexpectedly requested a key passphrase") }
+    func password(for profile: ServerProfile) throws -> Data { throw M6RestartFailure(description: "Restart unexpectedly requested a password") }
+    func passphrase(for profile: ServerProfile) throws -> Data { throw M6RestartFailure(description: "Restart unexpectedly requested a key passphrase") }
 }
 
 /// Restricts child access to the two generated UUIDs and prohibits hidden writes or deletions.

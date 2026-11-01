@@ -3,48 +3,48 @@ import DockShellDomain
 import Foundation
 
 /// Bounded CSV reader with quoted commas, escaped quotes, multiline fields and UTF-8 BOM support.
-/// No shell, URL fetching, credential import or session writes occur here.
-public actor CSVSessionReader: SessionCSVReading {
+/// No shell, URL fetching, credential import or server writes occur here.
+public actor CSVServerReader: ServerCSVReading {
     private let home: URL
     private static let maximumBytes = 2_000_000
 
     public init(home: URL = FileManager.default.homeDirectoryForCurrentUser) { self.home = home }
 
-    public func read(from url: URL) throws -> SessionImportDocument {
+    public func read(from url: URL) throws -> ServerImportDocument {
         try Task.checkCancellation()
-        guard url.isFileURL, !url.path.contains("\0") else { throw SessionCSVError.unreadable }
+        guard url.isFileURL, !url.path.contains("\0") else { throw ServerCSVError.unreadable }
         let fd = Darwin.open(url.path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
-        guard fd >= 0 else { throw SessionCSVError.unreadable }
+        guard fd >= 0 else { throw ServerCSVError.unreadable }
         defer { Darwin.close(fd) }
         var info = stat()
-        guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw SessionCSVError.unreadable }
-        guard info.st_size <= Self.maximumBytes else { throw SessionCSVError.limitExceeded }
+        guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw ServerCSVError.unreadable }
+        guard info.st_size <= Self.maximumBytes else { throw ServerCSVError.limitExceeded }
         var data = Data(), buffer = [UInt8](repeating: 0, count: 16_384)
         while true {
             try Task.checkCancellation()
             let count = Darwin.read(fd, &buffer, buffer.count)
             if count < 0 && errno == EINTR { continue }
-            guard count >= 0 else { throw SessionCSVError.unreadable }
+            guard count >= 0 else { throw ServerCSVError.unreadable }
             if count == 0 { break }
-            guard data.count + count <= Self.maximumBytes else { throw SessionCSVError.limitExceeded }
+            guard data.count + count <= Self.maximumBytes else { throw ServerCSVError.limitExceeded }
             data.append(contentsOf: buffer.prefix(count))
         }
-        guard let text = String(data: data, encoding: .utf8) else { throw SessionCSVError.invalidEncoding }
+        guard let text = String(data: data, encoding: .utf8) else { throw ServerCSVError.invalidEncoding }
         return try parse(text)
     }
 
-    public func parse(_ text: String) throws -> SessionImportDocument {
+    public func parse(_ text: String) throws -> ServerImportDocument {
         try Task.checkCancellation()
-        guard text.utf8.count <= Self.maximumBytes else { throw SessionCSVError.limitExceeded }
-        guard !text.contains("\0") else { throw SessionCSVError.invalidEncoding }
+        guard text.utf8.count <= Self.maximumBytes else { throw ServerCSVError.limitExceeded }
+        guard !text.contains("\0") else { throw ServerCSVError.invalidEncoding }
         let records = try CSVRecords.decode(text)
-        guard let header = records.first else { throw SessionCSVError.empty }
+        guard let header = records.first else { throw ServerCSVError.empty }
         let columns = header.fields.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
         guard Set(columns).count == columns.count,
-              Set(columns).isSubset(of: Set(SessionCSVFormat.columns)),
-              SessionCSVFormat.requiredColumns.isSubset(of: Set(columns)) else { throw SessionCSVError.invalidHeaders }
-        guard records.count > 1 else { throw SessionCSVError.empty }
-        var result: [SessionImportRow] = []
+              Set(columns).isSubset(of: Set(ServerCSVFormat.columns)),
+              ServerCSVFormat.requiredColumns.isSubset(of: Set(columns)) else { throw ServerCSVError.invalidHeaders }
+        guard records.count > 1 else { throw ServerCSVError.empty }
+        var result: [ServerImportRow] = []
         for record in records.dropFirst() {
             try Task.checkCancellation()
             let values = Dictionary(uniqueKeysWithValues: zip(columns, record.fields).map { ($0, $1.trimmingCharacters(in: .whitespacesAndNewlines)) })
@@ -62,15 +62,15 @@ public actor CSVSessionReader: SessionCSVReading {
             // CSV paths are explicit data, not SSH config expressions. Expand only the current user's ~/.
             let path = originalPath.hasPrefix("~/") ? home.appendingPathComponent(String(originalPath.dropFirst(2))).path : originalPath
             let port = values["port"].flatMap { $0.isEmpty ? nil : $0 } ?? "22"
-            let issues: [SessionImportIssue] = columns.count == record.fields.count ? [] :
+            let issues: [ServerImportIssue] = columns.count == record.fields.count ? [] :
                 [.csvColumns(expected: columns.count, actual: record.fields.count)]
-            var row = SessionImportRow(name: values["name"] ?? "", host: values["host"] ?? "", port: port,
+            var row = ServerImportRow(name: values["name"] ?? "", host: values["host"] ?? "", port: port,
                 username: values["username"] ?? "", authentication: authentication ?? .agent,
                 keyPaths: path.isEmpty ? [] : [path], issues: issues, sourceLine: record.line)
             row.authenticationNeedsSelection = authentication == nil
             result.append(row)
         }
-        return SessionImportDocument(rows: result, patternRuleCount: 0)
+        return ServerImportDocument(rows: result, patternRuleCount: 0)
     }
 }
 
@@ -85,7 +85,7 @@ private struct CSVRecords {
         var records: [CSVRecords] = [], fields: [String] = [], field: [UInt8] = []
         var state = State.start, index = 0, line = 1, startLine = 1, recordStarted = false
         func finishField() throws {
-            guard fields.count < 32 else { throw SessionCSVError.limitExceeded }
+            guard fields.count < 32 else { throw ServerCSVError.limitExceeded }
             fields.append(String(decoding: field, as: UTF8.self)); field.removeAll(keepingCapacity: true)
             state = .start
         }
@@ -93,7 +93,7 @@ private struct CSVRecords {
             try finishField()
             // Empty physical lines are allowed, but a row containing several empty cells is still a row to validate.
             if fields.count != 1 || !fields[0].trimmingCharacters(in: .whitespaces).isEmpty {
-                guard records.count < 1001 else { throw SessionCSVError.limitExceeded }
+                guard records.count < 1001 else { throw ServerCSVError.limitExceeded }
                 records.append(CSVRecords(fields: fields, line: startLine))
             }
             fields.removeAll(keepingCapacity: true); recordStarted = false
@@ -127,18 +127,18 @@ private struct CSVRecords {
                     recordStarted = true
                     if byte == 34 { state = .quoted } else { field.append(byte); state = .unquoted }
                 case .unquoted:
-                    guard byte != 34 else { throw SessionCSVError.malformed(line: line) }
+                    guard byte != 34 else { throw ServerCSVError.malformed(line: line) }
                     field.append(byte)
                 case .afterQuote, .afterQuoteSpace:
-                    guard byte == 32 || byte == 9 else { throw SessionCSVError.malformed(line: line) }
+                    guard byte == 32 || byte == 9 else { throw ServerCSVError.malformed(line: line) }
                     state = .afterQuoteSpace
                 case .quoted: break
                 }
             }
-            guard field.count <= 16_384 else { throw SessionCSVError.limitExceeded }
+            guard field.count <= 16_384 else { throw ServerCSVError.limitExceeded }
             index += 1
         }
-        guard state != .quoted else { throw SessionCSVError.malformed(line: startLine) }
+        guard state != .quoted else { throw ServerCSVError.malformed(line: startLine) }
         if recordStarted || !fields.isEmpty || !field.isEmpty { try finishRecord() }
         return records
     }

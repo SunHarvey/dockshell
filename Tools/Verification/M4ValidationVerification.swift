@@ -21,13 +21,13 @@ enum M4ValidationVerification {
         guard condition else { throw M4ValidationFailure(description: message) }
     }
 
-    private static func draft() -> SessionDraft {
-        var result = SessionDraft()
+    private static func draft() -> ServerDraft {
+        var result = ServerDraft()
         result.name = "fixture"; result.host = "example.invalid"; result.username = "tester"
         return result
     }
 
-    private static func expect(_ error: DockShellError, _ value: SessionDraft) throws {
+    private static func expect(_ error: DockShellError, _ value: ServerDraft) throws {
         do {
             _ = try value.validated(credentialID: nil)
             throw M4ValidationFailure(description: "Invalid session metadata unexpectedly passed validation")
@@ -90,7 +90,7 @@ enum M4ValidationVerification {
 
     private static func verifyGroupNames() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("DockShell-validation-\(UUID().uuidString)")
-        let repository = SQLiteSessionRepository(url: directory.appendingPathComponent("sessions.sqlite"))
+        let repository = SQLiteServerRepository(url: directory.appendingPathComponent("sessions.sqlite"))
         let service = WorkspaceService(repository: repository, credentials: TestCredentialStore(), privateKeys: PrivateKeyBookmarks())
         do {
             for name in ["ASCII group", "生产中文🙂", "  trimmed group  "] {

@@ -3,7 +3,7 @@ import Foundation
 
 /// Coordinates SQLite and Keychain using a durable cleanup journal, not a shared transaction.
 public actor WorkspaceService {
-    private let repository: any SessionRepository
+    private let repository: any ServerRepository
     private let credentials: any CredentialStore
     private let privateKeys: any PrivateKeyFileAccess
     private var needsInitialPrivateKeyCleanup: Bool
@@ -12,7 +12,7 @@ public actor WorkspaceService {
 
     /// Enable initial key cleanup only for a fresh application workspace, before
     /// its first catalog load can expose profiles to terminal connections.
-    public init(repository: any SessionRepository, credentials: any CredentialStore,
+    public init(repository: any ServerRepository, credentials: any CredentialStore,
                 privateKeys: any PrivateKeyFileAccess, performInitialPrivateKeyCleanup: Bool = false) {
         self.repository = repository
         self.credentials = credentials
@@ -50,7 +50,7 @@ public actor WorkspaceService {
         return try await state()
     }
 
-    public func save(_ draft: SessionDraft) async throws -> WorkspaceState {
+    public func save(_ draft: ServerDraft) async throws -> WorkspaceState {
         await acquire()
         defer { release() }
         try Task.checkCancellation()
@@ -71,7 +71,7 @@ public actor WorkspaceService {
                     _ = try await privateKeys.displayName(for: bookmark)
                 }
             }
-            // Only the file reference can reach SessionRepository.
+            // Only the file reference can reach ServerRepository.
             draft.privateKeyText = nil
             try Task.checkCancellation()
             return try await persist(draft, snapshot: snapshot)
@@ -82,9 +82,9 @@ public actor WorkspaceService {
     }
 
     /// Preview validation references external files only. No database or Keychain writes occur.
-    public func prepareImportRows(_ rows: [SessionImportRow]) async throws -> [SessionImportRow] {
-        guard rows.count <= 1000 else { throw SessionImportError.limitExceeded }
-        var result: [SessionImportRow] = []
+    public func prepareImportRows(_ rows: [ServerImportRow]) async throws -> [ServerImportRow] {
+        guard rows.count <= 1000 else { throw ServerImportError.limitExceeded }
+        var result: [ServerImportRow] = []
         var bookmarks: [String: Data] = [:]
         for var row in rows {
             try Task.checkCancellation()
@@ -110,17 +110,17 @@ public actor WorkspaceService {
     }
 
     /// Metadata-only imports commit atomically. Authentication secrets are supplied on first connection.
-    public func importSessions(_ rows: [SessionImportRow], into group: SessionImportGroup) async throws -> (WorkspaceState, SessionImportReceipt) {
+    public func importServers(_ rows: [ServerImportRow], into group: ServerImportGroup) async throws -> (WorkspaceState, ServerImportReceipt) {
         await acquire()
         defer { release() }
         let selected = rows.filter(\.selected)
-        guard !selected.isEmpty else { throw SessionImportError.nothingSelected }
-        guard let importer = repository as? any SessionImportRepository else { throw DockShellError.storageUnavailable }
+        guard !selected.isEmpty else { throw ServerImportError.nothingSelected }
+        guard let importer = repository as? any ServerImportRepository else { throw DockShellError.storageUnavailable }
         let prepared = try await prepareImportRows(selected)
-        var profiles: [SessionProfile] = []
+        var profiles: [ServerProfile] = []
         for row in prepared {
-            guard row.issues.isEmpty else { throw SessionImportError.invalidText }
-            guard !row.authenticationNeedsSelection else { throw SessionImportError.invalidText }
+            guard row.issues.isEmpty else { throw ServerImportError.invalidText }
+            guard !row.authenticationNeedsSelection else { throw ServerImportError.invalidText }
             if let error = row.validationError { throw error }
             profiles.append(try row.draft().validated(credentialID: nil))
         }
@@ -129,7 +129,7 @@ public actor WorkspaceService {
         return (try await state(), receipt)
     }
 
-    private func persist(_ draft: SessionDraft, snapshot: SessionSnapshot) async throws -> WorkspaceState {
+    private func persist(_ draft: ServerDraft, snapshot: ServerSnapshot) async throws -> WorkspaceState {
         let old = snapshot.profiles.first { $0.id == draft.id }
         let previousID = old?.authentication.kind == draft.authentication ? old?.authentication.credentialID : nil
         var credentialID: UUID?
@@ -174,11 +174,11 @@ public actor WorkspaceService {
         try? await privateKeys.removeImportedKey(for: bookmark)
     }
 
-    public func deleteSession(id: UUID) async throws -> WorkspaceState {
+    public func deleteServer(id: UUID) async throws -> WorkspaceState {
         await acquire()
         defer { release() }
         try Task.checkCancellation()
-        try await repository.deleteSession(id: id)
+        try await repository.deleteServer(id: id)
         await cleanCredentials()
         return try await state()
     }
@@ -192,7 +192,7 @@ public actor WorkspaceService {
         guard !name.isEmpty, !name.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }) else {
             throw DockShellError.invalidGroupName
         }
-        try await repository.saveGroup(SessionGroup(id: id, name: name))
+        try await repository.saveGroup(ServerGroup(id: id, name: name))
         return try await state()
     }
 

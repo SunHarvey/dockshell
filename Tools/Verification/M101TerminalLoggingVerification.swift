@@ -34,7 +34,7 @@ private actor LogSSHConnection: SSHConnection {
 }
 private actor LogSSHTransport: SSHTransport {
     private var channel = LogSSHChannel()
-    func connect(to profile: SessionProfile) -> any SSHConnection {
+    func connect(to profile: ServerProfile) -> any SSHConnection {
         channel = LogSSHChannel()
         return LogSSHConnection(channel)
     }
@@ -210,7 +210,7 @@ enum M101TerminalLoggingVerification {
         let choice = LogDestinationFixture()
         let (window, root) = mounted(controller, settings: settings, l10n: l10n, destination: choice)
         defer { choice.cancel(); controller.disconnect(); window.contentView = nil; window.close() }
-        let profile = SessionProfile(name: "isolated", host: "example.invalid", username: "fixture", authentication: .agent)
+        let profile = ServerProfile(name: "isolated", host: "example.invalid", username: "fixture", authentication: .agent)
         controller.connect(to: profile, settings: settings.settings)
         try await wait("Synthetic SSH did not connect") { controller.phase == .connected }
         let channel = await transport.currentChannel()
@@ -397,7 +397,7 @@ enum M101TerminalLoggingVerification {
         await settings.load()
         let (window, _) = mounted(controller, settings: settings, l10n: l10n)
         defer { controller.disconnect(); window.contentView = nil; window.close() }
-        controller.connect(to: SessionProfile(name: "failure", host: "example.invalid", username: "fixture", authentication: .agent), settings: .defaults)
+        controller.connect(to: ServerProfile(name: "failure", host: "example.invalid", username: "fixture", authentication: .agent), settings: .defaults)
         try await wait("Log write failure did not surface") { logger.problem == .writeFailed && logger.currentPhase == .failed }
         let channel = await transport.currentChannel()
         controller.receiveInput(Data("STILL_USABLE".utf8))

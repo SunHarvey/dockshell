@@ -3,8 +3,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Snapshot import with editable preview; no connection is opened by this sheet.
-public struct SessionImportView: View {
-    @StateObject private var model: SessionImportViewModel
+public struct ServerImportView: View {
+    @StateObject private var model: ServerImportViewModel
     @ObservedObject private var workspace: WorkspaceViewModel
     private let l10n: L10n
     private let automaticallyLoad: Bool
@@ -12,7 +12,7 @@ public struct SessionImportView: View {
     @ViewState<Bool> private var choosingFile = false
     @ViewState<Task<Void, Never>?> private var operation: Task<Void, Never>?
 
-    public init(model: SessionImportViewModel, l10n: L10n, automaticallyLoad: Bool = true) {
+    public init(model: ServerImportViewModel, l10n: L10n, automaticallyLoad: Bool = true) {
         _model = StateObject(wrappedValue: model); workspace = model.workspace
         self.l10n = l10n; self.automaticallyLoad = automaticallyLoad
     }
@@ -103,11 +103,11 @@ public struct SessionImportView: View {
             HStack {
                 Text(verbatim: l10n.string(.csvPaste)).font(.headline)
                 Spacer()
-                Button(l10n.string(.csvExample)) { model.csvText = SessionCSVFormat.example }
+                Button(l10n.string(.csvExample)) { model.csvText = ServerCSVFormat.example }
                     .accessibilityIdentifier("dockshell.csv.example")
             }
             Text(verbatim: l10n.string(.csvFormatHelp)).font(.callout).foregroundStyle(.secondary)
-            Text(verbatim: SessionCSVFormat.header).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+            Text(verbatim: ServerCSVFormat.header).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
             TextEditor(text: $model.csvText)
                 .font(.system(.body, design: .monospaced)).autocorrectionDisabled()
                 .scrollContentBackground(.hidden).padding(7)
@@ -141,7 +141,7 @@ public struct SessionImportView: View {
             } else {
                 LazyVStack(spacing: 8) {
                     ForEach($model.rows) { $row in
-                        SessionImportRowView(row: $row, duplicate: duplicates.contains(row.id), l10n: l10n)
+                        ServerImportRowView(row: $row, duplicate: duplicates.contains(row.id), l10n: l10n)
                     }
                 }.padding(8)
             }
@@ -152,7 +152,7 @@ public struct SessionImportView: View {
         .disabled(model.isLoading || model.isSaving)
     }
 
-    private func result(_ receipt: SessionImportReceipt) -> some View {
+    private func result(_ receipt: ServerImportReceipt) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Label(l10n.string(.importResult)
                 .replacingOccurrences(of: "{count}", with: String(receipt.insertedIDs.count))
@@ -169,8 +169,8 @@ public struct SessionImportView: View {
     }
 }
 
-private struct SessionImportRowView: View {
-    @Binding var row: SessionImportRow
+private struct ServerImportRowView: View {
+    @Binding var row: ServerImportRow
     let duplicate: Bool
     let l10n: L10n
 
@@ -256,7 +256,7 @@ private struct SessionImportRowView: View {
         .onChange(of: row.authentication) { _, _ in row.keyBookmark = nil; row.keyError = nil; row.keyAuthenticationError = nil }
     }
 
-    private func description(_ issue: SessionImportIssue) -> String {
+    private func description(_ issue: ServerImportIssue) -> String {
         switch issue {
         case .unsupported(let name): l10n.string(.importUnsupported).replacingOccurrences(of: "{option}", with: name)
         case .syntax(let location): l10n.string(.importSyntax).replacingOccurrences(of: "{location}", with: location)

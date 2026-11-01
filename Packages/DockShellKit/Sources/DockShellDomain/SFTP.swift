@@ -129,5 +129,5 @@ public extension SFTPClient {
 
 /// A file connection has its own authentication and lifetime, independent of a terminal channel.
 public protocol SFTPClientFactory: Sendable {
-    func connect(to profile: SessionProfile) async throws -> any SFTPClient
+    func connect(to profile: ServerProfile) async throws -> any SFTPClient
 }

@@ -21,7 +21,7 @@ public struct OpenSSHSFTPClientFactory: SFTPClientFactory {
         self.keepalive = keepalive
     }
 
-    public func connect(to profile: SessionProfile) async throws -> any SFTPClient {
+    public func connect(to profile: ServerProfile) async throws -> any SFTPClient {
         let prepared = try await preparation.prepare(profile)
         let arguments = try OpenSSHCommand.arguments(profile: prepared.profile, endpoint: prepared.endpoint,
             acceptedKeys: prepared.acceptedKeys, knownHostsURL: prepared.knownHostsURL,

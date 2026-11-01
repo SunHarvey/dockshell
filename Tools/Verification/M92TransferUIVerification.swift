@@ -91,7 +91,7 @@ private actor M92UIClient: SFTPClient {
 
 private struct M92UIFactory: SFTPClientFactory {
     let prompts: SSHConnectionPrompts?
-    func connect(to profile: SessionProfile) async throws -> any SFTPClient {
+    func connect(to profile: ServerProfile) async throws -> any SFTPClient {
         if let prompts { _ = try await prompts.password(for: profile) }
         return M92UIClient()
     }
@@ -129,7 +129,7 @@ private struct M92UIEngine: SFTPFileTransferring {
 private final class M92UIFixture {
     let queue: SFTPTransfersViewModel
     let browser: SFTPBrowserViewModel
-    let profile: SessionProfile
+    let profile: ServerProfile
     let root: NSHostingView<SFTPBrowserPane>
     let window: NSWindow
     init(mode: M92UIEngine.Mode, password: Bool, l10n: L10n) {
@@ -137,7 +137,7 @@ private final class M92UIFixture {
         queue = SFTPTransfersViewModel(factory: M92UIFactory(prompts: password ? prompts : nil),
             engine: M92UIEngine(mode: mode), prompts: prompts)
         browser = SFTPBrowserViewModel(factory: M92UIFactory(prompts: nil), prompts: SSHConnectionPrompts(), transfers: queue)
-        profile = SessionProfile(name: "M9.2 UI", host: "transfer-ui.invalid", username: "fixture",
+        profile = ServerProfile(name: "M9.2 UI", host: "transfer-ui.invalid", username: "fixture",
                                  authentication: .password(credentialID: nil))
         root = NSHostingView(rootView: SFTPBrowserPane(model: browser, l10n: l10n, onClose: {}))
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 380, height: 700),

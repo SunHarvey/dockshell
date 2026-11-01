@@ -8,7 +8,7 @@ public enum AuthenticationMethod: Hashable, Codable, Sendable {
 }
 
 /// A saved server configuration; contains references to credentials, never their contents.
-public struct SessionProfile: Identifiable, Hashable, Codable, Sendable {
+public struct ServerProfile: Identifiable, Hashable, Codable, Sendable {
     public let id: UUID
     public var name: String
     public var host: String
@@ -32,7 +32,7 @@ public struct SessionProfile: Identifiable, Hashable, Codable, Sendable {
 }
 
 /// MVP groups are flat. No persistence-framework types cross this boundary.
-public struct SessionGroup: Identifiable, Hashable, Codable, Sendable {
+public struct ServerGroup: Identifiable, Hashable, Codable, Sendable {
     public let id: UUID
     public var name: String
 
@@ -43,11 +43,11 @@ public struct SessionGroup: Identifiable, Hashable, Codable, Sendable {
 }
 
 /// An immutable repository result, safe to transfer between actors and the UI.
-public struct SessionSnapshot: Equatable, Sendable {
-    public let profiles: [SessionProfile]
-    public let groups: [SessionGroup]
+public struct ServerSnapshot: Equatable, Sendable {
+    public let profiles: [ServerProfile]
+    public let groups: [ServerGroup]
 
-    public init(profiles: [SessionProfile], groups: [SessionGroup]) {
+    public init(profiles: [ServerProfile], groups: [ServerGroup]) {
         self.profiles = profiles
         self.groups = groups
     }

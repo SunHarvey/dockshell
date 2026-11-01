@@ -17,7 +17,7 @@ final class AppContainer {
     init(l10n: L10n, service: WorkspaceService, settingsService: SettingsService,
          credentials: any CredentialStore, knownHostsURL: URL) {
         self.l10n = l10n
-        workspace = WorkspaceViewModel(service: service, configurationReader: OpenSSHConfigurationReader(), csvReader: CSVSessionReader())
+        workspace = WorkspaceViewModel(service: service, configurationReader: OpenSSHConfigurationReader(), csvReader: CSVServerReader())
         settings = TerminalSettingsViewModel(service: settingsService)
         let logStorage = FileTerminalLogStorage()
         terminal = LocalTerminalController(factory: SystemLocalTerminalFactory(

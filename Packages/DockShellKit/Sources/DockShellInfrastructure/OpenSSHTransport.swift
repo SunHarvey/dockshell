@@ -24,7 +24,7 @@ public struct OpenSSHTransport: SSHTransport {
         self.privateKeys = privateKeys; self.keyInspector = keyInspector; self.agent = agent; self.keepalive = keepalive
     }
 
-    public func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    public func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         let prepared = try await OpenSSHSessionPreparation(credentials: credentials, hostKeys: hostKeys,
             scanner: scanner, interaction: interaction, privateKeys: privateKeys,
             keyInspector: keyInspector, agent: agent).prepare(profile)
@@ -64,7 +64,7 @@ public enum OpenSSHInvocation: Equatable, Sendable {
 
 /// Constructs only an argument array. Shell syntax is confined to one fixed, quoted local helper path.
 public enum OpenSSHCommand {
-    public static func arguments(profile: SessionProfile, endpoint: SSHHostEndpoint,
+    public static func arguments(profile: ServerProfile, endpoint: SSHHostEndpoint,
                                  acceptedKeys: [SSHHostKey], knownHostsURL: URL, helperURL: URL,
                                  authentication resolved: OpenSSHAuthentication? = nil,
                                  keepalive: SSHKeepalivePolicy = .standard,

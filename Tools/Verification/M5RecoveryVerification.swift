@@ -94,7 +94,7 @@ private actor RecoveryTransport: SSHTransport {
     private let connections: [RecoveryConnection]
     private var calls = 0
     init(_ connections: [RecoveryConnection]) { self.connections = connections }
-    func connect(to profile: SessionProfile) throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) throws -> any SSHConnection {
         guard calls < connections.count else { throw SSHConnectionError.connectionFailed }
         let result = connections[calls]; calls += 1
         return result
@@ -106,7 +106,7 @@ private actor RecoveryPasswordTransport: SSHTransport {
     private let prompts: SSHConnectionPrompts
     private var calls = 0
     init(prompts: SSHConnectionPrompts) { self.prompts = prompts }
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         calls += 1
         _ = try await prompts.password(for: profile)
         try Task.checkCancellation()
@@ -135,8 +135,8 @@ private actor RecoveryEventRecorder {
 
 /// Injected power events exercise recovery without sleeping the user's Mac or altering its network.
 enum M5RecoveryVerification {
-    private static var profile: SessionProfile {
-        SessionProfile(name: "M5 recovery fixture", host: "recovery.invalid", username: "fixture",
+    private static var profile: ServerProfile {
+        ServerProfile(name: "M5 recovery fixture", host: "recovery.invalid", username: "fixture",
                        authentication: .password(credentialID: nil))
     }
 

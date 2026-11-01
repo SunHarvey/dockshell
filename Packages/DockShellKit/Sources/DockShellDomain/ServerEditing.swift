@@ -39,7 +39,7 @@ public enum SecretChange: Sendable {
 }
 
 /// Editable values. SecretChange must never be encoded or written to disk.
-public struct SessionDraft: Sendable {
+public struct ServerDraft: Sendable {
     public var id: UUID
     public var name: String
     public var host: String
@@ -47,12 +47,12 @@ public struct SessionDraft: Sendable {
     public var username: String
     public var authentication: AuthenticationKind
     public var keyBookmark: Data?
-    /// Unsaved pasted key material. Never encode this value or store it in the session database.
+    /// Unsaved pasted key material. Never encode this value or store it in the server database.
     public var privateKeyText: String?
     public var groupID: UUID?
     public var secret: SecretChange = .keep
 
-    public init(profile: SessionProfile? = nil) {
+    public init(profile: ServerProfile? = nil) {
         id = profile?.id ?? UUID()
         name = profile?.name ?? ""
         host = profile?.host ?? ""
@@ -87,7 +87,7 @@ public struct SessionDraft: Sendable {
         return (name, host, port, username)
     }
 
-    public func validated(credentialID: UUID?) throws -> SessionProfile {
+    public func validated(credentialID: UUID?) throws -> ServerProfile {
         let fields = try normalizedFields()
         let method: AuthenticationMethod
         switch authentication {
@@ -97,16 +97,16 @@ public struct SessionDraft: Sendable {
             guard let keyBookmark, !keyBookmark.isEmpty else { throw DockShellError.privateKeyRequired }
             method = .privateKey(fileBookmark: keyBookmark, passphraseCredentialID: credentialID)
         }
-        return SessionProfile(id: id, name: fields.name, host: fields.host, port: fields.port, username: fields.username,
+        return ServerProfile(id: id, name: fields.name, host: fields.host, port: fields.port, username: fields.username,
                               authentication: method, groupID: groupID)
     }
 }
 
 public struct WorkspaceState: Sendable {
-    public let snapshot: SessionSnapshot
+    public let snapshot: ServerSnapshot
     public let hasPendingCredentialCleanup: Bool
 
-    public init(snapshot: SessionSnapshot, hasPendingCredentialCleanup: Bool) {
+    public init(snapshot: ServerSnapshot, hasPendingCredentialCleanup: Bool) {
         self.snapshot = snapshot
         self.hasPendingCredentialCleanup = hasPendingCredentialCleanup
     }

@@ -27,22 +27,22 @@ actor TestCredentialStore: CredentialStore {
     func identifiers() -> Set<UUID> { Set(items.keys) }
 }
 
-private actor FailingRepository: SessionRepository {
-    let base: SQLiteSessionRepository
+private actor FailingRepository: ServerRepository {
+    let base: SQLiteServerRepository
     private var failSave = false
     private var failDelete = false
-    init(_ base: SQLiteSessionRepository) { self.base = base }
+    init(_ base: SQLiteServerRepository) { self.base = base }
     func setFailures(save: Bool = false, delete: Bool = false) { failSave = save; failDelete = delete }
-    func snapshot() async throws -> SessionSnapshot { try await base.snapshot() }
-    func save(_ profile: SessionProfile) async throws {
+    func snapshot() async throws -> ServerSnapshot { try await base.snapshot() }
+    func save(_ profile: ServerProfile) async throws {
         if failSave { throw DockShellError.storageUnavailable }
         try await base.save(profile)
     }
-    func deleteSession(id: UUID) async throws {
+    func deleteServer(id: UUID) async throws {
         if failDelete { throw DockShellError.storageUnavailable }
-        try await base.deleteSession(id: id)
+        try await base.deleteServer(id: id)
     }
-    func saveGroup(_ group: SessionGroup) async throws { try await base.saveGroup(group) }
+    func saveGroup(_ group: ServerGroup) async throws { try await base.saveGroup(group) }
     func deleteGroup(id: UUID) async throws { try await base.deleteGroup(id: id) }
     func stageCredentialCleanup(_ ids: [UUID]) async throws { try await base.stageCredentialCleanup(ids) }
     func pendingCredentialCleanup() async throws -> [UUID] { try await base.pendingCredentialCleanup() }
@@ -74,7 +74,7 @@ enum M2Verification {
 
     private static func verifyTransactions(root: URL) async throws {
         let url = root.appendingPathComponent("sessions/sessions.sqlite")
-        let repository = SQLiteSessionRepository(url: url)
+        let repository = SQLiteServerRepository(url: url)
         let faults = FailingRepository(repository)
         let credentials = TestCredentialStore()
         let keys = PrivateKeyBookmarks()
@@ -93,7 +93,7 @@ enum M2Verification {
         let renamed = try await service.saveGroup(id: renamedID, name: "预发🙂")
         try check(renamed.snapshot.groups.contains { $0.id == renamedID && $0.name == "预发🙂" }, "Group rename changed its identity")
         _ = try await service.deleteGroup(id: renamedID)
-        var draft = SessionDraft()
+        var draft = ServerDraft()
         draft.name = "生产 '🙂"
         draft.host = "example.invalid"
         draft.username = "tester"
@@ -105,14 +105,14 @@ enum M2Verification {
         guard let firstID = profile.authentication.credentialID else { throw M2Failure(description: "Missing credential reference") }
         try check(await credentials.read(id: firstID) == Data(firstSecret.utf8), "Secret did not reach credential store")
         try await verifySearch(service: service)
-        var edit = SessionDraft(profile: profile)
+        var edit = ServerDraft(profile: profile)
         edit.name = "重命名🙂"
         state = try await service.save(edit)
         try check(state.snapshot.profiles[0].authentication.credentialID == firstID, "Metadata edit replaced a credential")
         profile = state.snapshot.profiles[0]
 
         await credentials.setFailures(write: true)
-        edit = SessionDraft(profile: profile)
+        edit = ServerDraft(profile: profile)
         edit.secret = .replace("write-must-fail")
         try await expecting(.keychainUnavailable) { _ = try await service.save(edit) }
         await credentials.setFailures()
@@ -125,13 +125,13 @@ enum M2Verification {
         try check(await credentials.identifiers() == [firstID], "Failed commit leaked a newly created secret")
         try check(try await repository.pendingCredentialCleanup().isEmpty, "Successful rollback left journal work")
         await faults.setFailures(delete: true)
-        try await expecting(.storageUnavailable) { _ = try await service.deleteSession(id: profile.id) }
+        try await expecting(.storageUnavailable) { _ = try await service.deleteServer(id: profile.id) }
         await faults.setFailures()
         try check(try await repository.snapshot().profiles == [profile], "Failed delete removed a profile")
         try check(await credentials.identifiers() == [firstID], "Failed delete removed a live secret")
 
         await credentials.setFailures(delete: true)
-        edit = SessionDraft(profile: profile)
+        edit = ServerDraft(profile: profile)
         let secondSecret = "replacement-only-\(UUID())"
         edit.secret = .replace(secondSecret)
         state = try await service.save(edit)
@@ -139,13 +139,13 @@ enum M2Verification {
         guard let secondID = profile.authentication.credentialID else { throw M2Failure(description: "Missing replacement reference") }
         try check(secondID != firstID && state.hasPendingCredentialCleanup, "Cleanup failure was not visible")
         try check(try await repository.pendingCredentialCleanup() == [firstID], "Live credential entered cleanup queue")
-        let competing = SQLiteSessionRepository(url: url)
+        let competing = SQLiteServerRepository(url: url)
         try await expecting(.storageInUse) { _ = try await competing.snapshot() }
         await competing.close()
         try assertNoSecrets(in: url.deletingLastPathComponent(), secrets: [firstSecret, secondSecret])
         await repository.close()
 
-        let reopened = SQLiteSessionRepository(url: url)
+        let reopened = SQLiteServerRepository(url: url)
         let restarted = WorkspaceService(repository: reopened, credentials: credentials, privateKeys: keys)
         state = try await restarted.load()
         try check(state.snapshot.profiles == [profile] && state.hasPendingCredentialCleanup, "Restart lost data or pending work")
@@ -156,7 +156,7 @@ enum M2Verification {
 
         let keyFile = root.appendingPathComponent("external-key-fixture")
         try Data("Non-secret file reference fixture; not an actual private key".utf8).write(to: keyFile)
-        edit = SessionDraft(profile: profile)
+        edit = ServerDraft(profile: profile)
         edit.authentication = .privateKey
         edit.keyBookmark = try await keys.bookmark(for: keyFile)
         let passphrase = "synthetic-passphrase-\(UUID())"
@@ -166,12 +166,12 @@ enum M2Verification {
         guard let phraseID = profile.authentication.credentialID else { throw M2Failure(description: "Missing passphrase reference") }
         try check(profile.authentication.kind == .privateKey, "Private key mode was not saved")
         try check(await credentials.read(id: phraseID) == Data(passphrase.utf8), "Passphrase was not stored separately")
-        var withoutSecret = SessionDraft(profile: profile)
+        var withoutSecret = ServerDraft(profile: profile)
         withoutSecret.secret = .remove
         let cleared = try await restarted.save(withoutSecret)
         try check(cleared.snapshot.profiles[0].authentication.credentialID == nil, "Removing a saved secret retained its reference")
         try check((await credentials.identifiers()).isEmpty, "Removing a saved secret retained the item")
-        var agent = SessionDraft(profile: cleared.snapshot.profiles[0])
+        var agent = ServerDraft(profile: cleared.snapshot.profiles[0])
         agent.authentication = .agent
         let agentState = try await restarted.save(agent)
         try check(agentState.snapshot.profiles[0].authentication == .agent, "Agent configuration was not saved")
@@ -187,7 +187,7 @@ enum M2Verification {
         try assertNoSecrets(in: url.deletingLastPathComponent(), secrets: [firstSecret, secondSecret, passphrase])
 
         await credentials.setFailures(delete: true)
-        state = try await restarted.deleteSession(id: profile.id)
+        state = try await restarted.deleteServer(id: profile.id)
         try check(state.snapshot.profiles.isEmpty && state.hasPendingCredentialCleanup, "Credential delete failure was silently discarded")
         await credentials.setFailures()
         state = try await restarted.load()
@@ -198,7 +198,7 @@ enum M2Verification {
         try await reopened.stageCredentialCleanup([orphan])
         try await credentials.store(Data("staged-only".utf8), id: orphan)
         await reopened.close()
-        let recovery = SQLiteSessionRepository(url: url)
+        let recovery = SQLiteServerRepository(url: url)
         let recovered = WorkspaceService(repository: recovery, credentials: credentials, privateKeys: keys)
         state = try await recovered.load()
         let afterCrash = await credentials.identifiers()
@@ -238,10 +238,10 @@ enum M2Verification {
     }
 
     private static func verifyConcurrency(root: URL) async throws {
-        let repository = SQLiteSessionRepository(url: root.appendingPathComponent("concurrency/db.sqlite"))
+        let repository = SQLiteServerRepository(url: root.appendingPathComponent("concurrency/db.sqlite"))
         let credentials = TestCredentialStore()
         let service = WorkspaceService(repository: repository, credentials: credentials, privateKeys: PrivateKeyBookmarks())
-        var base = SessionDraft()
+        var base = ServerDraft()
         base.name = "Concurrent fixture"; base.host = "example.invalid"; base.username = "tester"
         _ = try await service.save(base)
         let seed = base
@@ -268,19 +268,19 @@ enum M2Verification {
         try FileManager.default.createDirectory(at: corrupt.deletingLastPathComponent(), withIntermediateDirectories: true)
         let bytes = Data("not a SQLite database".utf8)
         try bytes.write(to: corrupt)
-        let repository = SQLiteSessionRepository(url: corrupt)
+        let repository = SQLiteServerRepository(url: corrupt)
         try await expecting(.storageCorrupt) { _ = try await repository.snapshot() }
         try check(try Data(contentsOf: corrupt) == bytes, "Corrupt database was overwritten")
         await repository.close()
         let future = root.appendingPathComponent("future/db.sqlite")
-        let first = SQLiteSessionRepository(url: future)
+        let first = SQLiteServerRepository(url: future)
         _ = try await first.snapshot()
         await first.close()
         let file = try FileHandle(forWritingTo: future)
         try file.seek(toOffset: 60) // SQLite's documented big-endian user_version header field.
         try file.write(contentsOf: Data([0, 0, 0, 2]))
         try file.close()
-        let newer = SQLiteSessionRepository(url: future)
+        let newer = SQLiteServerRepository(url: future)
         try await expecting(.storageVersion) { _ = try await newer.snapshot() }
         await newer.close()
         print("PASS M2 storage: corrupt and newer-version databases fail without replacement")

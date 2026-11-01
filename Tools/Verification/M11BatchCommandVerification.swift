@@ -40,7 +40,7 @@ actor M11Transport: SSHTransport {
     private var connection: M11Connection?
     private var calls = 0
     init(prompts: SSHConnectionPrompts? = nil) { self.prompts = prompts }
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         calls += 1
         if let prompts { _ = try await prompts.password(for: profile) }
         try Task.checkCancellation()
@@ -98,7 +98,7 @@ enum M11BatchCommandVerification {
         let factory = M11Factory(passwordIndices: [2])
         let tabs = TerminalTabsViewModel(factory: factory)
         defer { tabs.closeAll() }
-        let profile = SessionProfile(name: "same-profile", host: "batch.invalid", username: "fixture", authentication: .agent)
+        let profile = ServerProfile(name: "same-profile", host: "batch.invalid", username: "fixture", authentication: .agent)
         let ids = (0..<5).map { _ in tabs.open(profile: profile, settings: .defaults) }
         let surfaces = (0..<4).map { _ in M11Surface() }
         // Product NSViews are owned by their window. This headless fixture must

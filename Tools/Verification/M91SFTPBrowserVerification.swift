@@ -108,7 +108,7 @@ private actor M91DirectoryFactory: SFTPClientFactory {
     init(_ clients: [M91DirectoryClient], holdFirst: Bool = false) {
         self.clients = clients; self.holdFirst = holdFirst
     }
-    func connect(to profile: SessionProfile) async throws -> any SFTPClient {
+    func connect(to profile: ServerProfile) async throws -> any SFTPClient {
         let index = calls; calls += 1
         guard clients.indices.contains(index) else { throw SFTPError.connectionClosed }
         if index > 0, !(await clients[index - 1].isClosed()) { connectedAfterUnclosedPrevious = true }
@@ -124,7 +124,7 @@ private actor M91PromptFactory: SFTPClientFactory {
     let client: M91DirectoryClient
     private var attempts = 0, accepted = 0, cancellations = 0
     init(prompts: SSHConnectionPrompts, client: M91DirectoryClient) { self.prompts = prompts; self.client = client }
-    func connect(to profile: SessionProfile) async throws -> any SFTPClient {
+    func connect(to profile: ServerProfile) async throws -> any SFTPClient {
         attempts += 1
         do {
             let value = try await prompts.password(for: profile)
@@ -143,7 +143,7 @@ private final class M91WeakBrowser {
 }
 
 private struct M91NeverTerminalTransport: SSHTransport {
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection { throw SSHConnectionError.connectionFailed }
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection { throw SSHConnectionError.connectionFailed }
 }
 
 @MainActor
@@ -165,7 +165,7 @@ private final class M91TabFactory: TerminalSessionFactory {
 /// protocol peers, without network, Keychain or changes to the user's files.
 @MainActor
 enum M91SFTPBrowserVerification {
-    private static let profile = SessionProfile(name: "M9.1 fixture", host: "browser.invalid", username: "fixture",
+    private static let profile = ServerProfile(name: "M9.1 fixture", host: "browser.invalid", username: "fixture",
                                                 authentication: .password(credentialID: nil))
 
     static func run() async throws {
@@ -470,7 +470,7 @@ private actor M91UIConnection: SSHConnection {
 private actor M91UITransport: SSHTransport {
     let connection = M91UIConnection()
     private var calls = 0
-    func connect(to profile: SessionProfile) -> any SSHConnection { calls += 1; return connection }
+    func connect(to profile: ServerProfile) -> any SSHConnection { calls += 1; return connection }
     func count() -> Int { calls }
 }
 
@@ -511,7 +511,7 @@ enum M91SFTPBrowserUIVerification {
         let factory = M91UITabFactory(), tabs = TerminalTabsViewModel(factory: factory)
         let settings = TerminalSettingsViewModel(service: SettingsService(repository: M91UISettings()))
         await settings.load()
-        let profile = SessionProfile(name: "M9.1 UI", host: "browser-ui.invalid", username: "fixture", authentication: .agent)
+        let profile = ServerProfile(name: "M9.1 UI", host: "browser-ui.invalid", username: "fixture", authentication: .agent)
         let first = tabs.open(profile: profile, settings: settings.settings)
         let second = tabs.open(profile: profile, settings: settings.settings)
         let root = NSHostingView(rootView: TerminalTabsPane(model: tabs, settings: settings, l10n: l10n))

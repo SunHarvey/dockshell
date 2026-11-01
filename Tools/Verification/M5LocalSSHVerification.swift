@@ -157,7 +157,7 @@ enum M5LocalSSHVerification {
             }
             try require(code == 0, "Could not load the disposable integration identity")
             let interaction = LocalInteraction(expectedHost: expectedHost, passphrase: Data())
-            let profile = SessionProfile(name: "local-agent", host: endpoint.host, port: endpoint.port,
+            let profile = ServerProfile(name: "local-agent", host: endpoint.host, port: endpoint.port,
                                          username: NSUserName(), authentication: .agent)
             try await authenticate(profile: profile, helperURL: helperURL, hostKeys: store,
                 interaction: interaction, credentials: LocalCredentials(),
@@ -168,7 +168,7 @@ enum M5LocalSSHVerification {
         await process.close()
     }
 
-    private static func authenticate(profile: SessionProfile, helperURL: URL, hostKeys: OpenSSHHostKeyStore,
+    private static func authenticate(profile: ServerProfile, helperURL: URL, hostKeys: OpenSSHHostKeyStore,
                                       interaction: LocalInteraction, credentials: LocalCredentials,
                                       agent: any SSHAgentProviding = OpenSSHAgentProvider(environment: [:], allowLaunchctlFallback: false)) async throws {
         let transport = OpenSSHTransport(credentials: credentials, hostKeys: hostKeys,
@@ -206,8 +206,8 @@ enum M5LocalSSHVerification {
     }
 
     private static func makeProfile(key: URL, endpoint: SSHHostEndpoint, bookmarks: PrivateKeyBookmarks,
-                                 credentialID: UUID? = nil) async throws -> SessionProfile {
-        SessionProfile(name: key.lastPathComponent, host: endpoint.host, port: endpoint.port, username: NSUserName(),
+                                 credentialID: UUID? = nil) async throws -> ServerProfile {
+        ServerProfile(name: key.lastPathComponent, host: endpoint.host, port: endpoint.port, username: NSUserName(),
             authentication: .privateKey(fileBookmark: try await bookmarks.bookmark(for: key),
                                         passphraseCredentialID: credentialID))
     }
@@ -297,11 +297,11 @@ private actor LocalInteraction: SSHInteraction {
         guard request.keys == [expectedHost] else { throw M5LocalSSHFailure(description: "Unexpected host identity in local fixture") }
         return true
     }
-    func password(for profile: SessionProfile) throws -> Data {
+    func password(for profile: ServerProfile) throws -> Data {
         passwordCount += 1
         throw M5LocalSSHFailure(description: "Local key authentication unexpectedly requested a login password")
     }
-    func passphrase(for profile: SessionProfile) -> Data { passphraseCount += 1; return response }
+    func passphrase(for profile: ServerProfile) -> Data { passphraseCount += 1; return response }
     func counts() -> (password: Int, passphrase: Int) { (passwordCount, passphraseCount) }
 }
 

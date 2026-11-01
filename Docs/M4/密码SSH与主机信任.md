@@ -258,7 +258,7 @@ CLT 缺少 Metal 离线工具，公共构建脚本继续显式使用 `--build-sy
 | helper 打包与本地签名 | [Scripts/package-app.sh](../../Scripts/package-app.sh) |
 | 验证入口 | [Tools/Verification/Verification.swift](../../Tools/Verification/Verification.swift) |
 | 字符校验优化回归 | [M4ValidationVerification.swift](../../Tools/Verification/M4ValidationVerification.swift) |
-| 会话、字体和分组校验等价改写 | [SessionEditing.swift](../../Packages/DockShellKit/Sources/DockShellDomain/SessionEditing.swift)、[TerminalSettings.swift](../../Packages/DockShellKit/Sources/DockShellDomain/TerminalSettings.swift)、[WorkspaceService.swift](../../Packages/DockShellKit/Sources/DockShellApplication/WorkspaceService.swift) |
+| 会话、字体和分组校验等价改写 | [ServerEditing.swift](../../Packages/DockShellKit/Sources/DockShellDomain/ServerEditing.swift)、[TerminalSettings.swift](../../Packages/DockShellKit/Sources/DockShellDomain/TerminalSettings.swift)、[WorkspaceService.swift](../../Packages/DockShellKit/Sources/DockShellApplication/WorkspaceService.swift) |
 | 主机信任检查 | [M4HostTrustVerification.swift](../../Tools/Verification/M4HostTrustVerification.swift) |
 | 凭据 IPC 检查 | [M4CredentialVerification.swift](../../Tools/Verification/M4CredentialVerification.swift) |
 | 真实 PTY 检查 | [M4PTYVerification.swift](../../Tools/Verification/M4PTYVerification.swift) |

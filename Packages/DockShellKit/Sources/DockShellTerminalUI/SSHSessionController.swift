@@ -10,7 +10,7 @@ public enum SSHSessionPhase: Sendable, Equatable {
 /// Owns exactly one remote terminal and its bounded IO tasks; no SSH implementation reaches the view.
 @MainActor
 public final class SSHSessionController: ObservableObject, TerminalViewController, BatchCommandTarget {
-    @Published public private(set) var profile: SessionProfile?
+    @Published public private(set) var profile: ServerProfile?
     @Published public private(set) var phase: SSHSessionPhase = .idle
     @Published public private(set) var error: (any Error)?
     @Published public private(set) var size = TerminalSize(columns: 80, rows: 24)
@@ -55,7 +55,7 @@ public final class SSHSessionController: ObservableObject, TerminalViewControlle
 
     public var isBusy: Bool { phase == .connecting || phase == .connected }
 
-    public func connect(to profile: SessionProfile, settings: TerminalSettings) {
+    public func connect(to profile: ServerProfile, settings: TerminalSettings) {
         stopIO()
         logging?.apply(settings)
         self.profile = profile

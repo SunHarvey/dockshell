@@ -9,7 +9,7 @@ import SwiftUI
 struct M12Failure: Error, CustomStringConvertible { let description: String }
 
 /// Every file, key and database is disposable; personal configuration is never read.
-enum M12SessionImportVerification {
+enum M12ServerImportVerification {
     static func check(_ condition: Bool, _ message: String) throws {
         guard condition else { throw M12Failure(description: message) }
     }
@@ -120,7 +120,7 @@ enum M12SessionImportVerification {
         catch is CancellationError { }
         print("PASS SSH config safety: conditional Include, absent glob, cycles, limits, cancellation, multiple keys, Match/ProxyJump/crypto diagnostics, zero command execution")
 
-        let repo = SQLiteSessionRepository(url: root.appendingPathComponent("database/sessions.sqlite"))
+        let repo = SQLiteServerRepository(url: root.appendingPathComponent("database/sessions.sqlite"))
         let credentials = TestCredentialStore()
         let service = WorkspaceService(repository: repo, credentials: credentials, privateKeys: PrivateKeyBookmarks())
         let rows = try await service.prepareImportRows(document.rows)
@@ -130,54 +130,54 @@ enum M12SessionImportVerification {
         try check(chosenRows[0].validationError == nil && chosenRows[0].keyBookmark != nil, "Explicit identity selection did not validate")
         let before = try await repo.snapshot()
         try check(before.groups.isEmpty && before.profiles.isEmpty, "Preview changed the database")
-        let (state, first) = try await service.importSessions(rows, into: .named("local-ssh-config"))
+        let (state, first) = try await service.importServers(rows, into: .named("local-ssh-config"))
         try check(first.insertedIDs.count == 5 && state.snapshot.groups.count == 1 && state.snapshot.profiles.count == 5,
             "Atomic group/session creation failed")
         let storedSecrets = await credentials.identifiers()
         try check(state.snapshot.profiles.allSatisfy { $0.authentication.credentialID == nil } && storedSecrets.isEmpty,
             "Import wrote authentication secrets")
-        let (_, repeated) = try await service.importSessions(rows, into: .named("LOCAL-SSH-CONFIG"))
+        let (_, repeated) = try await service.importServers(rows, into: .named("LOCAL-SSH-CONFIG"))
         try check(repeated.insertedIDs.isEmpty && repeated.skippedNames.count == 5 && repeated.groupID == first.groupID,
             "Duplicate skips or group reuse failed")
-        let fresh = SessionImportRow(name: "renamed-entry", host: "192.0.2.10", username: "fixture")
-        let (_, renamed) = try await service.importSessions([fresh], into: .existing(first.groupID!))
+        let fresh = ServerImportRow(name: "renamed-entry", host: "192.0.2.10", username: "fixture")
+        let (_, renamed) = try await service.importServers([fresh], into: .existing(first.groupID!))
         try check(renamed.insertedIDs.count == 1, "Rename did not allow import")
         let snapshot = try await repo.snapshot()
-        let a = SessionProfile(name: "rollback-a", host: "192.0.2.1", username: "fixture", authentication: .agent)
-        let b = SessionProfile(id: a.id, name: "rollback-b", host: "192.0.2.2", username: "fixture", authentication: .agent)
+        let a = ServerProfile(name: "rollback-a", host: "192.0.2.1", username: "fixture", authentication: .agent)
+        let b = ServerProfile(id: a.id, name: "rollback-b", host: "192.0.2.2", username: "fixture", authentication: .agent)
         do { _ = try await repo.importProfiles([a, b], into: .named("must-rollback")); throw M12Failure(description: "Expected UUID collision") }
         catch let error as DockShellError { try check(error == .storageUnavailable, "Unexpected transactional failure") }
         try check(try await repo.snapshot() == snapshot, "Partial sessions or orphan group survived rollback")
         do { _ = try await repo.importProfiles([a], into: .existing(UUID())); throw M12Failure(description: "Missing group accepted") }
         catch let error as DockShellError { try check(error == .missingGroup, "Incorrect group failure") }
-        var bad = SessionImportRow(name: "bad-key", host: "bad.invalid", username: "fixture", authentication: .privateKey,
+        var bad = ServerImportRow(name: "bad-key", host: "bad.invalid", username: "fixture", authentication: .privateKey,
             keyPaths: [key.path + ".missing"])
         bad = try await service.prepareImportRows([bad])[0]
         try check(bad.validationError == .privateKeyUnavailable, "Missing key did not produce a preview error")
         let ppk = ssh.appendingPathComponent("unsupported.ppk"); try write("PuTTY-User-Key-File-3: ssh-ed25519", ppk)
-        let ppkRow = SessionImportRow(name: "ppk", host: "ppk.invalid", username: "fixture", authentication: .privateKey, keyPaths: [ppk.path])
+        let ppkRow = ServerImportRow(name: "ppk", host: "ppk.invalid", username: "fixture", authentication: .privateKey, keyPaths: [ppk.path])
         try check(try await service.prepareImportRows([ppkRow])[0].validationError == .unsupportedPrivateKey, "PPK silently accepted")
-        let metadata = SessionProfile(name: "bad-name", host: "-invalid", username: "fixture", authentication: .agent)
+        let metadata = ServerProfile(name: "bad-name", host: "-invalid", username: "fixture", authentication: .agent)
         do { _ = try await repo.importProfiles([metadata], into: .named("invalid-group")); throw M12Failure(description: "Invalid metadata accepted") }
         catch let error as DockShellError { try check(error == .invalidHost, "Invalid metadata error changed") }
         try check(try await repo.snapshot() == snapshot, "Rejected metadata created an empty group")
         var stale = rows.first { $0.authentication == .privateKey }!
         stale.keyPath += ".removed-after-preview"
         do {
-            _ = try await service.importSessions([stale], into: .named("stale-must-not-create"))
+            _ = try await service.importServers([stale], into: .named("stale-must-not-create"))
             throw M12Failure(description: "Stale key preflight was reused on commit")
         } catch let error as DockShellError { try check(error == .privateKeyUnavailable, "Stale key did not fail explicitly") }
         try check(try await repo.snapshot() == snapshot, "Failed final key validation changed storage")
         await repo.close()
-        let reopened = SQLiteSessionRepository(url: root.appendingPathComponent("database/sessions.sqlite"))
+        let reopened = SQLiteServerRepository(url: root.appendingPathComponent("database/sessions.sqlite"))
         try check(try await reopened.snapshot() == snapshot, "Import did not persist after reopen")
         await reopened.close()
         print("PASS import persistence: atomic group reuse, duplicates, rename, mid-batch rollback, missing group, key preflight, zero credential writes, restart")
     }
 
-    private static func expecting(_ expected: SessionImportError, _ action: () async throws -> Void) async throws {
+    private static func expecting(_ expected: ServerImportError, _ action: () async throws -> Void) async throws {
         do { try await action() }
-        catch let error as SessionImportError { try check(error == expected, "Unexpected config error"); return }
+        catch let error as ServerImportError { try check(error == expected, "Unexpected config error"); return }
         throw M12Failure(description: "Expected config error did not occur")
     }
 
@@ -187,14 +187,14 @@ enum M12SessionImportVerification {
         defer { try? FileManager.default.removeItem(at: root) }
         let config = root.appendingPathComponent("fixture-config")
         try Data("Host ui-host ui-alt\n HostName 192.0.2.5\n User fixture\n".utf8).write(to: config)
-        let repo = SQLiteSessionRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
+        let repo = SQLiteServerRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
         let service = WorkspaceService(repository: repo, credentials: TestCredentialStore(), privateKeys: PrivateKeyBookmarks())
         let workspace = WorkspaceViewModel(service: service, configurationReader: OpenSSHConfigurationReader(home: root, localUser: "fixture"))
         await workspace.load()
-        let model = SessionImportViewModel(workspace: workspace)
+        let model = ServerImportViewModel(workspace: workspace)
         await model.load(from: config)
         try check(model.canSave && model.readyCount == 2 && model.groupName == "local-ssh-config", "Import defaults incorrect")
-        let hosting = NSHostingView(rootView: SessionImportView(model: model, l10n: l10n, automaticallyLoad: false))
+        let hosting = NSHostingView(rootView: ServerImportView(model: model, l10n: l10n, automaticallyLoad: false))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 620), styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = hosting; window.makeKeyAndOrderFront(nil)
         defer { window.makeFirstResponder(nil); window.contentView = nil; window.close() }
@@ -226,7 +226,7 @@ enum M12SessionImportVerification {
         try await M11BatchCommandVerification.wait("Native import confirmation did not save") { model.receipt != nil }
         try check(model.receipt?.insertedIDs.count == 2 && workspace.groups.first?.name == "导入测试🙂" && workspace.profiles.count == 2,
             "Confirm did not refresh sidebar")
-        let again = SessionImportViewModel(workspace: workspace); again.groupName = "导入测试🙂"
+        let again = ServerImportViewModel(workspace: workspace); again.groupName = "导入测试🙂"
         await again.load(from: config)
         try check(again.duplicateIDs.count == 2 && again.readyCount == 0, "Duplicate preview missing")
         again.rows[0].name = "改名后的服务器"
@@ -234,7 +234,7 @@ enum M12SessionImportVerification {
         again.rows[1].selected = false
         await again.save()
         try check(again.receipt?.insertedIDs.count == 1 && workspace.profiles.count == 3, "Selection/rename failed")
-        let cancelled = SessionImportViewModel(workspace: workspace)
+        let cancelled = ServerImportViewModel(workspace: workspace)
         let previous = try await repo.snapshot()
         await cancelled.load(from: config)
         try check(try await repo.snapshot() == previous, "Preview/cancel mutated storage")

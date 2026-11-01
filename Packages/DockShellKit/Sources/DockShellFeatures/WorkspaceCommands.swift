@@ -15,12 +15,12 @@ public struct WorkspaceCommands: Commands {
     public var body: some Commands {
         // A single Window scene has no default New Item group to replace.
         // An explicit menu keeps the shortcuts installed on macOS 14 and later.
-        CommandMenu(l10n.string(.menuSessions)) {
-            Button(l10n.string(.sessionNew)) { model.request(.newSession) }
+        CommandMenu(l10n.string(.menuServers)) {
+            Button(l10n.string(.serverNew)) { model.request(.newServer) }
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(model.isMutating || model.isLoading || model.hasLoadError)
-            Button(l10n.string(.importTitle)) { model.request(.importSessions) }
-                .disabled(!model.canImportSessions || model.isMutating || model.isLoading || model.hasLoadError)
+            Button(l10n.string(.importTitle)) { model.request(.importServers) }
+                .disabled(!model.canImportServers || model.isMutating || model.isLoading || model.hasLoadError)
             Button(l10n.string(.csvTitle)) { model.request(.importCSV) }
                 .disabled(!model.canImportCSV || model.isMutating || model.isLoading || model.hasLoadError)
             Button(l10n.string(.tabConnect)) { model.request(.connectSelected) }

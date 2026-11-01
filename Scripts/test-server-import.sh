@@ -11,12 +11,12 @@ check_configuration "$configuration"
 sh "$DOCKSHELL_ROOT/Scripts/build.sh" "$configuration"
 bin_path=$(swift_build -c "$configuration" --show-bin-path)
 app="$DOCKSHELL_APP_OUTPUT_ROOT/$configuration/DockShell.app"
-log=$(mktemp "${TMPDIR:-/tmp}/dockshell-session-import.XXXXXX")
+log=$(mktemp "${TMPDIR:-/tmp}/dockshell-server-import.XXXXXX")
 trap 'rm -f "$log"' EXIT HUP INT TERM
-if ! DOCKSHELL_SESSION_IMPORT_TEST=1 "$bin_path/dockshell-verify" "$app" --ui-smoke > "$log"; then
+if ! DOCKSHELL_SERVER_IMPORT_TEST=1 "$bin_path/dockshell-verify" "$app" --ui-smoke > "$log"; then
     cat "$log" >&2
     exit 1
 fi
 cat "$log"
-/usr/bin/grep -Fqx 'PASS M12.1 session import completed' "$log"
+/usr/bin/grep -Fqx 'PASS M12.1 server import completed' "$log"
 /usr/bin/grep -Fqx 'PASS verification completed' "$log"

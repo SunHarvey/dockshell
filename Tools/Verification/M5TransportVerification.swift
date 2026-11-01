@@ -14,7 +14,7 @@ enum M5TransportVerification {
     static func run(helperURL: URL) async throws {
         let key = try hostKey()
         let id = UUID()
-        var profile = SessionProfile(name: "fixture", host: "example.invalid", username: "tester",
+        var profile = ServerProfile(name: "fixture", host: "example.invalid", username: "tester",
             authentication: .privateKey(fileBookmark: Data([1]), passphraseCredentialID: id))
         let unencrypted = Ports(key: key)
         let connection = try await transport(unencrypted, helperURL).connect(to: profile)
@@ -77,7 +77,7 @@ enum M5TransportVerification {
                          helperURL: helper, privateKeys: ports, keyInspector: ports, agent: ports)
     }
 
-    private static func verifyPolicy(profile: SessionProfile, key: SSHHostKey, helperURL: URL) throws {
+    private static func verifyPolicy(profile: ServerProfile, key: SSHHostKey, helperURL: URL) throws {
         let endpoint = try SSHHostEndpoint(host: profile.host, port: profile.port)
         let selectedKey = URL(fileURLWithPath: "/private/tmp/selected %'\" ${literal} key")
         let socket = URL(fileURLWithPath: "/private/tmp/agent %'\" ${literal} socket")
@@ -166,8 +166,8 @@ enum M5TransportVerification {
         func approve(_ keys: [SSHHostKey], for endpoint: SSHHostEndpoint) { events.append("approve") }
         func knownHostsFileURL() -> URL { events.append("known.file"); return URL(fileURLWithPath: "/tmp/test-known") }
         func confirmHost(_ request: SSHHostTrustRequest) -> Bool { events.append("confirm"); return false }
-        func password(for profile: SessionProfile) -> Data { events.append("password"); return Data("synthetic".utf8) }
-        func passphrase(for profile: SessionProfile) -> Data { events.append("passphrase"); return Data("synthetic".utf8) }
+        func password(for profile: ServerProfile) -> Data { events.append("password"); return Data("synthetic".utf8) }
+        func passphrase(for profile: ServerProfile) -> Data { events.append("passphrase"); return Data("synthetic".utf8) }
         func store(_ secret: Data, id: UUID) { events.append("credential.store") }
         func read(id: UUID) -> Data? { events.append("credential.read"); return stored }
         func delete(id: UUID) { events.append("credential.delete") }

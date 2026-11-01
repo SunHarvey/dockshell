@@ -29,7 +29,7 @@ private actor M11PTYConnection: SSHConnection {
 }
 private struct M11PTYTransport: SSHTransport {
     let connection: M11PTYConnection
-    func connect(to profile: SessionProfile) -> any SSHConnection { connection }
+    func connect(to profile: ServerProfile) -> any SSHConnection { connection }
 }
 @MainActor
 private final class M11PTYFactory: TerminalSessionFactory {
@@ -60,7 +60,7 @@ enum M11BatchCommandPTYVerification {
         let factory = M11PTYFactory(helper: helperURL, homes: homes)
         let tabs = TerminalTabsViewModel(factory: factory)
         do {
-            let profile = SessionProfile(name: "private-pty", host: "private-pty.invalid", username: "fixture", authentication: .agent)
+            let profile = ServerProfile(name: "private-pty", host: "private-pty.invalid", username: "fixture", authentication: .agent)
             let surfaces = [M11Surface(), M11Surface()]
             for index in 0..<2 {
                 _ = tabs.open(profile: profile, settings: .defaults)

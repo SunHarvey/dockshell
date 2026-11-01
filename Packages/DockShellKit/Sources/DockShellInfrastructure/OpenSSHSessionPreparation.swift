@@ -13,7 +13,7 @@ struct OpenSSHSessionPreparation: Sendable {
     let agent: any SSHAgentProviding
 
     struct Prepared: Sendable {
-        let profile: SessionProfile
+        let profile: ServerProfile
         let endpoint: SSHHostEndpoint
         let acceptedKeys: [SSHHostKey]
         let knownHostsURL: URL
@@ -22,8 +22,8 @@ struct OpenSSHSessionPreparation: Sendable {
         let secret: Data?
     }
 
-    func prepare(_ profile: SessionProfile) async throws -> Prepared {
-        let profile = try SessionDraft(profile: profile).validated(credentialID: profile.authentication.credentialID)
+    func prepare(_ profile: ServerProfile) async throws -> Prepared {
+        let profile = try ServerDraft(profile: profile).validated(credentialID: profile.authentication.credentialID)
         let endpoint = try SSHHostEndpoint(host: profile.host, port: profile.port)
         try Task.checkCancellation()
         let known = try await hostKeys.knownKeys(for: endpoint)
@@ -64,7 +64,7 @@ struct OpenSSHSessionPreparation: Sendable {
                         knownHostsURL: knownHostsURL, authentication: authentication, secret: secret)
     }
 
-    private func credential(id: UUID?, profile: SessionProfile, isPassphrase: Bool) async throws -> Data {
+    private func credential(id: UUID?, profile: ServerProfile, isPassphrase: Bool) async throws -> Data {
         let secret: Data
         if let id, let stored = try await credentials.read(id: id) { secret = stored }
         else if isPassphrase { secret = try await interaction.passphrase(for: profile) }

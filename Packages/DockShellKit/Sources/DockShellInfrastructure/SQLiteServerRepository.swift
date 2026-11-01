@@ -7,7 +7,7 @@ private enum SQLValue {
     case text(String), integer(Int64), blob(Data), null
 }
 
-/// Confined to SQLiteSessionRepository. Its destructor closes both SQLite and the process lock.
+/// Confined to SQLiteServerRepository. Its destructor closes both SQLite and the process lock.
 private final class SQLiteConnection {
     private(set) var handle: OpaquePointer?
     private var lockFD: Int32 = -1
@@ -211,8 +211,10 @@ private final class SQLiteConnection {
 }
 
 /// Actor-confined SQLite handle, prepared statements, schema migration and durable cleanup.
+/// The legacy `sessions` / `session_groups` SQL names are a persisted format contract;
+/// the server terminology change intentionally keeps schema v1 and credential UUIDs intact.
 /// A lifetime process lock prevents a second app instance from cleaning an in-flight credential.
-public actor SQLiteSessionRepository: SessionImportRepository {
+public actor SQLiteServerRepository: ServerImportRepository {
     private let url: URL
     private var connection: SQLiteConnection?
 
@@ -227,11 +229,11 @@ public actor SQLiteSessionRepository: SessionImportRepository {
 
     public func close() { connection = nil }
 
-    public func snapshot() throws -> SessionSnapshot {
+    public func snapshot() throws -> ServerSnapshot {
         let db = try database()
         return try db.transaction(write: false) {
             let groups = try db.rows("SELECT id,name FROM session_groups ORDER BY normalized_name,id") {
-                SessionGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
+                ServerGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
             }
             let profiles = try db.rows("""
                 SELECT id,name,host,port,username,auth_kind,key_bookmark,credential_id,group_id
@@ -253,18 +255,18 @@ public actor SQLiteSessionRepository: SessionImportRepository {
                                                  passphraseCredentialID: credentialID)
                 default: throw DockShellError.storageCorrupt
                 }
-                return SessionProfile(id: try SQLiteConnection.uuid(statement, 0),
+                return ServerProfile(id: try SQLiteConnection.uuid(statement, 0),
                     name: try SQLiteConnection.text(statement, 1), host: try SQLiteConnection.text(statement, 2),
                     port: UInt16(number), username: try SQLiteConnection.text(statement, 4),
                     authentication: authentication, groupID: try SQLiteConnection.optionalUUID(statement, 8))
             }
-            return SessionSnapshot(profiles: profiles, groups: groups)
+            return ServerSnapshot(profiles: profiles, groups: groups)
         }
     }
 
-    public func save(_ profile: SessionProfile) throws {
+    public func save(_ profile: ServerProfile) throws {
         let db = try database()
-        _ = try SessionDraft(profile: profile).validated(credentialID: profile.authentication.credentialID)
+        _ = try ServerDraft(profile: profile).validated(credentialID: profile.authentication.credentialID)
         try db.transaction {
             let old = try credentialID(for: profile.id, db: db)
             var bookmark: SQLValue = .null
@@ -289,7 +291,7 @@ public actor SQLiteSessionRepository: SessionImportRepository {
         }
     }
 
-    public func deleteSession(id: UUID) throws {
+    public func deleteServer(id: UUID) throws {
         let db = try database()
         try db.transaction {
             let old = try credentialID(for: id, db: db)
@@ -298,17 +300,17 @@ public actor SQLiteSessionRepository: SessionImportRepository {
         }
     }
 
-    public func importProfiles(_ profiles: [SessionProfile], into target: SessionImportGroup) throws -> SessionImportReceipt {
-        guard !profiles.isEmpty, profiles.count <= 1000 else { throw SessionImportError.nothingSelected }
+    public func importProfiles(_ profiles: [ServerProfile], into target: ServerImportGroup) throws -> ServerImportReceipt {
+        guard !profiles.isEmpty, profiles.count <= 1000 else { throw ServerImportError.nothingSelected }
         let db = try database()
         return try db.transaction {
             try Task.checkCancellation()
-            var group: SessionGroup
+            var group: ServerGroup
             var createGroup = false
             switch target {
             case .existing(let id):
                 guard let found = try db.rows("SELECT id,name FROM session_groups WHERE id=?", [.text(id.uuidString)], read: {
-                    SessionGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
+                    ServerGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
                 }).first else { throw DockShellError.missingGroup }
                 group = found
             case .named(let name):
@@ -317,27 +319,27 @@ public actor SQLiteSessionRepository: SessionImportRepository {
                     throw DockShellError.invalidGroupName
                 }
                 let found = try db.rows("SELECT id,name FROM session_groups WHERE normalized_name=?",
-                    [.text(SessionImportNames.normalized(name))]) {
-                    SessionGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
+                    [.text(ServerImportNames.normalized(name))]) {
+                    ServerGroup(id: try SQLiteConnection.uuid($0, 0), name: try SQLiteConnection.text($0, 1))
                 }.first
-                group = found ?? SessionGroup(name: name)
+                group = found ?? ServerGroup(name: name)
                 createGroup = found == nil
             }
             var names = Set(try db.rows("SELECT name FROM sessions WHERE group_id=?", [.text(group.id.uuidString)]) {
-                SessionImportNames.normalized(try SQLiteConnection.text($0, 0))
+                ServerImportNames.normalized(try SQLiteConnection.text($0, 0))
             })
             var inserted: [UUID] = [], skipped: [String] = []
             for input in profiles {
                 try Task.checkCancellation()
                 guard input.authentication.credentialID == nil else { throw DockShellError.storageUnavailable }
-                var draft = SessionDraft(profile: input); draft.groupID = group.id
+                var draft = ServerDraft(profile: input); draft.groupID = group.id
                 let profile = try draft.validated(credentialID: nil)
-                guard names.insert(SessionImportNames.normalized(profile.name)).inserted else {
+                guard names.insert(ServerImportNames.normalized(profile.name)).inserted else {
                     skipped.append(profile.name); continue
                 }
                 if createGroup {
                     try db.execute("INSERT INTO session_groups(id,name,normalized_name) VALUES(?,?,?)",
-                        [.text(group.id.uuidString), .text(group.name), .text(SessionImportNames.normalized(group.name))])
+                        [.text(group.id.uuidString), .text(group.name), .text(ServerImportNames.normalized(group.name))])
                     createGroup = false
                 }
                 let bookmark: SQLValue
@@ -352,11 +354,11 @@ public actor SQLiteSessionRepository: SessionImportRepository {
                 inserted.append(profile.id)
             }
             try Task.checkCancellation()
-            return SessionImportReceipt(insertedIDs: inserted, skippedNames: skipped, groupID: createGroup ? nil : group.id)
+            return ServerImportReceipt(insertedIDs: inserted, skippedNames: skipped, groupID: createGroup ? nil : group.id)
         }
     }
 
-    public func saveGroup(_ group: SessionGroup) throws {
+    public func saveGroup(_ group: ServerGroup) throws {
         let db = try database()
         let normalized = group.name.folding(options: [.caseInsensitive, .diacriticInsensitive],
                                             locale: Locale(identifier: "en_US_POSIX"))
@@ -402,8 +404,8 @@ public actor SQLiteSessionRepository: SessionImportRepository {
             """, [.text(id.uuidString), .text(id.uuidString)])
     }
 
-    private func credentialID(for sessionID: UUID, db: SQLiteConnection) throws -> UUID? {
-        let values: [UUID?] = try db.rows("SELECT credential_id FROM sessions WHERE id=?", [.text(sessionID.uuidString)]) {
+    private func credentialID(for serverID: UUID, db: SQLiteConnection) throws -> UUID? {
+        let values: [UUID?] = try db.rows("SELECT credential_id FROM sessions WHERE id=?", [.text(serverID.uuidString)]) {
             try SQLiteConnection.optionalUUID($0, 0)
         }
         return values.first ?? nil

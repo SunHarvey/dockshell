@@ -155,7 +155,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     /// Opens a new independent tab, including for an already-open saved profile.
     /// A faulty factory reuse only selects the existing owner; its connection is not restarted.
     @discardableResult
-    public func open(profile: SessionProfile, settings: TerminalSettings) -> UUID {
+    public func open(profile: ServerProfile, settings: TerminalSettings) -> UUID {
         let session = factory.makeSession()
         if let existing = owner(ofCandidate: session) {
             select(id: existing.id)

@@ -1,17 +1,17 @@
 import Foundation
 
 /// Sanitized diagnostics contain option names and locations, never option values or commands.
-public enum SessionImportIssue: Equatable, Sendable {
+public enum ServerImportIssue: Equatable, Sendable {
     case unsupported(String), syntax(String), matchUnsupported
     case csvColumns(expected: Int, actual: Int)
 }
 
-public enum SessionImportError: Error, Equatable, Sendable {
+public enum ServerImportError: Error, Equatable, Sendable {
     case unreadable, invalidText, limitExceeded, includeCycle, invalidPath, nothingSelected
 }
 
 /// Ephemeral import preview. Key paths refer to existing files; secrets are never imported.
-public struct SessionImportRow: Identifiable, Sendable {
+public struct ServerImportRow: Identifiable, Sendable {
     public let id: UUID
     public var name: String
     public var host: String
@@ -26,13 +26,13 @@ public struct SessionImportRow: Identifiable, Sendable {
     public var keyError: DockShellError?
     public var keyAuthenticationError: SSHAuthenticationError?
     public var selected: Bool
-    public let issues: [SessionImportIssue]
+    public let issues: [ServerImportIssue]
     public let ignoredOptions: [String]
     public let sourceLine: Int?
 
     public init(name: String, host: String, port: String = "22", username: String,
                 authentication: AuthenticationKind = .agent, keyPaths: [String] = [],
-                issues: [SessionImportIssue] = [], ignoredOptions: [String] = [], sourceLine: Int? = nil) {
+                issues: [ServerImportIssue] = [], ignoredOptions: [String] = [], sourceLine: Int? = nil) {
         id = UUID(); self.name = name; self.host = host; self.port = port; self.username = username
         self.authentication = authentication; self.keyPaths = keyPaths
         keyPath = keyPaths.count == 1 ? keyPaths[0] : ""
@@ -41,8 +41,8 @@ public struct SessionImportRow: Identifiable, Sendable {
         self.sourceLine = sourceLine
     }
 
-    public func draft(groupID: UUID? = nil) -> SessionDraft {
-        var value = SessionDraft()
+    public func draft(groupID: UUID? = nil) -> ServerDraft {
+        var value = ServerDraft()
         value.id = id; value.name = name; value.host = host; value.port = port; value.username = username
         value.authentication = authentication; value.keyBookmark = keyBookmark; value.groupID = groupID
         return value
@@ -65,26 +65,26 @@ public struct SessionImportRow: Identifiable, Sendable {
     }
 }
 
-public struct SessionImportDocument: Sendable {
-    public var rows: [SessionImportRow]
+public struct ServerImportDocument: Sendable {
+    public var rows: [ServerImportRow]
     /// Informational count: wildcard rules are inheritance, never enumerable servers.
     public let patternRuleCount: Int
-    public init(rows: [SessionImportRow], patternRuleCount: Int) {
+    public init(rows: [ServerImportRow], patternRuleCount: Int) {
         self.rows = rows; self.patternRuleCount = patternRuleCount
     }
 }
 
 /// A reader must not connect to hosts, evaluate commands, or mutate the source configuration.
 public protocol SSHConfigurationReading: Sendable {
-    func read(from url: URL?) async throws -> SessionImportDocument
+    func read(from url: URL?) async throws -> ServerImportDocument
 }
 
 /// Named targets reuse a matching group; existing targets must still exist at commit time.
-public enum SessionImportGroup: Sendable {
+public enum ServerImportGroup: Sendable {
     case existing(UUID), named(String)
 }
 
-public struct SessionImportReceipt: Sendable {
+public struct ServerImportReceipt: Sendable {
     public let insertedIDs: [UUID]
     public let skippedNames: [String]
     public let groupID: UUID?
@@ -94,12 +94,12 @@ public struct SessionImportReceipt: Sendable {
 }
 
 /// Atomic import capability: group creation, duplicate checks and inserts share one transaction.
-/// Implementations must never overwrite existing sessions or sequentially commit individual rows.
-public protocol SessionImportRepository: SessionRepository {
-    func importProfiles(_ profiles: [SessionProfile], into group: SessionImportGroup) async throws -> SessionImportReceipt
+/// Implementations must never overwrite existing servers or sequentially commit individual rows.
+public protocol ServerImportRepository: ServerRepository {
+    func importProfiles(_ profiles: [ServerProfile], into group: ServerImportGroup) async throws -> ServerImportReceipt
 }
 
-public enum SessionImportNames {
+public enum ServerImportNames {
     /// Same normalization as the existing group-name uniqueness rule.
     public static func normalized(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines)

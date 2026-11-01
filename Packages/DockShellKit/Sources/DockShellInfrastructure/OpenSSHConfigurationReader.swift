@@ -11,7 +11,7 @@ public actor OpenSSHConfigurationReader: SSHConfigurationReading {
         self.home = home; self.localUser = localUser
     }
 
-    public func read(from url: URL?) throws -> SessionImportDocument {
+    public func read(from url: URL?) throws -> ServerImportDocument {
         var parser = ConfigurationParser(home: home, localUser: localUser)
         let nodes = try parser.load(url ?? home.appendingPathComponent(".ssh/config"))
         return try parser.evaluate(nodes)
@@ -39,10 +39,10 @@ private struct ConfigurationParser {
 
     mutating func load(_ url: URL) throws -> [ConfigurationNode] {
         try Task.checkCancellation()
-        guard url.isFileURL, !url.path.contains("\0") else { throw SessionImportError.invalidPath }
+        guard url.isFileURL, !url.path.contains("\0") else { throw ServerImportError.invalidPath }
         let path = url.resolvingSymlinksInPath().path
-        guard !stack.contains(path) else { throw SessionImportError.includeCycle }
-        guard stack.count < 16, fileCount < 128 else { throw SessionImportError.limitExceeded }
+        guard !stack.contains(path) else { throw ServerImportError.includeCycle }
+        guard stack.count < 16, fileCount < 128 else { throw ServerImportError.limitExceeded }
         stack.insert(path); fileCount += 1
         defer { stack.remove(path) }
         let text = try readFile(path)
@@ -51,19 +51,19 @@ private struct ConfigurationParser {
         for (offset, line) in lines.components(separatedBy: "\n").enumerated() {
             try Task.checkCancellation()
             lineCount += 1
-            guard lineCount <= 20_000, line.utf8.count <= 8192 else { throw SessionImportError.limitExceeded }
+            guard lineCount <= 20_000, line.utf8.count <= 8192 else { throw ServerImportError.limitExceeded }
             let location = url.lastPathComponent + ":" + String(offset + 1)
             let tokens: [String]
             do { tokens = try Self.tokenize(line) }
-            catch { throw SessionImportError.invalidText }
+            catch { throw ServerImportError.invalidText }
             guard let key = tokens.first?.lowercased() else { continue }
             let values = Array(tokens.dropFirst())
-            guard !values.isEmpty else { throw SessionImportError.invalidText }
+            guard !values.isEmpty else { throw ServerImportError.invalidText }
             if key == "include" {
                 for value in values {
                     // Dynamic include paths depend on host/Match evaluation. Do not guess.
                     guard !value.contains("%"), !value.contains("$"), !value.isEmpty else {
-                        throw SessionImportError.invalidPath
+                        throw ServerImportError.invalidPath
                     }
                     let expanded = try expandHome(value)
                     let path = expanded.hasPrefix("/") ? expanded : home.appendingPathComponent(".ssh").appendingPathComponent(expanded).path
@@ -72,11 +72,11 @@ private struct ConfigurationParser {
             } else {
                 if key == "match" { hasMatch = true }
                 if key == "host" {
-                    guard values.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 1024 }) else { throw SessionImportError.limitExceeded }
+                    guard values.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 1024 }) else { throw ServerImportError.limitExceeded }
                     if values.contains(where: { $0.contains("*") || $0.contains("?") || $0.hasPrefix("!") }) { patternRules += 1 }
                     for value in values where !value.hasPrefix("!") && !value.contains("*") && !value.contains("?") {
                         if seenAliases.insert(value).inserted { aliases.append(value) }
-                        guard aliases.count <= 1000 else { throw SessionImportError.limitExceeded }
+                        guard aliases.count <= 1000 else { throw ServerImportError.limitExceeded }
                     }
                 }
                 result.append(.option(key, values, location))
@@ -87,23 +87,23 @@ private struct ConfigurationParser {
 
     private mutating func readFile(_ path: String) throws -> String {
         let fd = Darwin.open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
-        guard fd >= 0 else { throw SessionImportError.unreadable }
+        guard fd >= 0 else { throw ServerImportError.unreadable }
         defer { Darwin.close(fd) }
         var info = stat()
-        guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw SessionImportError.unreadable }
-        guard info.st_size <= 2_000_000 else { throw SessionImportError.limitExceeded }
+        guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFREG else { throw ServerImportError.unreadable }
+        guard info.st_size <= 2_000_000 else { throw ServerImportError.limitExceeded }
         var data = Data(), buffer = [UInt8](repeating: 0, count: 16_384)
         while true {
             try Task.checkCancellation()
             let count = Darwin.read(fd, &buffer, buffer.count)
             if count < 0 && errno == EINTR { continue }
-            guard count >= 0 else { throw SessionImportError.unreadable }
+            guard count >= 0 else { throw ServerImportError.unreadable }
             if count == 0 { break }
             bytesRead += count
-            guard bytesRead <= 2_000_000 else { throw SessionImportError.limitExceeded }
+            guard bytesRead <= 2_000_000 else { throw ServerImportError.limitExceeded }
             data.append(contentsOf: buffer.prefix(count))
         }
-        guard let text = String(data: data, encoding: .utf8), !text.contains("\0") else { throw SessionImportError.invalidText }
+        guard let text = String(data: data, encoding: .utf8), !text.contains("\0") else { throw ServerImportError.invalidText }
         return text
     }
 
@@ -113,7 +113,7 @@ private struct ConfigurationParser {
         var iterator = line.makeIterator()
         while let char = iterator.next() {
             if char == "\\" {
-                guard let next = iterator.next() else { throw SessionImportError.invalidText }
+                guard let next = iterator.next() else { throw ServerImportError.invalidText }
                 if next == "\"" || next == "\\" || next == " " || next == "#" { word.append(next) }
                 else { word.append("\\"); word.append(next) }
                 started = true; continue
@@ -128,7 +128,7 @@ private struct ConfigurationParser {
             if !quoted && char == "=" && words.count == 1 && !started { continue }
             word.append(char); started = true
         }
-        guard !quoted else { throw SessionImportError.invalidText }
+        guard !quoted else { throw ServerImportError.invalidText }
         if started { words.append(word) }
         return words
     }
@@ -136,7 +136,7 @@ private struct ConfigurationParser {
     private func expandHome(_ path: String) throws -> String {
         if path == "~" { return home.path }
         if path.hasPrefix("~/") { return home.appendingPathComponent(String(path.dropFirst(2))).path }
-        guard !path.hasPrefix("~") else { throw SessionImportError.invalidPath }
+        guard !path.hasPrefix("~") else { throw ServerImportError.invalidPath }
         return path
     }
 
@@ -148,22 +148,22 @@ private struct ConfigurationParser {
             for base in paths {
                 try Task.checkCancellation()
                 if component.contains("*") || component.contains("?") || component.contains("[") {
-                    guard let dir = opendir(base) else { throw SessionImportError.unreadable }
+                    guard let dir = opendir(base) else { throw ServerImportError.unreadable }
                     defer { closedir(dir) }
                     while let entry = readdir(dir) {
                         visits += 1
-                        guard visits <= 20_000 else { throw SessionImportError.limitExceeded }
+                        guard visits <= 20_000 else { throw ServerImportError.limitExceeded }
                         let name = withUnsafePointer(to: entry.pointee.d_name) {
                             $0.withMemoryRebound(to: CChar.self, capacity: Int(entry.pointee.d_namlen) + 1) { String(cString: $0) }
                         }
                         if fnmatch(component, name, FNM_PERIOD) == 0 { next.append((base as NSString).appendingPathComponent(name)) }
-                        guard next.count <= 128 else { throw SessionImportError.limitExceeded }
+                        guard next.count <= 128 else { throw ServerImportError.limitExceeded }
                     }
                 } else {
                     let path = (base as NSString).appendingPathComponent(component)
                     var info = stat()
                     if lstat(path, &info) == 0 { next.append(path) }
-                    else if errno != ENOENT && errno != ENOTDIR { throw SessionImportError.unreadable }
+                    else if errno != ENOENT && errno != ENOTDIR { throw ServerImportError.unreadable }
                 }
             }
             paths = next.sorted()
@@ -171,18 +171,18 @@ private struct ConfigurationParser {
         return paths
     }
 
-    func evaluate(_ nodes: [ConfigurationNode]) throws -> SessionImportDocument {
-        var rows: [SessionImportRow] = []
+    func evaluate(_ nodes: [ConfigurationNode]) throws -> ServerImportDocument {
+        var rows: [ServerImportRow] = []
         var steps = 0
         for alias in aliases {
             try Task.checkCancellation()
-            var options: [String: String] = [:], identities: [String] = [], issues: [SessionImportIssue] = []
+            var options: [String: String] = [:], identities: [String] = [], issues: [ServerImportIssue] = []
             var ignored: Set<String> = [], declared = false
             func visit(_ nodes: [ConfigurationNode], initiallyActive: Bool) throws {
                 var active = initiallyActive
                 for node in nodes {
                     steps += 1
-                    guard steps <= 10_000_000 else { throw SessionImportError.limitExceeded }
+                    guard steps <= 10_000_000 else { throw ServerImportError.limitExceeded }
                     if steps % 256 == 0 { try Task.checkCancellation() }
                     switch node {
                     case .include(let children):
@@ -232,7 +232,7 @@ private struct ConfigurationParser {
                         "h": host, "n": alias, "r": username, "p": options["port"] ?? "22"])
                     let path = try expandHome(value)
                     // Relative IdentityFile paths use the SSH process working directory. Never guess.
-                    guard path.hasPrefix("/") else { throw SessionImportError.invalidPath }
+                    guard path.hasPrefix("/") else { throw ServerImportError.invalidPath }
                     if !paths.contains(path) { paths.append(path) }
                 } catch { issues.append(.unsupported("identityfile")) }
             }
@@ -242,10 +242,10 @@ private struct ConfigurationParser {
             if options["preferredauthentications"] != nil { ignored.insert("preferredauthentications") }
             if options["pubkeyauthentication"] != nil { ignored.insert("pubkeyauthentication") }
             if options["passwordauthentication"] != nil { ignored.insert("passwordauthentication") }
-            rows.append(SessionImportRow(name: alias, host: host, port: options["port"] ?? "22", username: username,
+            rows.append(ServerImportRow(name: alias, host: host, port: options["port"] ?? "22", username: username,
                 authentication: kind, keyPaths: paths, issues: issues, ignoredOptions: ignored.sorted()))
         }
-        return SessionImportDocument(rows: rows, patternRuleCount: patternRules)
+        return ServerImportDocument(rows: rows, patternRuleCount: patternRules)
     }
 
     private static let noneOptions: Set<String> = ["proxyjump", "proxycommand", "identityagent", "certificatefile",
@@ -258,14 +258,14 @@ private struct ConfigurationParser {
         "batchmode", "controlmaster", "controlpath", "controlpersist", "permitlocalcommand", "visualhostkey"]
 
     private static func expand(_ value: String, tokens: [Character: String]) throws -> String {
-        guard !value.contains("$"), !value.contains("\0") else { throw SessionImportError.invalidPath }
+        guard !value.contains("$"), !value.contains("\0") else { throw ServerImportError.invalidPath }
         var result = "", iterator = value.makeIterator()
         while let char = iterator.next() {
             if char != "%" { result.append(char); continue }
-            guard let token = iterator.next() else { throw SessionImportError.invalidPath }
+            guard let token = iterator.next() else { throw ServerImportError.invalidPath }
             if token == "%" { result.append("%") }
             else if let replacement = tokens[token] { result += replacement }
-            else { throw SessionImportError.invalidPath }
+            else { throw ServerImportError.invalidPath }
         }
         return result
     }

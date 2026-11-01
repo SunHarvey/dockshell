@@ -10,14 +10,14 @@ import SwiftUI
 /// CSV coverage uses generated keys and private temporary files; it never reads personal configuration.
 enum M122CSVVerification {
     private static func check(_ value: Bool, _ message: String) throws {
-        try M12SessionImportVerification.check(value, "CSV: " + message)
+        try M12ServerImportVerification.check(value, "CSV: " + message)
     }
 
     static func run() async throws {
         let root = try M5AuthenticationVerification.makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let reader = CSVSessionReader(home: root)
-        let header = SessionCSVFormat.header
+        let reader = CSVServerReader(home: root)
+        let header = ServerCSVFormat.header
         let text = "\u{feff}" + header + "\r\n\"生产,一号🙂\",192.0.2.1,,root,AGENT,\r\n\"say \"\"hello\"\"\",2001:db8::1,2222,admin,password,\r\n"
         let document = try await reader.parse(text)
         try check(document.rows.count == 2 && document.rows[0].name == "生产,一号🙂" && document.rows[0].port == "22" &&
@@ -81,7 +81,7 @@ enum M122CSVVerification {
         try check(try await M5AuthenticationVerification.runKeyTool(arguments: ["-q", "-t", "ed25519", "-N", "", "-f", key.path]) == 0,
             "Generated key failed")
         let credentials = TestCredentialStore()
-        let repo = SQLiteSessionRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
+        let repo = SQLiteServerRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
         let service = WorkspaceService(repository: repo, credentials: credentials, privateKeys: PrivateKeyBookmarks())
         let spacedKey = root.appendingPathComponent("test key ")
         try FileManager.default.copyItem(at: key, to: spacedKey)
@@ -91,42 +91,42 @@ enum M122CSVVerification {
         let rows = try await service.prepareImportRows(try await reader.parse(header +
             "\nagent,192.0.2.1,22,root,agent,\npassword,192.0.2.2,22,root,password,\nkey,192.0.2.3,22,root,key,~/test key").rows)
         try check(rows.allSatisfy(\.isValidForImport) && rows[2].keyPath == key.path, "Tilde path/key preflight failed")
-        let (state, receipt) = try await service.importSessions(rows, into: .named("CSV batch"))
+        let (state, receipt) = try await service.importServers(rows, into: .named("CSV batch"))
         try check(receipt.insertedIDs.count == 3 && state.snapshot.profiles.allSatisfy { $0.authentication.credentialID == nil },
             "CSV metadata or authentication persistence failed")
-        let (_, repeatReceipt) = try await service.importSessions(rows, into: .named("csv BATCH"))
+        let (_, repeatReceipt) = try await service.importServers(rows, into: .named("csv BATCH"))
         try check(repeatReceipt.skippedNames.count == 3 && repeatReceipt.insertedIDs.isEmpty, "Repeated batch overwrote existing sessions")
         let duplicateRows = try await reader.parse(header + "\nsame,192.0.2.1,22,root,agent,\nSAME,192.0.2.2,22,root,agent,").rows
-        let (_, duplicateReceipt) = try await service.importSessions(duplicateRows, into: .existing(receipt.groupID!))
+        let (_, duplicateReceipt) = try await service.importServers(duplicateRows, into: .existing(receipt.groupID!))
         try check(duplicateReceipt.insertedIDs.count == 1 && duplicateReceipt.skippedNames == ["SAME"], "In-batch duplicates failed")
         let previous = try await repo.snapshot()
         var unresolved = try await reader.parse(header + "\nunresolved,192.0.2.1,22,root,typo,").rows[0]
-        do { _ = try await service.importSessions([unresolved], into: .named("must-not-create")); throw M12Failure(description: "CSV unresolved auth reached storage") }
-        catch let error as SessionImportError { try check(error == .invalidText, "Wrong unresolved-auth error") }
+        do { _ = try await service.importServers([unresolved], into: .named("must-not-create")); throw M12Failure(description: "CSV unresolved auth reached storage") }
+        catch let error as ServerImportError { try check(error == .invalidText, "Wrong unresolved-auth error") }
         try check(try await repo.snapshot() == previous, "Rejected CSV import created an empty group")
         unresolved.authenticationNeedsSelection = false; unresolved.authentication = .agent
-        _ = try await service.importSessions([unresolved], into: .existing(receipt.groupID!))
+        _ = try await service.importServers([unresolved], into: .existing(receipt.groupID!))
         let secrets = await credentials.identifiers()
         try check(secrets.isEmpty, "CSV import wrote a credential")
         let final = try await repo.snapshot()
         await repo.close()
-        let reopened = SQLiteSessionRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
+        let reopened = SQLiteServerRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
         try check(try await reopened.snapshot() == final, "CSV profiles did not survive reopen")
         await reopened.close()
         print("PASS CSV persistence: agent/password/key metadata, external ~/ key, group reuse, same-group and in-batch skips, explicit auth correction, zero Keychain writes and restart")
     }
 
     @MainActor
-    private static func checkCancellation(_ reader: CSVSessionReader) async throws {
-        let task = Task { try await reader.parse(SessionCSVFormat.example) }
+    private static func checkCancellation(_ reader: CSVServerReader) async throws {
+        let task = Task { try await reader.parse(ServerCSVFormat.example) }
         task.cancel()
         do { _ = try await task.value; throw M12Failure(description: "CSV cancelled parse completed") }
         catch is CancellationError { }
     }
 
-    private static func expecting(_ expected: SessionCSVError, _ action: () async throws -> Void) async throws {
+    private static func expecting(_ expected: ServerCSVError, _ action: () async throws -> Void) async throws {
         do { try await action() }
-        catch let error as SessionCSVError { try check(error == expected, "Incorrect sanitized CSV error"); return }
+        catch let error as ServerCSVError { try check(error == expected, "Incorrect sanitized CSV error"); return }
         throw M12Failure(description: "CSV expected error not raised")
     }
 
@@ -134,18 +134,18 @@ enum M122CSVVerification {
     static func runUI(l10n: L10n) async throws {
         let root = try M5AuthenticationVerification.makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
-        let repo = SQLiteSessionRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
+        let repo = SQLiteServerRepository(url: root.appendingPathComponent("db/sessions.sqlite"))
         let service = WorkspaceService(repository: repo, credentials: TestCredentialStore(), privateKeys: PrivateKeyBookmarks())
-        let workspace = WorkspaceViewModel(service: service, csvReader: CSVSessionReader(home: root))
+        let workspace = WorkspaceViewModel(service: service, csvReader: CSVServerReader(home: root))
         await workspace.load()
-        let group = SessionGroup(name: "Existing group")
+        let group = ServerGroup(name: "Existing group")
         try await workspace.saveGroup(id: group.id, name: group.name)
-        var existing = SessionDraft(); existing.name = "existing"; existing.host = "192.0.2.9"; existing.username = "fixture"
+        var existing = ServerDraft(); existing.name = "existing"; existing.host = "192.0.2.9"; existing.username = "fixture"
         existing.authentication = .agent; existing.groupID = group.id
         try await workspace.save(existing)
-        let model = SessionImportViewModel(workspace: workspace, kind: .csv)
+        let model = ServerImportViewModel(workspace: workspace, kind: .csv)
         try check(model.showsCSVInput && !model.canSave && model.groupName == "csv-import", "CSV input defaults incorrect")
-        let hosting = NSHostingView(rootView: SessionImportView(model: model, l10n: l10n))
+        let hosting = NSHostingView(rootView: ServerImportView(model: model, l10n: l10n))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 620), styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = hosting; window.makeKeyAndOrderFront(nil)
         defer { window.makeFirstResponder(nil); window.contentView = nil; window.close() }
@@ -155,7 +155,7 @@ enum M122CSVVerification {
         }
         guard let editor = views(hosting, type: NSTextView.self).first(where: { $0.isEditable && $0.isRichText == false }),
               window.makeFirstResponder(editor) else { throw M12Failure(description: "CSV native source editor did not mount") }
-        let source = SessionCSVFormat.header + "\nexisting,192.0.2.1,22,root,agent,\n\"中文,🙂\",192.0.2.2,22,root,password,\nbroken,-bad,70000,,typo,"
+        let source = ServerCSVFormat.header + "\nexisting,192.0.2.1,22,root,agent,\n\"中文,🙂\",192.0.2.2,22,root,password,\nbroken,-bad,70000,,typo,"
         editor.insertText(source, replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
         try await M11BatchCommandVerification.wait("CSV text editor did not bind") { model.csvText == source }
         window.makeFirstResponder(nil)
@@ -181,17 +181,17 @@ enum M122CSVVerification {
         try check(model.receipt?.insertedIDs.count == 2 && workspace.profiles.count == 3 && model.csvText.isEmpty,
             "CSV confirm did not refresh workspace or clear raw draft")
         let before = try await repo.snapshot()
-        let changed = SessionImportViewModel(workspace: workspace, kind: .csv)
+        let changed = ServerImportViewModel(workspace: workspace, kind: .csv)
         changed.csvText = source; await changed.previewCSV(); changed.changeCSVSource()
         try check(changed.rows.isEmpty && !changed.canSave && changed.csvText == source && changed.showsCSVInput,
             "Changing CSV source retained a stale saveable preview")
         try check(try await repo.snapshot() == before, "CSV preview/cancel wrote to storage")
-        changed.csvText = SessionCSVFormat.header + "\n\"broken"
+        changed.csvText = ServerCSVFormat.header + "\n\"broken"
         await changed.previewCSV()
         try check(changed.error == .csvErrorMalformed && changed.errorLine == 2 && !changed.canSave && changed.showsCSVInput,
             "CSV malformed input did not surface a localized line error")
         let file = root.appendingPathComponent("selected.csv")
-        try Data((SessionCSVFormat.header + "\nfrom-file,192.0.2.8,22,root,agent,").utf8).write(to: file)
+        try Data((ServerCSVFormat.header + "\nfrom-file,192.0.2.8,22,root,agent,").utf8).write(to: file)
         await changed.load(from: file)
         try check(changed.rows.first?.name == "from-file" && changed.sourceURL == file && changed.csvText.isEmpty && changed.canSave,
             "CSV file preview retained stale pasted input")

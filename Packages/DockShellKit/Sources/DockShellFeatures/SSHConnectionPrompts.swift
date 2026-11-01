@@ -4,7 +4,7 @@ import Foundation
 
 public struct SSHPasswordRequest: Identifiable, Sendable {
     public let id: UUID
-    public let profile: SessionProfile
+    public let profile: ServerProfile
 }
 
 /// Presents one connection's user decisions. Continuations are resumed exactly once, including cancellation.
@@ -33,15 +33,15 @@ public final class SSHConnectionPrompts: ObservableObject, SSHInteraction {
         }
     }
 
-    public func password(for profile: SessionProfile) async throws -> Data {
+    public func password(for profile: ServerProfile) async throws -> Data {
         try await secret(for: profile)
     }
 
-    public func passphrase(for profile: SessionProfile) async throws -> Data {
+    public func passphrase(for profile: ServerProfile) async throws -> Data {
         try await secret(for: profile)
     }
 
-    private func secret(for profile: SessionProfile) async throws -> Data {
+    private func secret(for profile: ServerProfile) async throws -> Data {
         try Task.checkCancellation()
         let request = SSHPasswordRequest(id: UUID(), profile: profile)
         return try await withTaskCancellationHandler {

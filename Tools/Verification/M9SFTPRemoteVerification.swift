@@ -90,7 +90,7 @@ enum M9SFTPRemoteVerification {
             // The factory invokes the terminal prompt only after host trust.
             method = .password(credentialID: nil)
         }
-        let profile = SessionProfile(name: "Authorized SFTP acceptance", host: configuration.endpoint.host,
+        let profile = ServerProfile(name: "Authorized SFTP acceptance", host: configuration.endpoint.host,
             port: configuration.endpoint.port, username: configuration.username, authentication: method)
         let factory = OpenSSHSFTPClientFactory(credentials: credentials,
             hostKeys: OpenSSHHostKeyStore(url: local.appendingPathComponent("known_hosts")),
@@ -396,13 +396,13 @@ private actor M9RemoteInteraction: SSHInteraction {
     func confirmHost(_ request: SSHHostTrustRequest) async throws -> Bool {
         request.keys.count == 1 && request.keys[0].sha256Fingerprint == fingerprint
     }
-    func password(for profile: SessionProfile) async throws -> Data {
+    func password(for profile: ServerProfile) async throws -> Data {
         if let cachedPassword { return cachedPassword }
         let value = try await M9SFTPRemoteVerification.readSecret(kind: .password, fromStandardInput: secretFromStandardInput)
         cachedPassword = value
         return value
     }
-    func passphrase(for profile: SessionProfile) async throws -> Data {
+    func passphrase(for profile: ServerProfile) async throws -> Data {
         if let cachedPhrase { return cachedPhrase }
         let value = try await M9SFTPRemoteVerification.readSecret(kind: .privateKey, fromStandardInput: secretFromStandardInput)
         cachedPhrase = value

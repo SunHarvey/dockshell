@@ -28,8 +28,8 @@ enum M6PersistenceSafetyVerification {
         let directory = try fixture(root, "normal", mode: 0o755)
         let parentMode = try permissions(root)
         let database = directory.appendingPathComponent("sessions.sqlite")
-        let repository = SQLiteSessionRepository(url: database)
-        let profile = SessionProfile(id: UUID(), name: "M6 持久化🙂", host: "example.invalid", port: 22,
+        let repository = SQLiteServerRepository(url: database)
+        let profile = ServerProfile(id: UUID(), name: "M6 持久化🙂", host: "example.invalid", port: 22,
                                      username: "fixture", authentication: .agent, groupID: nil)
         try await repository.save(profile)
         try require(try await repository.snapshot().profiles == [profile], "Normal SQLite save failed")
@@ -46,7 +46,7 @@ enum M6PersistenceSafetyVerification {
         await repository.close()
         // Older legitimate files may be 0644; tighten only their checked descriptor.
         try require(chmod(database.path, 0o644) == 0, "Could not prepare a legacy owned database")
-        let reopened = SQLiteSessionRepository(url: database)
+        let reopened = SQLiteServerRepository(url: database)
         try require(try await reopened.snapshot().profiles == [profile], "SQLite did not reopen the saved fixture")
         await reopened.close()
         try require(try permissions(database) == 0o600 && permissions(directory) == 0o755,
@@ -125,7 +125,7 @@ enum M6PersistenceSafetyVerification {
     }
 
     private static func rejects(_ url: URL) async throws {
-        let repository = SQLiteSessionRepository(url: url)
+        let repository = SQLiteServerRepository(url: url)
         do {
             _ = try await repository.snapshot()
             await repository.close()

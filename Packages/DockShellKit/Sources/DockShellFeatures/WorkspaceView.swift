@@ -2,9 +2,9 @@ import DockShellDomain
 import DockShellTerminalUI
 import SwiftUI
 
-private struct SessionEditorRoute: Identifiable {
+private struct ServerEditorRoute: Identifiable {
     let id = UUID()
-    let profile: SessionProfile?
+    let profile: ServerProfile?
 }
 
 private struct GroupEditorRoute: Identifiable {
@@ -13,17 +13,17 @@ private struct GroupEditorRoute: Identifiable {
     let isNew: Bool
 }
 
-private struct SessionImportRoute: Identifiable {
+private struct ServerImportRoute: Identifiable {
     let id = UUID()
-    let kind: SessionImportKind
+    let kind: ServerImportKind
 }
 
 private enum DeletionTarget {
-    case session(SessionProfile)
-    case group(SessionGroup)
+    case server(ServerProfile)
+    case group(ServerGroup)
 }
 
-/// Session catalog and independent remote tabs, with protocol-backed connection state.
+/// Saved-server catalog and independent remote tabs, with protocol-backed connection state.
 public struct WorkspaceView: View {
     @ObservedObject private var model: WorkspaceViewModel
     private let l10n: L10n
@@ -31,10 +31,10 @@ public struct WorkspaceView: View {
     @ObservedObject private var settings: TerminalSettingsViewModel
     @ObservedObject private var tabs: TerminalTabsViewModel
     @ViewState<Bool> private var showTerminal = false
-    @ViewState<SessionEditorRoute?> private var editor: SessionEditorRoute?
+    @ViewState<ServerEditorRoute?> private var editor: ServerEditorRoute?
     @ViewState<GroupEditorRoute?> private var groupEditor: GroupEditorRoute?
     @ViewState<DeletionTarget?> private var deletion: DeletionTarget?
-    @ViewState<SessionImportRoute?> private var importRoute: SessionImportRoute?
+    @ViewState<ServerImportRoute?> private var importRoute: ServerImportRoute?
 
     public init(model: WorkspaceViewModel, l10n: L10n, terminal: LocalTerminalController,
                 settings: TerminalSettingsViewModel, tabs: TerminalTabsViewModel) {
@@ -81,20 +81,20 @@ public struct WorkspaceView: View {
         .onReceive(model.commandRequests) { command in
             guard editor == nil, groupEditor == nil, importRoute == nil else { return }
             switch command {
-            case .newSession: editor = SessionEditorRoute(profile: nil)
+            case .newServer: editor = ServerEditorRoute(profile: nil)
             case .connectSelected: if let profile = model.selectedProfile { connect(profile) }
-            case .importSessions: importRoute = SessionImportRoute(kind: .sshConfiguration)
-            case .importCSV: importRoute = SessionImportRoute(kind: .csv)
+            case .importServers: importRoute = ServerImportRoute(kind: .sshConfiguration)
+            case .importCSV: importRoute = ServerImportRoute(kind: .csv)
             }
         }
         .sheet(item: $editor) { route in
-            SessionEditorView(model: model, l10n: l10n, profile: route.profile)
+            ServerEditorView(model: model, l10n: l10n, profile: route.profile)
         }
         .sheet(item: $groupEditor) { route in
             GroupEditorView(model: model, l10n: l10n, id: route.id, isNew: route.isNew, name: route.name)
         }
         .sheet(item: $importRoute) { route in
-            SessionImportView(model: SessionImportViewModel(workspace: model, kind: route.kind), l10n: l10n)
+            ServerImportView(model: ServerImportViewModel(workspace: model, kind: route.kind), l10n: l10n)
         }
         .confirmationDialog(l10n.string(.transferCloseTitle), isPresented: Binding(
             get: { tabs.transferCloseRequestID != nil }, set: { if !$0 { tabs.dismissTransferClose() } }
@@ -119,7 +119,7 @@ public struct WorkspaceView: View {
                 Button(l10n.string(.delete), role: .destructive) {
                     Task {
                         switch deletion {
-                        case .session(let profile): await model.deleteSession(id: profile.id)
+                        case .server(let profile): await model.deleteServer(id: profile.id)
                         case .group(let group): await model.deleteGroup(id: group.id)
                         }
                     }
@@ -129,8 +129,8 @@ public struct WorkspaceView: View {
         } message: {
             if let deletion {
                 switch deletion {
-                case .session(let profile):
-                    Text(verbatim: profile.name + "\n" + l10n.string(.sessionDeleteBody))
+                case .server(let profile):
+                    Text(verbatim: profile.name + "\n" + l10n.string(.serverDeleteBody))
                 case .group(let group):
                     Text(verbatim: group.name + "\n" + l10n.string(.groupDeleteBody))
                 }
@@ -150,15 +150,15 @@ public struct WorkspaceView: View {
 
     private var newConnectionMenu: some View {
         Menu {
-            Button { editor = SessionEditorRoute(profile: nil) } label: {
-                Label(l10n.string(.sessionNew), systemImage: "plus")
+            Button { editor = ServerEditorRoute(profile: nil) } label: {
+                Label(l10n.string(.serverNew), systemImage: "plus")
             }
             .disabled(model.isMutating || model.isLoading || model.hasLoadError)
-            Button { importRoute = SessionImportRoute(kind: .sshConfiguration) } label: {
+            Button { importRoute = ServerImportRoute(kind: .sshConfiguration) } label: {
                 Label(l10n.string(.importTitle), systemImage: "square.and.arrow.down")
             }
-            .disabled(!model.canImportSessions || model.isMutating || model.isLoading || model.hasLoadError)
-            Button { importRoute = SessionImportRoute(kind: .csv) } label: {
+            .disabled(!model.canImportServers || model.isMutating || model.isLoading || model.hasLoadError)
+            Button { importRoute = ServerImportRoute(kind: .csv) } label: {
                 Label(l10n.string(.csvTitle), systemImage: "tablecells")
             }
             .disabled(!model.canImportCSV || model.isMutating || model.isLoading || model.hasLoadError)
@@ -304,7 +304,7 @@ public struct WorkspaceView: View {
             .padding(.leading, 18).padding(.trailing, 14).padding(.bottom, 4)
             SidebarGroupSelector(
                 options: [
-                    SidebarGroupOption(scope: .all, title: l10n.string(.allSessions), symbol: "rectangle.stack"),
+                    SidebarGroupOption(scope: .all, title: l10n.string(.allServers), symbol: "rectangle.stack"),
                     SidebarGroupOption(scope: .ungrouped, title: l10n.string(.ungrouped), symbol: "tray"),
                 ] + model.groups.map {
                     SidebarGroupOption(scope: .group($0.id), title: $0.name, symbol: "folder")
@@ -335,7 +335,7 @@ public struct WorkspaceView: View {
                         } icon: { Image(systemName: "server.rack") }
                         .tag(profile.id)
                     }
-                } header: { Text(verbatim: l10n.string(.sessionsTitle)) }
+                } header: { Text(verbatim: l10n.string(.serversTitle)) }
             }
             .listStyle(.sidebar)
             // List's native primary action handles double-clicks across the complete row.
@@ -343,8 +343,8 @@ public struct WorkspaceView: View {
             .contextMenu(forSelectionType: UUID.self) { ids in
                 if let profile = sidebarActionProfile(in: ids) {
                     Button(l10n.string(.tabConnect)) { connect(profile) }
-                    Button(l10n.string(.sessionEdit)) { editor = SessionEditorRoute(profile: profile) }
-                    Button(l10n.string(.sessionDelete), role: .destructive) { deletion = .session(profile) }
+                    Button(l10n.string(.serverEdit)) { editor = ServerEditorRoute(profile: profile) }
+                    Button(l10n.string(.serverDelete), role: .destructive) { deletion = .server(profile) }
                 }
             } primaryAction: { ids in
                 guard let profile = sidebarActionProfile(in: ids) else { return }
@@ -359,7 +359,7 @@ public struct WorkspaceView: View {
     }
 
     /// Native list actions provide the clicked IDs; never substitute a stale selection.
-    private func sidebarActionProfile(in ids: Set<UUID>) -> SessionProfile? {
+    private func sidebarActionProfile(in ids: Set<UUID>) -> ServerProfile? {
         guard ids.count == 1, let id = ids.first else { return nil }
         return model.filteredProfiles.first { $0.id == id }
     }
@@ -396,7 +396,7 @@ public struct WorkspaceView: View {
                     } description: { Text(verbatim: l10n.string(l10n.errorKey(error))) }
                     actions: { Button(l10n.string(.retry)) { Task { await model.load() } } }
                 } else if let profile = model.selectedProfile {
-                    sessionSummary(profile)
+                    serverSummary(profile)
                 } else {
                     emptyWorkspace
                 }
@@ -407,7 +407,7 @@ public struct WorkspaceView: View {
         .background(Color(nsColor: .textBackgroundColor))
     }
 
-    private func sessionSummary(_ profile: SessionProfile) -> some View {
+    private func serverSummary(_ profile: ServerProfile) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: "server.rack").font(.system(size: 28)).foregroundStyle(Color.accentColor)
@@ -416,8 +416,8 @@ public struct WorkspaceView: View {
                     Text(verbatim: profile.host).foregroundStyle(.secondary).textSelection(.enabled)
                 }
                 Spacer()
-                Button(l10n.string(.edit)) { editor = SessionEditorRoute(profile: profile) }
-                Button(role: .destructive) { deletion = .session(profile) } label: {
+                Button(l10n.string(.edit)) { editor = ServerEditorRoute(profile: profile) }
+                Button(role: .destructive) { deletion = .server(profile) } label: {
                     Label(l10n.string(.delete), systemImage: "trash")
                 }
             }
@@ -456,7 +456,7 @@ public struct WorkspaceView: View {
             Text(verbatim: l10n.string(.emptyBody)).font(.system(size: 13)).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).lineSpacing(4).frame(maxWidth: 370).padding(.top, 12)
             HStack {
-                Button(l10n.string(.sessionNew)) { editor = SessionEditorRoute(profile: nil) }
+                Button(l10n.string(.serverNew)) { editor = ServerEditorRoute(profile: nil) }
                     .buttonStyle(.borderedProminent).disabled(model.isLoading || model.isMutating || model.hasLoadError)
                 Button(l10n.string(.terminalOpen)) { toggleLocalTerminal() }
                     .buttonStyle(.bordered).disabled(!settings.isLoaded)
@@ -465,7 +465,7 @@ public struct WorkspaceView: View {
         }.padding(.horizontal, 32)
     }
 
-    private func connect(_ profile: SessionProfile) {
+    private func connect(_ profile: ServerProfile) {
         guard !model.isLoading, !model.isMutating, !model.hasLoadError else { return }
         terminal.stop(); showTerminal = false
         tabs.open(profile: profile, settings: settings.settings)

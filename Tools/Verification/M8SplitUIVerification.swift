@@ -66,7 +66,7 @@ private actor SplitUITransport: SSHTransport {
     private let gate: SplitUIGate?
     private var connects = 0
     init(connection: SplitUIConnection, gate: SplitUIGate?) { self.connection = connection; self.gate = gate }
-    func connect(to profile: SessionProfile) async throws -> any SSHConnection {
+    func connect(to profile: ServerProfile) async throws -> any SSHConnection {
         connects += 1
         if let gate { try await gate.wait() }
         try Task.checkCancellation()
@@ -157,8 +157,8 @@ enum M8SplitUIVerification {
         return try await exercise(model: model, factory: factory, root: root, window: window, l10n: l10n, manual: manual)
     }
 
-    private static func profile(_ name: String) -> SessionProfile {
-        SessionProfile(name: name, host: "m8-grid-ui.invalid", username: "fixture", authentication: .password(credentialID: nil))
+    private static func profile(_ name: String) -> ServerProfile {
+        ServerProfile(name: name, host: "m8-grid-ui.invalid", username: "fixture", authentication: .password(credentialID: nil))
     }
 
     private static func exercise(model: TerminalTabsViewModel, factory: SplitUIFactory,

@@ -79,7 +79,7 @@ enum M6NetworkVerification {
             $0.algorithm == "ssh-ed25519" && $0.sha256Fingerprint == configuration.fingerprint
         }) else { throw M6NetworkFailure(description: "The network rendering target did not match its independently supplied host pin") }
         let bookmark = try await PrivateKeyBookmarks().bookmark(for: configuration.keyURL)
-        let profile = SessionProfile(name: "Authorized M6 rendering", host: configuration.endpoint.host,
+        let profile = ServerProfile(name: "Authorized M6 rendering", host: configuration.endpoint.host,
             port: configuration.endpoint.port, username: configuration.username,
             authentication: .privateKey(fileBookmark: bookmark, passphraseCredentialID: nil))
         let transport = OpenSSHTransport(credentials: NoCredentials(),
@@ -245,8 +245,8 @@ enum M6NetworkVerification {
             guard request.keys == [key] else { throw M6NetworkFailure(description: "Unpinned network rendering host") }
             return true
         }
-        func password(for profile: SessionProfile) throws -> Data { throw M6NetworkFailure(description: "Unexpected password request") }
-        func passphrase(for profile: SessionProfile) throws -> Data { throw M6NetworkFailure(description: "Unexpected passphrase request") }
+        func password(for profile: ServerProfile) throws -> Data { throw M6NetworkFailure(description: "Unexpected password request") }
+        func passphrase(for profile: ServerProfile) throws -> Data { throw M6NetworkFailure(description: "Unexpected passphrase request") }
     }
     private actor NoCredentials: CredentialStore {
         func store(_ secret: Data, id: UUID) throws { throw M6NetworkFailure(description: "Unexpected credential write") }

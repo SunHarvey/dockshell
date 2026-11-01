@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct SidebarGroupOption: Equatable {
-    let scope: SessionScope
+    let scope: ServerScope
     let title: String
     let symbol: String
 }
@@ -12,7 +12,7 @@ struct SidebarGroupOption: Equatable {
 @MainActor
 struct SidebarGroupSelector: NSViewRepresentable {
     let options: [SidebarGroupOption]
-    @Binding var selection: SessionScope
+    @Binding var selection: ServerScope
     let accessibilityLabel: String
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -71,7 +71,7 @@ struct SidebarGroupSelector: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject {
         var options: [SidebarGroupOption] = []
-        var onSelection: ((SessionScope) -> Void)?
+        var onSelection: ((ServerScope) -> Void)?
 
         @objc func choose(_ sender: NSPopUpButton) {
             let index = sender.indexOfSelectedItem

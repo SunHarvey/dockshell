@@ -153,7 +153,7 @@ enum M9SFTPIntegrationVerification {
     /// Runs the real presentation model against generated-key SSH, without a UI
     /// or any personal server. Fixture content is created only in our local root.
     @MainActor
-    private static func verifyBrowser(profile: SessionProfile, directory: URL, store: OpenSSHHostKeyStore,
+    private static func verifyBrowser(profile: ServerProfile, directory: URL, store: OpenSSHHostKeyStore,
                                       expectedHost: SSHHostKey, helperURL: URL) async throws {
         let name = "目录 😀"
         try await M5AuthenticationVerification.onWorker {
@@ -264,7 +264,7 @@ enum M9SFTPIntegrationVerification {
         let credentials = M9SFTPCredentials(id: UUID(), value: Data("synthetic-unused-password".utf8))
         let interaction = M9SFTPInteraction(expectedHost: expectedHost, passphrase: Data(), approve: false)
         let store = OpenSSHHostKeyStore(url: root.appendingPathComponent("reject-known-hosts"))
-        let profile = SessionProfile(name: "host rejection", host: endpoint.host, port: endpoint.port,
+        let profile = ServerProfile(name: "host rejection", host: endpoint.host, port: endpoint.port,
                                      username: NSUserName(), authentication: .password(credentialID: UUID()))
         do {
             let unexpected = try await connect(profile, store: store, interaction: interaction, credentials: credentials,
@@ -296,7 +296,7 @@ enum M9SFTPIntegrationVerification {
                 try M5AuthenticationFixtureProcess.run(executable: "/usr/bin/ssh-add", arguments: [key.path],
                                                        environment: ["SSH_AUTH_SOCK": socket.path])
             } == 0, "Could not load the disposable SFTP agent identity")
-            let profile = SessionProfile(name: "isolated agent", host: endpoint.host, port: endpoint.port,
+            let profile = ServerProfile(name: "isolated agent", host: endpoint.host, port: endpoint.port,
                                          username: NSUserName(), authentication: .agent)
             let interaction = M9SFTPInteraction(expectedHost: expectedHost, passphrase: Data())
             let factory = OpenSSHSFTPClientFactory(credentials: M9SFTPCredentials(), hostKeys: store,
@@ -312,7 +312,7 @@ enum M9SFTPIntegrationVerification {
         await process.close()
     }
 
-    private static func verifyCancellation(root: URL, profile: SessionProfile, expectedHost: SSHHostKey,
+    private static func verifyCancellation(root: URL, profile: ServerProfile, expectedHost: SSHHostKey,
                                            store: OpenSSHHostKeyStore, helperURL: URL) async throws {
         let survivor = try await connect(profile, store: store,
             interaction: M9SFTPInteraction(expectedHost: expectedHost, passphrase: Data()),
@@ -361,7 +361,7 @@ enum M9SFTPIntegrationVerification {
         await invalid.process.close()
     }
 
-    private static func connect(_ profile: SessionProfile, store: OpenSSHHostKeyStore,
+    private static func connect(_ profile: ServerProfile, store: OpenSSHHostKeyStore,
                                 interaction: M9SFTPInteraction, credentials: M9SFTPCredentials,
                                 expectedHost: SSHHostKey, helperURL: URL) async throws -> any SFTPClient {
         let factory = OpenSSHSFTPClientFactory(credentials: credentials, hostKeys: store,
@@ -370,8 +370,8 @@ enum M9SFTPIntegrationVerification {
     }
 
     private static func profile(key: URL, endpoint: SSHHostEndpoint, bookmarks: PrivateKeyBookmarks,
-                                 credentialID: UUID? = nil) async throws -> SessionProfile {
-        SessionProfile(name: "SFTP disposable fixture", host: endpoint.host, port: endpoint.port, username: NSUserName(),
+                                 credentialID: UUID? = nil) async throws -> ServerProfile {
+        ServerProfile(name: "SFTP disposable fixture", host: endpoint.host, port: endpoint.port, username: NSUserName(),
             authentication: .privateKey(fileBookmark: try await bookmarks.bookmark(for: key), passphraseCredentialID: credentialID))
     }
 
@@ -480,11 +480,11 @@ private actor M9SFTPInteraction: SSHInteraction {
         }
         return approve
     }
-    func password(for profile: SessionProfile) async throws -> Data {
+    func password(for profile: ServerProfile) async throws -> Data {
         passwords += 1
         throw M9SFTPIntegrationFailure(description: "The public-key fixture requested a login password")
     }
-    func passphrase(for profile: SessionProfile) async throws -> Data { passphrases += 1; return phrase }
+    func passphrase(for profile: ServerProfile) async throws -> Data { passphrases += 1; return phrase }
     func counts() -> (password: Int, passphrase: Int) { (passwords, passphrases) }
 }
 
