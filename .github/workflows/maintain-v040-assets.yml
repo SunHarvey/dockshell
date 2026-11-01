@@ -26,12 +26,13 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      ASSET_MAINTENANCE_DIR: ${{ runner.temp }}/dockshell-v040-assets
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Verify, rename and recheck only the reviewed v0.4.0 assets
+        env:
+          ASSET_MAINTENANCE_DIR: ${{ runner.temp }}/dockshell-v040-assets
         run: sh Scripts/rename-v040-assets.sh apply
       - name: Preserve operation evidence and recovery copies
         if: always()
