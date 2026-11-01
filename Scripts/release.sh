@@ -53,6 +53,7 @@ version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info"
 build=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info")
 case "$version:$build" in *[!0-9.:]*) fail 'Version and build must contain only digits and dots.' ;; esac
 [ -n "$version" ] && [ -n "$build" ] || fail 'Version metadata is empty.'
+dmg_name=$(sh "$DOCKSHELL_ROOT/Scripts/dmg-name.sh" "$version" "$architecture_label")
 mkdir -p "$DOCKSHELL_ROOT/Build/distribution"
 staging=$(mktemp -d "$DOCKSHELL_ROOT/Build/distribution/.release.XXXXXX")
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
@@ -104,7 +105,7 @@ mkdir "$result"
 /usr/bin/ditto "$app" "$result/DockShell.app"
 /usr/bin/ditto -c -k --keepParent "$result/DockShell.app" "$result/$stem.zip"
 if [ "$mode" = local-preview ]; then
-    sh "$DOCKSHELL_ROOT/Scripts/package-dmg.sh" "$result/DockShell.app" "$result/$stem.dmg" \
+    sh "$DOCKSHELL_ROOT/Scripts/package-dmg.sh" "$result/DockShell.app" "$result/$dmg_name" \
         --mode "$mode" --architectures "$architecture_label"
 fi
 manifest="$result/ReleaseManifest.plist"
@@ -119,7 +120,7 @@ manifest="$result/ReleaseManifest.plist"
 /usr/bin/plutil -insert minimumSystem -string 14.0 "$manifest"
 if [ "$mode" = local-preview ]; then
     /usr/bin/plutil -insert installerFormat -string dmg "$manifest"
-    (cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" "$stem.dmg" > SHA256SUMS)
+    (cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" "$dmg_name" > SHA256SUMS)
 else
     (cd "$result" && /usr/bin/shasum -a 256 "$stem.zip" > SHA256SUMS)
 fi

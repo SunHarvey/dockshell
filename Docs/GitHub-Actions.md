@@ -94,7 +94,7 @@ GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，�
 2. 打开 **Actions → Release → Run workflow**。
 3. 工作流分支选择 `main`，在 **tag** 中填写完整标签，例如 `v0.3.0-rc.1`。
 4. 运行后等待构建、默认验证、产物审计和上传完成。
-5. 在本次运行的 **Artifacts** 点击名为 `DockShell-版本-构建号-arm64-local-preview.dmg` 的条目直接下载安装包；也可登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，从 **Assets** 下载同一个 DMG。
+5. 在本次运行的 **Artifacts** 点击名为 `DockShell-版本号-arm64.dmg` 的条目直接下载安装包；也可登录具有仓库权限的账号，到 [Releases](https://github.com/SunHarvey/dockshell/releases) 查看草稿，从 **Assets** 下载同一个 DMG。
 
 手动运行保持 **Draft + Pre-release** 状态；草稿仅供具有仓库相应权限的账号查看。要对外提供下载，需要在 GitHub 页面发布该草稿。标准版本与编号预览标签的推送入口直接创建相应的公开 Release，无需手动发布。所有入口都不会覆盖同名 Release。
 
@@ -102,10 +102,12 @@ GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，�
 
 | 文件 | 用途 |
 |---|---|
-| `DockShell-版本-构建号-arm64-local-preview.dmg` | 只读压缩磁盘映像，包含已签名的 `DockShell.app` 与 `Applications` 快捷方式 |
+| `DockShell-版本号-arm64.dmg` | 只读压缩磁盘映像，包含已签名的 `DockShell.app` 与 `Applications` 快捷方式 |
 | `SHA256SUMS` | DMG 的 SHA-256 校验值 |
 | `ReleaseManifest.plist` | 版本、构建号、架构与未公证状态 |
 | `ReleaseNotes.md` | 版本说明与使用边界 |
+
+安装包统一命名为 **`DockShell-版本号-架构.dmg`**，例如 `DockShell-0.4.0-arm64.dmg`；架构还可为 `x86_64` 或 `universal`。构建号、签名模式和公证状态保留在应用信息与 `ReleaseManifest.plist` 中，文件名不再包含构建号或 `local-preview`。内部 ZIP 和带时间戳的工作目录仍可保留详细标识。
 
 GitHub Release 的 **Assets** 包含 DMG、校验文件和清单，`ReleaseNotes.md` 用作版本正文。标准版本可标为 Latest，公开的预览版与手动草稿不会标为 Latest。清单中的 `notarized=false` 和 `publiclyDistributable=false` 表示尚未满足正式签名、公证和分发验收条件，不代表 GitHub Release 的可见性或 Latest 分类。
 
@@ -137,7 +139,7 @@ sh Scripts/ci-release.sh prepare v0.3.0
 
 辅助脚本通过 `release.sh --local-preview --result-file FILE` 获取本次成功构建的精确目录，检查 arm64 应用、源 ZIP 与 DMG 校验值，随后将 DMG 及其校验文件整理到独立的 `Build/ci-release.*` 目录。`release.sh` 内部仍保留 ZIP 供已有审计和后续公证流程使用，但 CI 的安装附件以 DMG 为主，不把应用 ZIP 再套进下载产物。辅助脚本不搜索旧版本目录来猜测待上传文件。
 
-`prepare` 向工作流输出 `artifact_dir`、`dmg_path`、`notes_path`、`manifest_path` 及标签、版本、构建号和源码提交信息；DMG 安装附件的路径字段为 `dmg_path`。
+`prepare` 向工作流输出 `artifact_dir`、`dmg_path`、`notes_path`、`manifest_path` 及标签、版本、构建号和源码提交信息；DMG 安装附件的路径字段为 `dmg_path`，文件名字段为 `dmg_name`，由 `Scripts/dmg-name.sh` 统一生成。
 
 ### 安装窗口与布局验证
 
@@ -199,3 +201,26 @@ sh Scripts/test-dmg-packaging.sh
 | [actions/checkout](https://github.com/actions/checkout) | `v7.0.1` | `3d3c42e5aac5ba805825da76410c181273ba90b1` |
 | [actions/upload-artifact](https://github.com/actions/upload-artifact) | `v7.0.2` | `cf430e030ddbb5b0abf93d22962f4752f3646cd9` |
 | [actions/download-artifact](https://github.com/actions/download-artifact) | `v8.0.2` | `9000827ccba6bdab643e8b6fd33ac0654aef8333` |
+
+
+## v0.4.0 现有附件改名
+
+v0.4.0 的已发布 DMG 原位改名为 `DockShell-0.4.0-arm64.dmg`，同步更新 `SHA256SUMS` 和下载说明。安装包字节、资产 ID、签名与构建清单保持不变；不会重打应用或移动 v0.4.0 标签，旧文件名的下载链接随改名失效。
+
+[维护工作流](../.github/workflows/maintain-v040-assets.yml) 仅在可信 main 分支且指定脚本/工作流有变更时执行，或由维护者手动运行。[维护脚本](../Scripts/rename-v040-assets.sh) 固定核对本次 v0.4.0 的标签对象、源码提交、资产 ID、安装包及清单摘要，拒绝其他版本或内容。操作保存原数据、失败时尝试恢复，并实际下载改名后的公开附件核对。仅该维护任务使用仓库现有的 `contents: write` 权限，不需要个人 Token；签名、公证状态不会改变。
+
+历史标签保留其原始脚本和产物规则；统一命名适用于当前 main 的构建和后续新标签。不要通过移动历史标签来更新打包脚本。
+
+```sh
+sh Scripts/test-dmg-names.sh
+```
+
+
+命名与维护脚本使用以下入口验证；维护测试仅使用临时数据和模拟 GitHub API，不读取账号凭据或访问网络：
+
+```sh
+sh Scripts/test-dmg-names.sh
+python3 Tools/ReleaseAssetNamingVerification.py
+```
+
+完整文件：[命名规则](../Scripts/dmg-name.sh)、[命名测试](../Scripts/test-dmg-names.sh)、[维护脚本](../Scripts/rename-v040-assets.sh)、[维护测试](../Tools/ReleaseAssetNamingVerification.py)、[受限维护工作流](../.github/workflows/maintain-v040-assets.yml)。测试使用 CLT / Actions runner 已有的 Python 3 标准库，不增加应用依赖。

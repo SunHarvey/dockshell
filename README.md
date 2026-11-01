@@ -45,7 +45,7 @@ DockShell 将 SSH 会话、终端标签、分屏和远程文件面板集中在�
 ## 安装
 
 - **运行目标：macOS 14 或更高版本。** 当前提供 **Apple Silicon / arm64** 安装包；macOS 14 实机仍待验证，暂不提供 Intel 安装包。
-- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `.dmg`。
+- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.0-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.0/DockShell-0.4.0-arm64.dmg)**。
 - 打开 DMG，将左侧 **DockShell.app** 拖到右侧 **Applications（应用程序）**，复制完成后推出磁盘映像，再从应用程序启动。
 
 当前安装包采用 **ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证**，首次启动可能被 macOS 拦截。分发状态及人工待验范围见 [分发说明](Docs/M6/分发准备.md) 与 [验收记录](Docs/M6/验收矩阵.md)。

@@ -1,0 +1,43 @@
+name: Maintain v0.4.0 asset names
+
+# One-time migration, limited to this workflow/script on the trusted main branch.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/maintain-v040-assets.yml'
+      - 'Scripts/rename-v040-assets.sh'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-v0.4.0
+  cancel-in-progress: false
+
+jobs:
+  rename:
+    if: github.repository == 'SunHarvey/dockshell' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ASSET_MAINTENANCE_DIR: ${{ runner.temp }}/dockshell-v040-assets
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify, rename and recheck only the reviewed v0.4.0 assets
+        run: sh Scripts/rename-v040-assets.sh apply
+      - name: Preserve operation evidence and recovery copies
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: v040-asset-maintenance-${{ github.run_id }}
+          path: ${{ runner.temp }}/dockshell-v040-assets/
+          if-no-files-found: warn
+          retention-days: 14

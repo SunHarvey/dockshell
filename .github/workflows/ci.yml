@@ -99,7 +99,8 @@ jobs:
           build=$(/usr/libexec/PlistBuddy -c 'Print :build' "$result/ReleaseManifest.plist")
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$build" =~ ^[1-9][0-9]*$ ]]
-          dmg_path="$result/DockShell-$version-$build-arm64-local-preview.dmg"
+          dmg_name=$(sh Scripts/dmg-name.sh "$version" arm64)
+          dmg_path="$result/$dmg_name"
           test -f "$dmg_path"
           test ! -L "$dmg_path"
           printf 'dmg_path=%s\n' "$dmg_path" >> "$GITHUB_OUTPUT"

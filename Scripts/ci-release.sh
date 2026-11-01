@@ -85,7 +85,7 @@ distribution=$(CDPATH= cd -- "$root/Build/distribution" && pwd -P)
 case "$result" in "$distribution"/*) ;; *) fail 'The build returned a directory outside Build/distribution.' ;; esac
 
 zip_name="DockShell-$version-$build-arm64-local-preview.zip"
-dmg_name="DockShell-$version-$build-arm64-local-preview.dmg"
+dmg_name=$(sh "$root/Scripts/dmg-name.sh" "$version" arm64)
 archive="$result/$zip_name"
 installer="$result/$dmg_name"
 manifest="$result/ReleaseManifest.plist"
@@ -159,6 +159,7 @@ dmg_path="$artifact_dir/$dmg_name"
 manifest_path="$artifact_dir/ReleaseManifest.plist"
 output artifact_dir "$artifact_dir"
 output dmg_path "$dmg_path"
+output dmg_name "$dmg_name"
 output notes_path "$notes_path"
 output manifest_path "$manifest_path"
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then

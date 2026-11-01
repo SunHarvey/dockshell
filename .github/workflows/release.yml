@@ -41,6 +41,7 @@ jobs:
       DOCKSHELL_APP_OUTPUT_ROOT: ${{ github.workspace }}/Build/ci-app
     outputs:
       dmg_artifact_id: ${{ steps.upload-dmg.outputs.artifact-id }}
+      dmg_name: ${{ steps.package.outputs.dmg_name }}
       metadata_artifact_id: ${{ steps.upload-metadata.outputs.artifact-id }}
       tag: ${{ steps.package.outputs.tag }}
       version: ${{ steps.package.outputs.version }}
@@ -194,6 +195,7 @@ jobs:
       RELEASE_TAG: ${{ needs.build.outputs.tag }}
       APP_VERSION: ${{ needs.build.outputs.version }}
       APP_BUILD: ${{ needs.build.outputs.build }}
+      DMG_NAME: ${{ needs.build.outputs.dmg_name }}
       SOURCE_COMMIT: ${{ needs.build.outputs.commit }}
       RELEASE_EVENT: ${{ github.event_name }}
     steps:
@@ -213,7 +215,8 @@ jobs:
           [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$APP_BUILD" =~ ^[1-9][0-9]*$ ]]
           [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-          dmg_name="DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg"
+          dmg_name="DockShell-$APP_VERSION-arm64.dmg"
+          test "$DMG_NAME" = "$dmg_name"
           test -f "$dmg_name"
           test -f ReleaseManifest.plist
           test -f ReleaseNotes.md
@@ -262,7 +265,7 @@ jobs:
             *) printf '%s\n' 'Unsupported release event.' >&2; exit 1 ;;
           esac
           gh release create "$RELEASE_TAG" \
-            "DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg" \
+            "$DMG_NAME" \
             SHA256SUMS ReleaseManifest.plist \
             "${release_flags[@]}" \
             --title "$release_title" \
@@ -273,7 +276,8 @@ jobs:
         working-directory: preview
         run: |
           set -euo pipefail
-          dmg_name="DockShell-$APP_VERSION-$APP_BUILD-arm64-local-preview.dmg"
+          dmg_name="DockShell-$APP_VERSION-arm64.dmg"
+          test "$DMG_NAME" = "$dmg_name"
           release_metadata=$(gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG")
           printf '%s' "$release_metadata" | jq -e --arg tag "$RELEASE_TAG" '.name == $tag and .tag_name == $tag' >/dev/null
           if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

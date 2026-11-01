@@ -2,6 +2,8 @@
 # Failure guards are exercised without building, signing with a real identity or contacting Apple.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+sh "$root/Scripts/test-dmg-names.sh"
+python3 "$root/Tools/ReleaseAssetNamingVerification.py"
 [ "$#" -le 1 ] || { printf '%s\n' 'Usage: sh Scripts/test-release-scripts.sh [LOCAL_PREVIEW_APP]' >&2; exit 2; }
 temporary=$(mktemp -d "${TMPDIR:-/tmp}/dockshell-release-guards.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
