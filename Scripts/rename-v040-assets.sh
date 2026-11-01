@@ -97,11 +97,19 @@ if ! cmp -s before/ReleaseNotes.md after/ReleaseNotes.md; then
     changed_notes=1
     gh api --method PATCH "repos/$repo/releases/$release_id" --input after/notes-request.json > after/updated-release.json
 fi
-# Read public URLs, not authenticated downloads, to prove the advertised installer and checksum work.
-download "$new_name" after/installer.dmg
-download SHA256SUMS after/published-checksums.txt
-cmp before/installer.dmg after/installer.dmg
-cmp after/SHA256SUMS after/published-checksums.txt
+# Public redirects/CDN entries can briefly lag a successful asset update.
+# Retry comparison, not just HTTP errors; never accept mismatching bytes or checksums.
+verified=0
+for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if download "$new_name" after/installer.dmg && download SHA256SUMS after/published-checksums.txt \
+        && cmp -s before/installer.dmg after/installer.dmg \
+        && cmp -s after/SHA256SUMS after/published-checksums.txt; then
+        verified=1; break
+    fi
+    printf 'Public asset verification pending, attempt %s/12\n' "$attempt"
+    [ "$attempt" -eq 12 ] || sleep 5
+done
+[ "$verified" -eq 1 ] || fail 'Public downloads did not converge to the reviewed installer and new checksum.'
 download ReleaseManifest.plist after/ReleaseManifest.plist
 cmp before/ReleaseManifest.plist after/ReleaseManifest.plist
 gh api "repos/$repo/releases/tags/$tag" > after/release.json

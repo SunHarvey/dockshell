@@ -24,14 +24,19 @@ if Path(sys.argv[0]).name=='curl':
  if not any(x['name']==name for x in s['assets']):sys.exit(22)
  if name.endswith('.dmg'):data=(root/'installer').read_bytes()
  elif name=='ReleaseManifest.plist':data=(root/'manifest').read_bytes()
- elif name=='SHA256SUMS':data=(root/'checksums').read_bytes()
+ elif name=='SHA256SUMS':
+  if s.pop('serve_stale_once',False):data=(root/'stale-checksums').read_bytes();save()
+  else:data=(root/'checksums').read_bytes()
  else:sys.exit(22)
  Path(a[a.index('--output')+1]).write_bytes(data);sys.exit(0)
 if a[:2]==['release','upload']:
  record()
  if s.pop('fail_upload_once',False):
   s['assets']=[x for x in s['assets'] if x['name']!='SHA256SUMS'];save();sys.exit(7)
- data=Path(a[3]).read_bytes();(root/'checksums').write_bytes(data)
+ data=Path(a[3]).read_bytes()
+ if s.get('inject_stale_read') and 'after' in Path(a[3]).parts:
+  (root/'stale-checksums').write_bytes((root/'checksums').read_bytes());s['serve_stale_once']=True
+ (root/'checksums').write_bytes(data)
  s['assets']=[x for x in s['assets'] if x['name']!='SHA256SUMS']
  s['assets'].append({'id':999,'name':'SHA256SUMS','state':'uploaded','digest':'sha256:'+hashlib.sha256(data).hexdigest()})
  save();sys.exit(0)
@@ -62,6 +67,9 @@ class AssetNamingTests(unittest.TestCase):
         stub.chmod(0o755)
         for name in ['gh', 'curl']:
             (self.root / 'bin' / name).symlink_to(stub)
+        sleeper = self.root / 'bin/sleep'
+        sleeper.write_text('#!/bin/sh\nexit 0\n')
+        sleeper.chmod(0o755)
         data = b'Synthetic installer bytes, never an application.'
         manifest = b'Synthetic reviewed source manifest.'
         self.digest = hashlib.sha256(data).hexdigest()
@@ -139,6 +147,13 @@ class AssetNamingTests(unittest.TestCase):
         self.assertEqual((self.root/'checksums').read_text(), f'{self.digest}  {OLD}\n')
         self.assertEqual(state['body'], self.state['body'])
         self.assertEqual(self.run_script().returncode, 0)
+
+    def test_stale_public_checksum_is_retried_without_accepting_wrong_contents(self):
+        self.state['inject_stale_read'] = True; self.save()
+        result = self.run_script()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('verification pending', result.stdout)
+        self.assertEqual((self.root/'checksums').read_text(), f'{self.digest}  {NEW}\n')
 
     def test_conflicting_destination_is_not_overwritten(self):
         self.state['assets'].append({'id': 123, 'name': NEW});self.save()

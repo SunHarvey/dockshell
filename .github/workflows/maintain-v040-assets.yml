@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: read
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -33,7 +34,26 @@ jobs:
       - name: Verify, rename and recheck only the reviewed v0.4.0 assets
         env:
           ASSET_MAINTENANCE_DIR: ${{ runner.temp }}/dockshell-v040-assets
-        run: sh Scripts/rename-v040-assets.sh apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Read only this migration's previous failure; do not export credentials or environment.
+          if gh api "repos/$GH_REPO/actions/jobs/124735348862/logs" > "$RUNNER_TEMP/previous-maintenance.log"; then
+            reason=$(grep -E 'Reviewed change:|curl:|differ|stopped|HTTP|Error:|error:|WARNING|PASS |verification pending' "$RUNNER_TEMP/previous-maintenance.log" | tail -n 12 | tr '\n' ' ' | tail -c 5000 || true)
+            reason=${reason//'%'/'%25'}
+            reason=${reason//$'\r'/'%0D'}
+            printf '::notice title=Previous maintenance diagnostics::%s\n' "$reason"
+          fi
+          if sh Scripts/rename-v040-assets.sh apply > "$RUNNER_TEMP/asset-maintenance.log" 2>&1; then
+            cat "$RUNNER_TEMP/asset-maintenance.log"
+          else
+            cat "$RUNNER_TEMP/asset-maintenance.log"
+            reason=$(tail -n 10 "$RUNNER_TEMP/asset-maintenance.log" | tr '\n' ' ' | tail -c 4000)
+            reason=${reason//'%'/'%25'}
+            reason=${reason//$'\r'/'%0D'}
+            printf '::error title=Asset maintenance failed::%s\n' "$reason"
+            exit 1
+          fi
       - name: Preserve operation evidence and recovery copies
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
