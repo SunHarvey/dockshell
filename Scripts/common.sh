@@ -10,6 +10,8 @@ swift_build() {
     if [ "${DOCKSHELL_DISABLE_SPM_SANDBOX:-0}" = "1" ]; then
         set -- --disable-sandbox "$@"
     fi
+    # Retain CLT-compatible resource handling until the default engine is revalidated.
+    # Its deprecation notice is intentionally visible (user decision, 2026-11-02).
     xcrun swift build \
         --build-system native \
         --package-path "$DOCKSHELL_ROOT" \
@@ -25,4 +27,10 @@ check_configuration() {
         debug|release) ;;
         *) printf '%s\n' 'Configuration must be debug or release.' >&2; exit 2 ;;
     esac
+}
+
+# Verification is opt-in; application builds never pull in diagnostic targets.
+build_verifier() {
+    check_configuration "$1"
+    swift_build -c "$1" --product dockshell-verify
 }

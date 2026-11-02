@@ -1,0 +1,20 @@
+--- a/Sources/SwiftTerm/Apple/Metal/MetalTerminalRenderer.swift
++++ b/Sources/SwiftTerm/Apple/Metal/MetalTerminalRenderer.swift
+@@ -1855,7 +1855,7 @@
+             guard let buffer = dequeue(length: length) else {
+                 return nil
+             }
+-            vertices.withUnsafeBytes { raw in
++            _ = vertices.withUnsafeBytes { raw in
+                 memcpy(buffer.contents(), raw.baseAddress!, byteCount)
+             }
+             frameBuffers.append(buffer)
+@@ -2079,7 +2079,7 @@
+         guard let buffer = device.makeBuffer(length: byteCount, options: .storageModeShared) else {
+             return (nil, 0)
+         }
+-        vertices.withUnsafeBytes { raw in
++        _ = vertices.withUnsafeBytes { raw in
+             memcpy(buffer.contents(), raw.baseAddress!, byteCount)
+         }
+         return (buffer, count)

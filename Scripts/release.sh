@@ -46,7 +46,7 @@ distribution_build() {
     xcrun swift build --build-system native --package-path "$DOCKSHELL_ROOT" \
         --scratch-path "$scratch" --cache-path "$DOCKSHELL_ROOT/.build/cache" \
         --config-path "$DOCKSHELL_ROOT/.build/configuration" --security-path "$DOCKSHELL_ROOT/.build/security" \
-        --disable-keychain --disable-netrc --force-resolved-versions --skip-update "$@"
+        --disable-keychain --disable-netrc --force-resolved-versions "$@"
 }
 info="$DOCKSHELL_ROOT/Packaging/Info.plist"
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info")

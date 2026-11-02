@@ -37,6 +37,7 @@ run_verification() {
 }
 
 sh "$DOCKSHELL_ROOT/Scripts/build.sh" "$configuration"
+build_verifier "$configuration"
 bin_path=$(swift_build -c "$configuration" --show-bin-path)
 "$bin_path/catalog-compiler" --self-test
 run_verification "$bin_path/dockshell-verify" "$application_output"

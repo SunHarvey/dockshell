@@ -4,6 +4,27 @@
 
 原生 macOS SSH 终端客户端。Swift 6、SwiftUI / AppKit、SPM，最低系统 macOS 14。
 
+## 2026-11-02：启动构建范围与编译警告
+
+普通 `run.sh` / `build.sh` 仅显式构建 `DockShell`、`dockshell-ssh-helper` 和 `catalog-compiler` 三个产品及依赖；`dockshell-verify` 由各测试脚本通过 `build_verifier` 单独构建，继续共享原增量缓存。语言参数、应用路径、资源打包和签名流程保持原有规则。
+
+清理传输验证中的局部 weak 警告，改用弱引用容器保持释放断言；辅助功能读取使用现代 getter，支持没有声明完整协议的 SwiftUI 对象，移除旧 attribute/action API 与多余的 `??`。修改前后 SFTP 队列及中英文 UI 验证均通过，原有 hosted-button 限制与人工鼠标待验范围相同，未用关闭诊断或减少断言的方式清理警告。
+
+SwiftTerm 仍基于 1.19.0 / `464df5207fc2432e16c9a23abe538187196daf5f`，在用户要求清理这些 warning 的范围内，对 Metal 缓冲区的两处未用返回值添加显式 `_ =`，不改变拷贝和绘制行为。本地构建标识为 `1.19.0+dockshell.2`，新增可复核补丁与前后摘要，原字体补丁不变，许可和应用内第三方声明同步更新。未增加依赖或 fork。
+
+当前 Swift 6.4 / CLT 27 默认引擎的最小试编译复现了无效测试库搜索路径问题，参见 [Swift 官方问题与修复](https://github.com/swiftlang/swift-package-manager/issues/10557)。用户明确选择保留 native 引擎及其弃用提示，待 CLT 更新后再迁移；没有过滤或压制这条提示，其他编译警告和错误照常输出。发布脚本移除另一项已弃用的 `--skip-update`，仍通过 `--force-resolved-versions` 限制依赖解析。
+
+隔离空目录的真实构建确认三个必需产品及完整签名资源可用，且没有生成验证程序或诊断模块；日志除获准保留的 native 提示外无其他编译警告。默认回归、独立副本资源搬迁、SFTP 队列/文件传输/中英文 UI、字体即时设置及真实 vim/top、发布与 CI 参数守卫通过。测试仅使用临时配置、合成凭据和隔离 PTY，不连接个人服务器或读取个人配置。本轮仅提交代码，不创建版本标签或发布 Release，应用版本仍为 0.4.1 / build 26。
+
+完整文件：
+
+- [普通构建](../Scripts/build.sh)、[公共构建函数](../Scripts/common.sh)、[启动入口](../Scripts/run.sh)。
+- [默认验证](../Scripts/test.sh)、[终端设置验证](../Scripts/test-terminal-settings.sh)、[日志集成验证](../Scripts/test-terminal-logging-integration.sh)、[批量命令验证](../Scripts/test-batch-commands.sh)。
+- [SSH 导入验证](../Scripts/test-server-import.sh)、[CSV 导入验证](../Scripts/test-csv-import.sh)、[SFTP 隔离验证](../Scripts/test-sftp.sh)、[SFTP 授权服务器验证入口](../Scripts/test-sftp-remote.sh)。
+- [队列释放验证](../Tools/Verification/M92TransferQueueVerification.swift)、[辅助功能验证](../Tools/Verification/M92TransferUIVerification.swift)。
+- [SwiftTerm 补丁说明](../Vendor/SwiftTerm/UPSTREAM.md)、[返回值补丁](../Vendor/SwiftTerm/metal-buffer-unused-result.patch)、[渲染器](../Vendor/SwiftTerm/Sources/SwiftTerm/Apple/Metal/MetalTerminalRenderer.swift)、[构建标识](../Vendor/SwiftTerm/Sources/SwiftTerm/SwiftTermBuildInfo.swift)。
+- [分发构建脚本](../Scripts/release.sh)、[第三方声明](../Packaging/ThirdPartyNotices.txt)、[README](../README.md)。
+
 ## 2026-11-01：v0.4.1 发布准备
 
 用户批准将“服务器”术语调整提交并发布为 **v0.4.1 / build 26**，Release 标题只使用 **v0.4.1**。README 下载入口和当前版本说明更新，发布正文见 [v0.4.1](ReleaseNotes/v0.4.1.md)。沿用 SunHarvey 作者与 SSH 签名、arm64 的现有 Actions 流程和 `DockShell-0.4.1-arm64.dmg` 安装附件；签名与公证状态按现有构建清单说明。

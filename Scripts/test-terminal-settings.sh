@@ -7,6 +7,7 @@ export DOCKSHELL_ROOT
 configuration=${1:-debug}
 check_configuration "$configuration"
 sh "$DOCKSHELL_ROOT/Scripts/build.sh" "$configuration"
+build_verifier "$configuration"
 bin_path=$(swift_build -c "$configuration" --show-bin-path)
 app="${DOCKSHELL_APP_OUTPUT_ROOT:-$DOCKSHELL_ROOT/Build}/$configuration/DockShell.app"
 log=$(mktemp "${TMPDIR:-/tmp}/dockshell-live-settings-verification.XXXXXX")

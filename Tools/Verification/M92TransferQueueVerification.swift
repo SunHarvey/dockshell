@@ -6,6 +6,12 @@ import Foundation
 
 private struct M92QueueFailure: Error, CustomStringConvertible { let description: String }
 
+@MainActor
+private final class M92WeakTransfers {
+    weak var value: SFTPTransfersViewModel?
+    init(_ value: SFTPTransfersViewModel?) { self.value = value }
+}
+
 private actor M92QueueClient: SFTPClient {
     let capabilities = SFTPCapabilities(supportsAtomicRename: true)
     private var closed = false
@@ -373,11 +379,11 @@ enum M92TransferQueueVerification {
         let request = try request("drop-conflict"), peer = M92QueueClient(), prompts = SSHConnectionPrompts()
         var model: SFTPTransfersViewModel? = SFTPTransfersViewModel(factory: M92QueueFactory([peer]),
             engine: M92QueueEngine([request.id: .conflict(true)]), prompts: prompts)
-        weak var weakModel = model
+        let weakModel = M92WeakTransfers(model)
         model?.enqueue([request], profile: profile())
         try await wait("The drop-owner conflict did not suspend") { model?.conflict != nil }
         model = nil
-        try await wait("A suspended conflict retained its queue owner") { weakModel == nil }
+        try await wait("A suspended conflict retained its queue owner") { weakModel.value == nil }
         try await wait("Dropping the queue failed to close its own client") { await peer.isClosed() }
     }
 

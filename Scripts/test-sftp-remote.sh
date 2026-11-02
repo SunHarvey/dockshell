@@ -17,6 +17,7 @@ if [ "${DOCKSHELL_SFTP_REMOTE_TEST:-0}" != 1 ] ||
     exit 2
 fi
 sh "$DOCKSHELL_ROOT/Scripts/build.sh" "$configuration"
+build_verifier "$configuration"
 bin_path=$(swift_build -c "$configuration" --show-bin-path)
 app="${DOCKSHELL_APP_OUTPUT_ROOT:-$DOCKSHELL_ROOT/Build}/$configuration/DockShell.app"
 exec "$bin_path/dockshell-verify" "$app"

@@ -136,6 +136,8 @@ sh Scripts/run.sh zh-Hans
 
 使用 `sh Scripts/run.sh en` 启动英文界面，或 `sh Scripts/run.sh` 跟随系统语言。重新构建前先用 **⌘Q** 退出旧应用。运行脚本负责资源打包与本地签名，生成 `Build/debug/DockShell.app`。
 
+普通启动仅构建应用、SSH 辅助程序和资源编译器，保留增量缓存；验证工具由各测试脚本按需构建。清理 `.build` 后的首次启动会重新完整编译。当前 CLT 兼容模式仍使用 native 引擎，仍会显示该工具链的弃用提示，其他警告和错误照常显示。
+
 ## 开发与验证
 
 SwiftUI / AppKit、MVVM 分层、async/await / Actor；协议层通过接口隔离，配置使用系统 SQLite，密码和口令使用 Keychain。
@@ -153,7 +155,7 @@ SwiftUI / AppKit、MVVM 分层、async/await / Actor；协议层通过接口隔�
 
 | 组件 | 版本 / 来源 |
 |---|---|
-| [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | **1.19.0+dockshell.1**，本地 SPM 包；[来源与获批最小补丁](Vendor/SwiftTerm/UPSTREAM.md) |
+| [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) | **1.19.0+dockshell.2**，本地 SPM 包；[来源与获批最小补丁](Vendor/SwiftTerm/UPSTREAM.md) |
 | OpenSSH | macOS 系统工具，通过自有协议与 PTY 适配 |
 | SQLite | macOS 系统库 |
 

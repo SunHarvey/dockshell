@@ -6,43 +6,42 @@ import SwiftUI
 
 private struct M92UIFailure: Error, CustomStringConvertible { let description: String }
 
-/// SwiftUI's hosted accessibility nodes are not uniformly tagged with the full
-/// Objective-C protocol at runtime. Query NSView directly, and use AppKit's
-/// documented informal accessibility bridge for remaining NSObject nodes.
+/// SwiftUI's hosted nodes do not always declare NSAccessibilityProtocol conformance.
+/// Check modern getter selectors before KVC reads; Foundation boxes NSRect as NSValue.
+/// The deprecated accessibilityAttributeValue/action APIs are never called.
 @MainActor
 private struct M92AccessibleElement {
     let object: NSObject
-    private func attribute(_ name: NSAccessibility.Attribute) -> Any? {
-        guard object.accessibilityAttributeNames().contains(name) else { return nil }
-        return object.accessibilityAttributeValue(name)
+    private func value(_ getter: String) -> Any? {
+        guard object.responds(to: NSSelectorFromString(getter)) else { return nil }
+        return object.value(forKey: getter)
     }
     var identifier: String? {
-        if let view = object as? NSView { return view.accessibilityIdentifier() ?? attribute(.identifier) as? String }
-        if let item = object as? any NSAccessibilityProtocol { return item.accessibilityIdentifier() ?? attribute(.identifier) as? String }
-        return attribute(.identifier) as? String
+        if let view = object as? NSView { return view.accessibilityIdentifier() }
+        if let item = object as? any NSAccessibilityProtocol { return item.accessibilityIdentifier() }
+        return value("accessibilityIdentifier") as? String
     }
     var children: [Any] {
-        if let view = object as? NSView { return view.accessibilityChildren() ?? attribute(.children) as? [Any] ?? [] }
-        if let item = object as? any NSAccessibilityProtocol { return item.accessibilityChildren() ?? attribute(.children) as? [Any] ?? [] }
-        return attribute(.children) as? [Any] ?? []
+        if let view = object as? NSView { return view.accessibilityChildren() ?? [] }
+        if let item = object as? any NSAccessibilityProtocol { return item.accessibilityChildren() ?? [] }
+        return value("accessibilityChildren") as? [Any] ?? []
     }
     var parent: NSObject? {
         if let view = object as? NSView { return view.accessibilityParent() as? NSObject }
         if let item = object as? any NSAccessibilityElementProtocol { return item.accessibilityParent() as? NSObject }
-        return attribute(.parent) as? NSObject
+        return value("accessibilityParent") as? NSObject
     }
     var frame: NSRect {
         if let view = object as? NSView, let window = view.window {
             return window.convertToScreen(view.convert(view.bounds, to: nil))
         }
         if let item = object as? any NSAccessibilityElementProtocol { return item.accessibilityFrame() }
-        guard let origin = attribute(.position) as? NSValue, let size = attribute(.size) as? NSValue else { return .zero }
-        return NSRect(origin: origin.pointValue, size: size.sizeValue)
+        return (value("accessibilityFrame") as? NSValue)?.rectValue ?? .zero
     }
     var role: NSAccessibility.Role? {
         if let view = object as? NSView { return view.accessibilityRole() }
         if let item = object as? any NSAccessibilityProtocol { return item.accessibilityRole() }
-        return (attribute(.role) as? String).map { NSAccessibility.Role(rawValue: $0) }
+        return (value("accessibilityRole") as? String).map { NSAccessibility.Role(rawValue: $0) }
     }
     var texts: [String] {
         var result: [String] = []
@@ -53,9 +52,8 @@ private struct M92AccessibleElement {
             if let label = item.accessibilityLabel() { result.append(label) }
             if let value = item.accessibilityValue() as? String { result.append(value) }
         }
-        let attributes: [NSAccessibility.Attribute] = [.value, .title, .description]
-        for name in attributes {
-            if let value = attribute(name) as? String { result.append(value) }
+        for getter in ["accessibilityValue", "accessibilityTitle", "accessibilityLabel"] {
+            if let value = value(getter) as? String { result.append(value) }
         }
         if let field = object as? NSTextField { result.append(field.stringValue) }
         return result
@@ -63,9 +61,11 @@ private struct M92AccessibleElement {
     func accessibilityPerformPress() -> Bool {
         if let button = object as? NSButton { button.performClick(nil); return button.isEnabled }
         if let item = object as? any NSAccessibilityProtocol { return item.accessibilityPerformPress() }
-        guard object.accessibilityActionNames().contains(.press) else { return false }
-        object.accessibilityPerformAction(.press)
-        return true
+        let selector = #selector(NSAccessibilityProtocol.accessibilityPerformPress)
+        guard object.responds(to: selector), let implementation = object.method(for: selector) else { return false }
+        // The modern action returns BOOL, not an object; NSObject.perform is unsuitable.
+        typealias Press = @convention(c) (AnyObject, Selector) -> Bool
+        return unsafeBitCast(implementation, to: Press.self)(object, selector)
     }
 }
 
