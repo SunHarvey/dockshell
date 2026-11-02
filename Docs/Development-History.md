@@ -4,6 +4,14 @@
 
 原生 macOS SSH 终端客户端。Swift 6、SwiftUI / AppKit、SPM，最低系统 macOS 14。
 
+## 2026-11-02：v0.4.2 发布准备
+
+用户批准将 warning 清理和启动构建优化发布为 **v0.4.2 / build 27**，Release 标题只使用 **v0.4.2**。README 版本摘要、下载入口和 [发布说明](ReleaseNotes/v0.4.2.md) 同步更新，安装附件沿用 `DockShell-0.4.2-arm64.dmg` 命名。
+
+功能实现沿用已通过完整 CI 的 `15e3632`，本轮调整版本及发布文档。继续使用 SunHarvey 作者和 SSH 签名、现有 arm64 Actions 发布流程；不移动历史标签，不新增依赖或第三方补丁。CLT native 引擎的弃用提示按已确认的兼容策略保留，签名、公证与目标环境待验范围按构建清单和现有验收记录说明。实际发布完成情况以工作流、Release 元数据及公开下载校验为准。
+
+本地 0.4.2 / build 27 的发布与 CI 参数守卫、DMG 参数保护、版本/文件名及工作流 YAML 检查通过。真实 DMG 的镜像完整性、正常 /Volumes 只读重新挂载、品牌布局、资源、嵌套签名和 SHA256SUMS 校验通过，包内版本与第三方补丁标识一致。此处为本机发布准备记录，云端成功状态仍以对应工作流为准。
+
 ## 2026-11-02：启动构建范围与编译警告
 
 普通 `run.sh` / `build.sh` 仅显式构建 `DockShell`、`dockshell-ssh-helper` 和 `catalog-compiler` 三个产品及依赖；`dockshell-verify` 由各测试脚本通过 `build_verifier` 单独构建，继续共享原增量缓存。语言参数、应用路径、资源打包和签名流程保持原有规则。

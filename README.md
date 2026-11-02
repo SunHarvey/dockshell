@@ -9,7 +9,7 @@
 
 DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集中在一个窗口中，支持简体中文与英文。
 
-**v0.4.1** 将首页、菜单、新建/编辑和 SSH / CSV 导入中的“会话”统一改为“服务器”，已有配置和凭据可继续使用。保留 `~/.ssh/config` 导入、CSV 批量创建及原有终端功能。[版本说明](Docs/ReleaseNotes/v0.4.1.md)
+**v0.4.2** 优化从源码启动的构建范围，验证工具按需编译，并清理源码编译警告。继续支持服务器管理、SSH / CSV 导入和原有终端功能，已有配置和凭据可继续使用。[版本说明](Docs/ReleaseNotes/v0.4.2.md)
 
 [下载 DMG](https://github.com/SunHarvey/dockshell/releases/latest) · [功能](#功能) · [界面](#界面) · [安装](#安装) · [使用](#使用) · [从源码运行](#从源码运行)
 
@@ -45,7 +45,7 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 ## 安装
 
 - **运行目标：macOS 14 或更高版本。** 当前提供 **Apple Silicon / arm64** 安装包；macOS 14 实机仍待验证，暂不提供 Intel 安装包。
-- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.1-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.1/DockShell-0.4.1-arm64.dmg)**。
+- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.2-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.2/DockShell-0.4.2-arm64.dmg)**。
 - 打开 DMG，将左侧 **DockShell.app** 拖到右侧 **Applications（应用程序）**，复制完成后推出磁盘映像，再从应用程序启动。
 
 当前安装包采用 **ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证**，首次启动可能被 macOS 拦截。分发状态及人工待验范围见 [分发说明](Docs/M6/分发准备.md) 与 [验收记录](Docs/M6/验收矩阵.md)。
