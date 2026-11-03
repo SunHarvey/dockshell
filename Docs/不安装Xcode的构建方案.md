@@ -47,7 +47,7 @@
 | SwiftTerm 1.19.0，显式 native 构建 | 编译通过，运行输出 `SwiftTerm import compiled` | 只 import 库，不创建终端 UI；native 已弃用，工具提示未来会移除 |
 | SwiftTerm 源码完整性 | 官方 tag，提交 `464df5207fc2432e16c9a23abe538187196daf5f`；checkout 干净 | 没有 fork、补丁或改依赖 manifest |
 | Swift Testing | 默认构建的最小测试遇到 TestingMacros 加载错误；native 构建未找到 Testing 模块 | CLT 中实际存在 TestingMacros 文件，但当前命令未形成可运行测试链路；额外搜索/加载参数仍待验证，不将其列为原理上不可能 |
-| 打包与签名工具 | `plutil`、`iconutil`、`codesign`、`notarytool`、`stapler`、`lipo`、`dsymutil` 均找到 | 工具存在不等于签名身份、账户、公证和双架构发行已验证 |
+| 打包与签名工具 | `plutil`、`iconutil`、`codesign`、`notarytool`、`stapler`、`lipo`、`dsymutil` 均找到 | 工具存在不等于签名身份、账户与公证已验证；产品仅面向 Apple Silicon |
 | 缺少的工具 | `actool`、`xcstringstool`、`metal`、`metallib` 未找到 | 需要下述替代构建设计或完整工具链构建机 |
 
 ### SwiftData 门槛
@@ -197,6 +197,6 @@ SSH 路线仍依据 [M0 对比报告](M0/SSH底层路线对比.md) 由用户决�
 1. M2 实现 SQLite 事务、迁移、凭据引用与 Keychain 协调。
 2. M3 单独接入 SwiftTerm，处理本文件所列 Metal 与构建方式风险；M1 未以更换终端库规避问题。
 3. M4/M5 实现系统 SSH 的 PTY、主机信任、凭据 helper、断线检测及恢复。
-4. macOS 14 实机、双架构和签名公证仍需独立验收。
+4. Apple Silicon 上的 macOS 14 实机和签名公证仍需独立验收。产品仅支持 arm64。
 
 第三方补丁和新增依赖的批准规则不变。本轮只完成 M1，不提前实现后续里程碑。

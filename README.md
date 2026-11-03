@@ -44,7 +44,7 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 
 ## 安装
 
-- **运行目标：macOS 14 或更高版本。** 当前提供 **Apple Silicon / arm64** 安装包；macOS 14 实机仍待验证，暂不提供 Intel 安装包。
+- **系统要求：Apple Silicon（arm64），macOS 14 或更高版本。** macOS 14 实机仍待验证。
 - 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.2-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.2/DockShell-0.4.2-arm64.dmg)**。
 - 打开 DMG，将左侧 **DockShell.app** 拖到右侧 **Applications（应用程序）**，复制完成后推出磁盘映像，再从应用程序启动。
 

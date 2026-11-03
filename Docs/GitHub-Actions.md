@@ -11,7 +11,7 @@ Actions Artifact 和 Release 的安装附件均以 **DMG 原文件**提供：直
 - GitHub-hosted `macos-26`、Apple Silicon / arm64。
 - 固定使用 `/Applications/Xcode_26.6.app/Contents/Developer` 中的开发工具；所需版本不存在时让任务失败，避免静默换用另一套工具链。
 - Swift Package Manager 使用仓库中的固定本地依赖，SwiftTerm 来源与补丁记录于 `Vendor/SwiftTerm/UPSTREAM.md`。
-- 应用部署目标仍为 macOS 14；在 macOS 26 上构建和检查，不代表已经完成 macOS 14 实机或 Intel 验收。
+- 应用仅面向 Apple Silicon（arm64），系统要求为 macOS 14 或更高版本；在 macOS 26 上构建和检查，不代表已经完成 macOS 14 实机验收。
 
 云端使用预装的开发工具，本机仍可沿用现有 Command Line Tools。工作流不会要求把个人 GitHub SSH 私钥、Apple 账号、Developer ID 证书或私钥放入仓库。
 
@@ -107,7 +107,7 @@ GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，�
 | `ReleaseManifest.plist` | 版本、构建号、架构与未公证状态 |
 | `ReleaseNotes.md` | 版本说明与使用边界 |
 
-安装包统一命名为 **`DockShell-版本号-架构.dmg`**，例如 `DockShell-0.4.0-arm64.dmg`；架构还可为 `x86_64` 或 `universal`。构建号、签名模式和公证状态保留在应用信息与 `ReleaseManifest.plist` 中，文件名不再包含构建号或 `local-preview`。内部 ZIP 和带时间戳的工作目录仍可保留详细标识。
+安装包统一命名为 **`DockShell-版本号-arm64.dmg`**，例如 `DockShell-0.4.2-arm64.dmg`；仅发布 Apple Silicon 安装包。构建号、签名模式和公证状态保留在应用信息与 `ReleaseManifest.plist` 中，文件名不再包含构建号或 `local-preview`。内部 ZIP 和带时间戳的工作目录仍可保留详细标识。
 
 GitHub Release 的 **Assets** 包含 DMG、校验文件和清单，`ReleaseNotes.md` 用作版本正文。标准版本可标为 Latest，公开的预览版与手动草稿不会标为 Latest。清单中的 `notarized=false` 和 `publiclyDistributable=false` 表示尚未满足正式签名、公证和分发验收条件，不代表 GitHub Release 的可见性或 Latest 分类。
 
@@ -161,7 +161,7 @@ DMG 的 Finder 初始窗口采用 **660 × 440 点**的紧凑图标视图：`Doc
 - 转换后的镜像完整性、只读重新挂载及背景文件一致性。
 - 映像内应用的签名、架构、资源、主要可执行文件和 `Applications` 快捷方式。
 
-上述检查针对文件与布局数据。发布流程还需先下载 CI 产物并在 Finder 中检查，再发布版本标签；发布后再次下载实际 Release 附件，核对背景、图标、文字与窗口尺寸，不能仅用构建机器的本地产物代替。图形检查与应用在 macOS 14 或 Intel 上的运行验收分别记录。
+上述检查针对文件与布局数据。发布流程还需先下载 CI 产物并在 Finder 中检查，再发布版本标签；发布后再次下载实际 Release 附件，核对背景、图标、文字与窗口尺寸，不能仅用构建机器的本地产物代替。图形检查与应用在 macOS 14 / Apple Silicon 上的运行验收分别记录。
 
 CI 参数边界可单独验证：
 

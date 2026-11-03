@@ -143,9 +143,9 @@ cat >> "$notes_path" <<EOF
 
 - 应用版本：$version
 - 构建号：$build
-- 架构：arm64
+- 支持芯片：Apple Silicon（arm64）
 - 源码提交：$commit
-- 部署目标：macOS 14；macOS 14 实机与 Intel 尚未完成验收。
+- 系统要求：macOS 14 或更高版本；macOS 14 实机尚待验证。
 
 安装包采用 ad-hoc 签名，尚未获得 Developer ID 签名或 Apple 公证。完整输入法交互、实际睡眠唤醒等人工待验范围见仓库的验收记录。
 
