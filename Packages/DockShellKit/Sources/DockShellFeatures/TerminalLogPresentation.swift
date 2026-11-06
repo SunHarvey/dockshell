@@ -13,7 +13,8 @@ public extension L10n {
         TerminalMenuLabels(copy: string(.terminalCopy), paste: string(.terminalPaste),
             selectAll: string(.terminalSelectAll), accessibilityLabel: string(.terminalAccessibility),
             unavailable: string(.terminalUnavailable), logging: TerminalLogMenuLabels(
-                export: string(.logExport), title: string(.logExportTitle), save: string(.save), start: string(.logStart), pause: string(.logPause),
+                export: string(.logExport), copy: string(.logCopy), title: string(.logExportTitle),
+                save: string(.save), start: string(.logStart), pause: string(.logPause),
                 states: [.off: string(.logStatusOff), .starting: string(.logStatusStarting),
                     .recording: string(.logStatusRecording), .retained: string(.logStatusRetained),
                     .failed: string(.logStatusFailed)]))
@@ -25,6 +26,7 @@ public extension L10n {
         case .captureIncomplete: .logErrorCapture
         case .destinationExists: .logErrorExists
         case .exportFailed: .logErrorExport
+        case .copyFailed: .logErrorCopy
         case .writeFailed, .unsafeFile: .logErrorWrite
         }
     }

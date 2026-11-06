@@ -71,8 +71,10 @@ private struct LogTerminalFixture: View {
     @ObservedObject var settings: TerminalSettingsViewModel
     let labels: TerminalMenuLabels
     let destination: (any TerminalLogExportDestinationChoosing)?
+    let pasteboard: NSPasteboard?
     var body: some View {
-        TerminalViewRepresentable(controller: controller, settings: settings.settings, labels: labels, logExportDestination: destination)
+        TerminalViewRepresentable(controller: controller, settings: settings.settings, labels: labels,
+            logExportDestination: destination, logCopyPasteboard: pasteboard)
     }
 }
 
@@ -155,9 +157,11 @@ enum M101TerminalLoggingVerification {
     }
 
     private static func files(directory: URL) async throws {
-        let storage = FileTerminalLogStorage(root: directory.appendingPathComponent("files"))
+        let root = directory.appendingPathComponent("files")
+        let storage = FileTerminalLogStorage(root: root)
         let first = try await storage.create(connectionID: UUID(), limit: 5_000_000, olderRemoved: "OLDER_REMOVED")
-        let second = try await storage.create(connectionID: UUID(), limit: 5_000_000, olderRemoved: "OLDER_REMOVED")
+        let secondID = UUID()
+        let second = try await storage.create(connectionID: secondID, limit: 5_000_000, olderRemoved: "OLDER_REMOVED")
         let chunk = Data(String(repeating: "retained中文🙂\n", count: 4_000).utf8)
         try await first.append(Data("OLDEST_MARKER\n".utf8))
         for _ in 0..<80 { try await first.append(chunk) }
@@ -188,16 +192,32 @@ enum M101TerminalLoggingVerification {
         }.value
         do { try await storage.export(snapshot, to: directory.appendingPathComponent("symlink.log")); throw failure("Export followed a symlink") }
         catch TerminalLogError.destinationExists { }
+        let restarted = Data(String(repeating: "NEW_RECORDING 中文🙂\n", count: 5_000).utf8)
+        try await first.beginRecording()
+        try await first.append(restarted)
+        try await first.setLimit(1_000_000)
+        try check(try await first.snapshot(tail: .empty) == restarted,
+            "Earlier recordings leaked into a new snapshot or their eviction marked the new recording as truncated")
         try await first.close()
-        try check(asText(try await first.snapshot(tail: .empty)).contains("AFTER_SNAPSHOT"), "Closed log was not exportable")
+        try check(try await first.snapshot(tail: .empty) == restarted, "Closed log was not exportable")
         do { try await first.append(Data("closed".utf8)); throw failure("Closed store accepted output") }
         catch TerminalLogError.writeFailed { }
+        for index in 1...256 {
+            try await second.beginRecording()
+            try await second.append(Data("Recording \(index) 中文🙂\n".utf8))
+        }
+        try check(asText(try await second.snapshot(tail: .empty)) == "Recording 256 中文🙂\n",
+            "Repeated recording boundaries leaked earlier bytes or split Unicode")
         try await second.close()
+        let secondDirectory = root.appendingPathComponent(secondID.uuidString)
         try await Task.detached {
+            let segments = try FileManager.default.contentsOfDirectory(atPath: secondDirectory.path)
+            guard segments.count == 1 else { throw failure("Short recordings created extra cache segments") }
             let files = try FileManager.default.subpathsOfDirectory(atPath: directory.path)
             guard !files.contains(where: { $0.contains(".dockshell-export-") }) else { throw failure("Export left a temporary file") }
         }.value
         print("PASS production log files: rolling per-connection budgets, live shrink/grow, UTF-8, closed export, immutable snapshots and exclusive 0600 publication")
+        print("PASS recording boundaries: 256 short recordings shared one cache segment and the snapshot contained only the latest text")
     }
 
     private static func remote(directory: URL, l10n: L10n) async throws {
@@ -208,8 +228,9 @@ enum M101TerminalLoggingVerification {
         let settings = TerminalSettingsViewModel(service: SettingsService(repository: LogSettingsRepository()))
         await settings.load()
         let choice = LogDestinationFixture()
-        let (window, root) = mounted(controller, settings: settings, l10n: l10n, destination: choice)
-        defer { choice.cancel(); controller.disconnect(); window.contentView = nil; window.close() }
+        let pasteboard = NSPasteboard.withUniqueName()
+        let (window, root) = mounted(controller, settings: settings, l10n: l10n, destination: choice, pasteboard: pasteboard)
+        defer { choice.cancel(); controller.disconnect(); window.contentView = nil; window.close(); pasteboard.releaseGlobally() }
         let profile = ServerProfile(name: "isolated", host: "example.invalid", username: "fixture", authentication: .agent)
         controller.connect(to: profile, settings: settings.settings)
         try await wait("Synthetic SSH did not connect") { controller.phase == .connected }
@@ -242,27 +263,36 @@ enum M101TerminalLoggingVerification {
         try await wait("Saving log switch did not resume active connection") { root.layoutSubtreeIfNeeded(); return logger.currentPhase == .recording }
         try await send("_CONTINUATION\r\nRECORDED_AGAIN\r\n", channel, controller)
         let resumed = asText(try await logger.snapshot())
-        try check(!resumed.contains("IGNORED") && !resumed.contains("_CONTINUATION") && resumed.contains("RECORDED_AGAIN"),
-            "Disabled output or its unfinished line leaked after resume")
+        try check(!resumed.contains("HELLO") && !resumed.contains("AFTER_VIM") && !resumed.contains("IGNORED")
+            && !resumed.contains("_CONTINUATION") && resumed.contains("RECORDED_AGAIN"),
+            "Settings restart included pre-pause or disabled output")
         guard let toggle = view.menu?.items.first(where: { $0.identifier?.rawValue == "dockshell.log.toggle" }),
               let toggleAction = toggle.action else { throw failure("Current-connection logging control is missing") }
         try check(NSApp.sendAction(toggleAction, to: toggle.target, from: toggle), "Pause menu action did not dispatch")
         try check(!logger.isRecordingEnabled && settings.settings.logEnabled, "Manual pause changed global preferences")
         try await send("MANUAL_PAUSE_OMITTED\r\n", channel, controller)
+        let paused = asText(try await logger.snapshot())
+        try check(paused.contains("RECORDED_AGAIN") && !paused.contains("MANUAL_PAUSE_OMITTED"),
+            "Pausing made the last recording unavailable or kept capturing")
         try check(NSApp.sendAction(toggleAction, to: toggle.target, from: toggle), "Resume menu action did not dispatch")
+        try check(!asText(try await logger.snapshot()).contains("RECORDED_AGAIN"),
+            "Restart did not replace the snapshot range before the next output")
         try await send("MANUAL_RESUMED\r\n", channel, controller)
         let manual = asText(try await logger.snapshot())
-        try check(manual.contains("MANUAL_RESUMED") && !manual.contains("MANUAL_PAUSE_OMITTED"), "Manual recording control failed")
+        try check(manual.contains("MANUAL_RESUMED") && !manual.contains("RECORDED_AGAIN")
+            && !manual.contains("MANUAL_PAUSE_OMITTED"), "Manual restart did not start a fresh recording")
         controller.setPresentationActive(false)
         try await send("BACKGROUND_OUTPUT\r\n", channel, controller)
         try check(asText(try await logger.snapshot()).contains("BACKGROUND_OUTPUT"), "Background terminal stopped logging")
         controller.setPresentationActive(true)
+        try await send("SNAPSHOT_TAIL 中文🙂", channel, controller)
+        try await menuSnapshot(window: window, view: view, logger: logger, directory: directory,
+                               channel: channel, controller: controller, l10n: l10n, choice: choice, pasteboard: pasteboard)
         edited.logLimitMB = 5
         try await settings.save(edited)
         root.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(30))
         try await outputLoad(channel: channel, controller: controller, logger: logger)
-        try await menuExport(window: window, view: view, logger: logger, directory: directory, channel: channel, controller: controller, l10n: l10n, choice: choice)
         try await send("FINAL_PARTIAL", channel, controller)
         controller.disconnect()
         await logger.finishAndWait()
@@ -303,24 +333,36 @@ enum M101TerminalLoggingVerification {
         print("PASS logging load: \(payload.utf8.count) input bytes and 20,000 Unicode lines retained exactly beyond scrollback; \(elapsed), largest UI heartbeat gap \(largestGap)")
     }
 
-    private static func menuExport(window: NSWindow, view: SwiftTerm.TerminalView, logger: TerminalLogController,
-                                   directory: URL, channel: LogSSHChannel, controller: SSHSessionController, l10n: L10n, choice: LogDestinationFixture) async throws {
+    private static func menuSnapshot(window: NSWindow, view: SwiftTerm.TerminalView, logger: TerminalLogController,
+                                     directory: URL, channel: LogSSHChannel, controller: SSHSessionController,
+                                     l10n: L10n, choice: LogDestinationFixture, pasteboard: NSPasteboard) async throws {
         guard let menu = view.menu, let item = menu.items.first(where: { $0.identifier?.rawValue == "dockshell.log.export" }),
-              let action = item.action else { throw failure("Log export context menu is missing") }
+              let action = item.action,
+              let copy = menu.items.first(where: { $0.identifier?.rawValue == "dockshell.log.copy" }),
+              let copyAction = copy.action else { throw failure("Log export or copy context menu is missing") }
         window.orderFront(nil)
         menu.update()
         try check(item.title == l10n.string(.logExport) && view.validateUserInterfaceItem(item), "Native export menu is disabled or not localized")
+        try check(menu.index(of: copy) == menu.index(of: item) + 1 && copy.title == l10n.string(.logCopy)
+            && view.validateUserInterfaceItem(copy), "Copy log menu is disabled, misplaced or not localized")
+        let expected = try await logger.snapshot()
+        let expectedText = asText(expected)
+        try check(expectedText.contains("MANUAL_RESUMED") && expectedText.hasSuffix("SNAPSHOT_TAIL 中文🙂")
+            && !expectedText.contains("RECORDED_AGAIN"), "Snapshot did not use the latest recording and current tail")
+        try check(NSApp.sendAction(copyAction, to: copy.target, from: copy), "Native log copy did not dispatch")
+        try await wait("Clipboard did not receive the current UTF-8 log as plain text") {
+            pasteboard.string(forType: .string) == expectedText
+        }
         try check(NSApp.sendAction(action, to: item.target, from: item), "Native log export action did not dispatch")
         try await wait("Log export did not request a destination") { choice.isChoosing }
-        try await send("AFTER_EXPORT_BOUNDARY\r\n", channel, controller)
+        try await send("\r\nAFTER_EXPORT_BOUNDARY\r\n", channel, controller)
         let destination = directory.appendingPathComponent("context-export.log")
         choice.complete(destination)
         try await waitAsync("Native menu export did not create its file") {
             await Task.detached { FileManager.default.fileExists(atPath: destination.path) }.value
         }
         let bytes = try await Task.detached { try Data(contentsOf: destination) }.value
-        try check(asText(bytes).contains("RECORDED_AGAIN") && !asText(bytes).contains("AFTER_EXPORT_BOUNDARY"),
-            "Native export did not freeze the log before opening its panel")
+        try check(bytes == expected, "Export did not match the copied log or changed after opening its panel")
         try check(logger.currentPhase == .recording, "Export stopped recording")
         // Give the action's defer a chance to re-enable the menu, then exercise cancellation.
         try await Task.sleep(for: .milliseconds(30))
@@ -334,7 +376,7 @@ enum M101TerminalLoggingVerification {
         try await wait("Existing export error was not visible") { logger.problem == .destinationExists }
         try check(logger.currentPhase == .recording, "Export error stopped terminal recording")
         logger.dismissProblem()
-        print("PASS right-click export pipeline: localized enabled native menu, destination choice, immutable boundary and cancellation without stopping recording")
+        print("PASS right-click log actions: copy follows export, both use the latest recording and Unicode tail, export freezes content before its panel and supports cancellation")
     }
 
     private static func local(helper: URL, directory: URL, l10n: L10n) async throws {
@@ -409,8 +451,11 @@ enum M101TerminalLoggingVerification {
         print("PASS failure isolation: visible log error, terminal IO remains connected and usable")
     }
 
-    private static func mounted(_ controller: any TerminalViewController, settings: TerminalSettingsViewModel, l10n: L10n, destination: (any TerminalLogExportDestinationChoosing)? = nil) -> (NSWindow, NSView) {
-        let root = NSHostingView(rootView: LogTerminalFixture(controller: controller, settings: settings, labels: l10n.terminalMenuLabels, destination: destination))
+    private static func mounted(_ controller: any TerminalViewController, settings: TerminalSettingsViewModel,
+                                l10n: L10n, destination: (any TerminalLogExportDestinationChoosing)? = nil,
+                                pasteboard: NSPasteboard? = nil) -> (NSWindow, NSView) {
+        let root = NSHostingView(rootView: LogTerminalFixture(controller: controller, settings: settings,
+            labels: l10n.terminalMenuLabels, destination: destination, pasteboard: pasteboard))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 500), styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false; window.contentView = root
         root.layoutSubtreeIfNeeded()

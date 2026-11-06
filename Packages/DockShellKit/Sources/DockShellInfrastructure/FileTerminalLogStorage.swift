@@ -41,6 +41,10 @@ private actor FileTerminalLogStore: TerminalLogStore {
     private let worker: TerminalLogFileWorker
     private let files: TerminalLogFiles
     init(worker: TerminalLogFileWorker, files: TerminalLogFiles) { self.worker = worker; self.files = files }
+    func beginRecording() async throws {
+        let files = files
+        try await worker.perform { try files.beginRecording() }
+    }
     func append(_ bytes: Data) async throws {
         guard String(data: bytes, encoding: .utf8) != nil else { throw TerminalLogError.writeFailed }
         let files = files
@@ -129,6 +133,8 @@ private final class TerminalLogFiles: @unchecked Sendable {
     private var directoryFD: Int32 = -1
     private var currentFD: Int32 = -1
     private var segments: [Segment] = []
+    /// Retained bytes preceding the latest recording, possibly within a segment.
+    private var earlierByteCount = 0
     private var sequence = 0
     private var rotated = false
     private var closed = false
@@ -151,6 +157,12 @@ private final class TerminalLogFiles: @unchecked Sendable {
         guard directoryFD >= 0 else { throw fail("Cannot open the connection log directory") }
         var info = stat()
         guard fstat(directoryFD, &info) == 0, info.st_uid == geteuid() else { throw fail("Unexpected log directory owner") }
+    }
+
+    func beginRecording() throws {
+        guard !closed, directoryFD >= 0 else { throw fail("Log store is closed") }
+        earlierByteCount = byteCount
+        rotated = false
     }
 
     func append(_ data: Data) throws {
@@ -189,14 +201,15 @@ private final class TerminalLogFiles: @unchecked Sendable {
     }
 
     private func trim() throws {
-        if byteCount > limit { rotated = true }
-        let budget = limit - (rotated ? truncation.count : 0)
+        var budget: Int { limit - (rotated ? truncation.count : 0) }
         while byteCount > budget, segments.count > 1 {
             let oldest = segments[0]
             try verify(oldest)
             guard unlinkat(directoryFD, oldest.name, 0) == 0 else { throw fail("Cannot remove an old log segment") }
             byteCount -= oldest.bytes
             segments.removeFirst()
+            if oldest.bytes > earlierByteCount { rotated = true }
+            earlierByteCount = max(0, earlierByteCount - oldest.bytes)
         }
         guard byteCount <= budget else { throw fail("Log capacity was exceeded") }
     }
@@ -210,9 +223,15 @@ private final class TerminalLogFiles: @unchecked Sendable {
     func snapshot(tail: TerminalLogTail) throws -> Data {
         guard directoryFD >= 0 else { throw fail("Log store is not initialized") }
         guard String(data: tail.data, encoding: .utf8) != nil else { throw fail("Pending log text is not valid UTF-8") }
+        let retainedBytes = byteCount - earlierByteCount
         var result = Data()
-        result.reserveCapacity(min(limit + segmentBytes, byteCount + tail.data.count))
+        result.reserveCapacity(min(limit + segmentBytes, retainedBytes + tail.data.count))
+        var preceding = earlierByteCount
         for segment in segments {
+            if preceding >= segment.bytes {
+                preceding -= segment.bytes
+                continue
+            }
             try verify(segment)
             let fd = openat(directoryFD, segment.name, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
             guard fd >= 0 else { throw fail("Cannot read a retained segment") }
@@ -220,13 +239,14 @@ private final class TerminalLogFiles: @unchecked Sendable {
             var info = stat()
             guard fstat(fd, &info) == 0, info.st_ino == segment.inode, info.st_dev == segment.device,
                   info.st_size == segment.bytes else { throw fail("A retained log segment changed") }
-            var remaining = segment.bytes
-            while remaining > 0 {
-                var buffer = [UInt8](repeating: 0, count: min(remaining, 65_536))
-                let count = read(fd, &buffer, buffer.count)
+            var offset = preceding
+            preceding = 0
+            while offset < segment.bytes {
+                var buffer = [UInt8](repeating: 0, count: min(segment.bytes - offset, 65_536))
+                let count = pread(fd, &buffer, buffer.count, off_t(offset))
                 if count < 0 && errno == EINTR { continue }
                 guard count > 0 else { throw fail("Cannot read a complete retained segment") }
-                result.append(contentsOf: buffer.prefix(count)); remaining -= count
+                result.append(contentsOf: buffer.prefix(count)); offset += count
             }
         }
         result.append(tail.data)
