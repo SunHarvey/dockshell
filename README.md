@@ -32,15 +32,15 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 
 ## 界面
 
-截图使用演示服务器与示例输出；工具栏等细节以当前版本为准。
+以下截图展示当前简体中文界面，使用演示服务器和示例终端输出。
 
 ### 多标签工作区
 
-![DockShell 多标签终端工作区](Docs/Images/terminal-tabs.png)
+![DockShell 服务器列表与多标签终端](Docs/Images/terminal-tabs.png)
 
 ### 左右并列分屏
 
-![DockShell 左右并列工作区](Docs/Images/terminal-split.png)
+![DockShell 服务器列表与左右并列终端](Docs/Images/terminal-split.png)
 
 ## 安装
 
