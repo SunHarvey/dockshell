@@ -2704,6 +2704,23 @@
         }
       }
     },
+    "log.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy Terminal Log"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制终端日志"
+          }
+        }
+      }
+    },
     "log.error.capture": {
       "extractionState": "manual",
       "localizations": {
@@ -2717,6 +2734,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "终端重绘内容未能可靠提取，日志记录已停止；仍可导出已保留的内容。"
+          }
+        }
+      }
+    },
+    "log.error.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not copy the terminal log. Try again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法复制终端日志，请重试。"
           }
         }
       }
@@ -2784,7 +2818,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当前连接暂无可导出的日志。"
+            "value": "当前连接暂无可用的日志。"
           }
         }
       }
@@ -2948,13 +2982,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Connection log started."
+            "value": "Terminal log recording started."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开始记录连接日志。"
+            "value": "开始记录终端日志。"
           }
         }
       }

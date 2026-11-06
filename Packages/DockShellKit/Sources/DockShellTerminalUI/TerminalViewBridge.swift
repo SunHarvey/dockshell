@@ -21,10 +21,11 @@ public struct TerminalMenuLabels: Sendable {
 }
 
 public struct TerminalLogMenuLabels: Sendable {
-    public let export, title, save, start, pause: String
+    public let export, copy, title, save, start, pause: String
     public let states: [TerminalLogPhase: String]
-    public init(export: String, title: String, save: String, start: String, pause: String, states: [TerminalLogPhase: String]) {
-        self.export = export; self.title = title; self.save = save; self.start = start; self.pause = pause; self.states = states
+    public init(export: String, copy: String, title: String, save: String, start: String, pause: String, states: [TerminalLogPhase: String]) {
+        self.export = export; self.copy = copy; self.title = title
+        self.save = save; self.start = start; self.pause = pause; self.states = states
     }
 }
 
@@ -73,8 +74,10 @@ public enum TerminalFonts {
 public enum TerminalViewBridge {
     public static func makeView(settings: TerminalSettings, labels: TerminalMenuLabels,
                                 callbacks: TerminalCallbacks,
-                                logExportDestination: (any TerminalLogExportDestinationChoosing)? = nil) throws -> NSView {
-        try DockShellTerminalView(settings: settings, labels: labels, callbacks: callbacks, logExportDestination: logExportDestination)
+                                logExportDestination: (any TerminalLogExportDestinationChoosing)? = nil,
+                                logCopyPasteboard: NSPasteboard? = nil) throws -> NSView {
+        try DockShellTerminalView(settings: settings, labels: labels, callbacks: callbacks,
+                                 logExportDestination: logExportDestination, logCopyPasteboard: logCopyPasteboard)
     }
 
     public static func apply(settings: TerminalSettings, to view: NSView) throws {
@@ -100,16 +103,19 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
     private let logMenuLabels: TerminalLogMenuLabels?
     private var logMenuDelegate: LogContextMenuDelegate?
     private var exportTask: Task<Void, Never>?
+    private var copyTask: Task<Void, Never>?
     private let logExportDestination: any TerminalLogExportDestinationChoosing
+    private let logCopyPasteboard: NSPasteboard?
 
     init(settings: TerminalSettings, labels: TerminalMenuLabels, callbacks: TerminalCallbacks,
-         logExportDestination: (any TerminalLogExportDestinationChoosing)?) throws {
+         logExportDestination: (any TerminalLogExportDestinationChoosing)?, logCopyPasteboard: NSPasteboard?) throws {
         let settings = try settings.validated()
         let font = try TerminalFonts.resolve(settings)
         bridgeDelegate = BridgeDelegate(callbacks: callbacks)
         configured = settings
         logMenuLabels = labels.logging
         self.logExportDestination = logExportDestination ?? NativeTerminalLogExportDestination()
+        self.logCopyPasteboard = logCopyPasteboard
         var options = TerminalOptions.default
         options.termName = "xterm-256color"
         options.scrollback = settings.scrollbackLines
@@ -155,9 +161,12 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
         let toggle = NSMenuItem(title: "", action: #selector(toggleLogging), keyEquivalent: "")
         toggle.identifier = .init("dockshell.log.toggle"); toggle.target = self
         menu.addItem(toggle)
-        let item = NSMenuItem(title: labels.export, action: #selector(exportLog), keyEquivalent: "")
-        item.identifier = .init("dockshell.log.export"); item.target = self
-        menu.addItem(item)
+        let export = NSMenuItem(title: labels.export, action: #selector(exportLog), keyEquivalent: "")
+        export.identifier = .init("dockshell.log.export"); export.target = self
+        menu.addItem(export)
+        let copy = NSMenuItem(title: labels.copy, action: #selector(copyLog), keyEquivalent: "")
+        copy.identifier = .init("dockshell.log.copy"); copy.target = self
+        menu.addItem(copy)
         let delegate = LogContextMenuDelegate(view: self)
         logMenuDelegate = delegate; menu.delegate = delegate
     }
@@ -204,6 +213,8 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
                 item.title = labels.states[logging?.currentPhase ?? .off] ?? ""
             } else if item.identifier?.rawValue == "dockshell.log.export" {
                 item.isEnabled = logging?.canExport == true && exportTask == nil
+            } else if item.identifier?.rawValue == "dockshell.log.copy" {
+                item.isEnabled = logging?.canExport == true && copyTask == nil
             } else if item.identifier?.rawValue == "dockshell.log.toggle" {
                 item.title = logging?.isRecordingEnabled == true ? labels.pause : labels.start
                 item.isEnabled = logging?.canChangeRecording == true
@@ -213,6 +224,7 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
 
     override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
         if item.action == #selector(exportLog) { return logging?.canExport == true && exportTask == nil }
+        if item.action == #selector(copyLog) { return logging?.canExport == true && copyTask == nil }
         if item.action == #selector(toggleLogging) { return logging?.canChangeRecording == true }
         return super.validateUserInterfaceItem(item)
     }
@@ -236,6 +248,22 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
                     labels: labels, window: window), !Task.isCancelled else { return }
                 try await logging.export(snapshot, to: destination)
             } catch { logging.reportExportFailure(error) }
+        }
+    }
+
+    @objc private func copyLog() {
+        guard copyTask == nil, let logging, logging.canExport else { return }
+        copyTask = Task { @MainActor [weak self] in
+            defer { self?.copyTask = nil }
+            do {
+                let snapshot = try await logging.snapshot()
+                guard let self, !Task.isCancelled else { return }
+                let pasteboard = self.logCopyPasteboard ?? .general
+                pasteboard.clearContents()
+                if !pasteboard.setData(snapshot, forType: .string) { logging.reportCopyFailure() }
+            } catch {
+                if !Task.isCancelled { logging.reportCopyFailure() }
+            }
         }
     }
 
@@ -311,6 +339,7 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
     func shutdown() {
         logExportDestination.cancel()
         exportTask?.cancel()
+        copyTask?.cancel()
         menu?.delegate = nil; logMenuDelegate = nil
         focusNotification?.cancel(); focusNotification = nil
         cancelSelectionDrag()
@@ -424,12 +453,15 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
     public let labels: TerminalMenuLabels
     public let onFocus: () -> Void
     public let logExportDestination: (any TerminalLogExportDestinationChoosing)?
+    private let logCopyPasteboard: NSPasteboard?
 
     public init(controller: any TerminalViewController, settings: TerminalSettings, labels: TerminalMenuLabels,
                 logExportDestination: (any TerminalLogExportDestinationChoosing)? = nil,
+                logCopyPasteboard: NSPasteboard? = nil,
                 onFocus: @escaping () -> Void = {}) {
         self.controller = controller; self.settings = settings; self.labels = labels
         self.onFocus = onFocus; self.logExportDestination = logExportDestination
+        self.logCopyPasteboard = logCopyPasteboard
     }
 
     public func makeCoordinator() -> any TerminalViewController { controller }
@@ -449,7 +481,7 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
                 }, onFocus: { [weak controller, source, onFocus] in
                     guard let controller, let surface = source.surface, controller.isAttached(to: surface) else { return }
                     onFocus()
-                }), logExportDestination: logExportDestination)
+                }), logExportDestination: logExportDestination, logCopyPasteboard: logCopyPasteboard)
             if let surface = view as? any TerminalSurface {
                 source.surface = surface
                 controller.attach(surface)

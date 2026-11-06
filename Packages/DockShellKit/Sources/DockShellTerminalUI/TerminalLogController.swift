@@ -74,7 +74,11 @@ public final class TerminalLogController: ObservableObject {
 
     private func updateCapture(changed: Bool, resized: Bool) {
         guard currentPhase != .failed else { return }
-        if changed && isRecordingEnabled && run == nil { createRun() }
+        if changed && isRecordingEnabled {
+            if let run { run.beginRecording() }
+            else { createRun() }
+        }
+        guard currentPhase != .failed else { return }
         surface?.setLogCapture(enabled: isRecordingEnabled, limit: settings.logLimitBytes)
         collect()
         guard currentPhase != .failed else { return }
@@ -111,6 +115,7 @@ public final class TerminalLogController: ObservableObject {
         pendingProblem = (error as? TerminalLogError) ?? .exportFailed
         publish()
     }
+    public func reportCopyFailure() { pendingProblem = .copyFailed; publish() }
     public func dismissProblem() { pendingProblem = nil; publish() }
 
     public func finish() {
@@ -179,6 +184,7 @@ public final class TerminalLogController: ObservableObject {
 final class TerminalLogRun {
     enum Operation {
         case events([TerminalLogEvent], Int)
+        case beginRecording(Date)
         case limit(Int)
         case snapshot(TerminalLogTail, CheckedContinuation<Data, any Error>)
         case close
@@ -213,6 +219,17 @@ final class TerminalLogRun {
            previousCost + cost <= 65_536 {
             queue[queue.count - 1] = .events(previous + events, previousCost + cost)
         } else { queue.append(.events(events, cost)) }
+        drain()
+    }
+    func beginRecording() {
+        guard !failed, !closing else { return }
+        let boundary = Operation.beginRecording(Date())
+        if let last = queue.last, case .beginRecording = last {
+            queue[queue.count - 1] = boundary
+        } else {
+            guard queue.count < 256 else { onError?(.queueFull); finish(incomplete: true); return }
+            queue.append(boundary)
+        }
         drain()
     }
     func setLimit(_ bytes: Int) {
@@ -252,6 +269,14 @@ final class TerminalLogRun {
                     case let .events(events, cost):
                         queuedBytes -= cost
                         if !failed { try await store?.append(format.encode(events)) }
+                    case let .beginRecording(date):
+                        do { try await store?.beginRecording() }
+                        catch {
+                            // A failed boundary must not expose the preceding recording.
+                            store = nil
+                            throw error
+                        }
+                        if !failed { try await store?.append(format.marker(format.labels.started, at: date)) }
                     case let .limit(bytes): try await store?.setLimit(bytes)
                     case let .snapshot(tail, continuation):
                         do {

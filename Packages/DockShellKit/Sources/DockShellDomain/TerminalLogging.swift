@@ -2,7 +2,7 @@ import Foundation
 
 /// Session-log failures contain neither credentials, terminal text nor private file paths.
 public enum TerminalLogError: Error, Equatable, Sendable {
-    case unavailable, writeFailed, queueFull, captureIncomplete, exportFailed, destinationExists, unsafeFile
+    case unavailable, writeFailed, queueFull, captureIncomplete, exportFailed, copyFailed, destinationExists, unsafeFile
 }
 
 /// Parsed display events, independent of SwiftTerm and the SSH implementation.
@@ -41,6 +41,8 @@ public struct TerminalLogLabels: Sendable {
 
 /// One connection's bounded text cache. Calls from its owner are ordered and awaited.
 public protocol TerminalLogStore: Sendable {
+    /// Starts a new snapshot range within the same connection and retention budget.
+    func beginRecording() async throws
     func append(_ bytes: Data) async throws
     func snapshot(tail: TerminalLogTail) async throws -> Data
     func setLimit(_ bytes: Int) async throws
