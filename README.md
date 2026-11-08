@@ -9,7 +9,7 @@
 
 DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集中在一个窗口中，支持简体中文与英文。
 
-**v0.4.2** 优化从源码启动的构建范围，验证工具按需编译，并清理源码编译警告。继续支持服务器管理、SSH / CSV 导入和原有终端功能，已有配置和凭据可继续使用。[版本说明](Docs/ReleaseNotes/v0.4.2.md)
+**v0.4.3** 新增终端日志一键复制，修复暂停后重新开始记录时的导出范围，并优化频繁启停时的日志分段。界面截图同步更新为当前服务器管理界面。[版本说明](Docs/ReleaseNotes/v0.4.3.md)
 
 [下载 DMG](https://github.com/SunHarvey/dockshell/releases/latest) · [功能](#功能) · [界面](#界面) · [安装](#安装) · [使用](#使用) · [从源码运行](#从源码运行)
 
@@ -25,7 +25,7 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 | 终端 | 256 色、TrueColor、鼠标、窗口尺寸同步、中文与 emoji 显示 |
 | SFTP | 右侧可收起面板，远程目录浏览、文件多选上传下载、进度、取消与传输队列 |
 | 批量命令 | 独立命令栏，将单行命令发送到全部已连接 SSH 标签，显示排队与跳过明细 |
-| 终端日志 | 默认记录，每连接保留最近 5 MB；容量可调，右键暂停、恢复或导出 UTF-8 文本 |
+| 终端日志 | 默认记录，每连接保留最近 5 MB；容量可调，右键暂停、开始、导出或复制，重新开始后读取新一轮日志 |
 | 连接与信任 | 首次主机指纹确认、主机密钥变化拦截、心跳检测、断线提示与手动重连 |
 | 本机 Shell | 使用当前用户默认交互式登录 Shell，从主目录启动 |
 | 设置 | 字体、字号、三套主题、滚屏历史和日志设置，保存后立即作用于已打开终端 |
@@ -45,7 +45,7 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 ## 安装
 
 - **系统要求：Apple Silicon（arm64），macOS 14 或更高版本。** macOS 14 实机仍待验证。
-- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.2-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.2/DockShell-0.4.2-arm64.dmg)**。
+- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.3-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.3/DockShell-0.4.3-arm64.dmg)**。
 - 打开 DMG，将左侧 **DockShell.app** 拖到右侧 **Applications（应用程序）**，复制完成后推出磁盘映像，再从应用程序启动。
 
 当前安装包采用 **ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证**，首次启动可能被 macOS 拦截。分发状态及人工待验范围见 [分发说明](Docs/M6/分发准备.md) 与 [验收记录](Docs/M6/验收矩阵.md)。

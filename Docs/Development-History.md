@@ -4,6 +4,14 @@
 
 原生 macOS SSH 终端客户端。Swift 6、SwiftUI / AppKit、SPM，最低系统 macOS 14。
 
+## 2026-11-08：v0.4.3 发布准备
+
+用户批准发布 **v0.4.3 / build 28**，Release 标题只使用 **v0.4.3**。功能来自已合并的 README 截图 PR #1 和终端日志 PR #2，合并后的 main 提交 `9875f4c` 已通过 CI。本轮同步应用版本、README 摘要、功能表、下载入口及 [发布说明](ReleaseNotes/v0.4.3.md)。
+
+终端日志支持右键复制，暂停后重新开始时，导出和复制共用新的记录起点。同一连接仍使用原有滚动容量，记录起点位于现有分段内。专项回归覆盖连续 256 次短记录共用一个分段、中文与 emoji、导出和剪贴板一致性及真实本机终端。
+
+发布沿用 SunHarvey 作者与 SSH 签名、Apple Silicon（arm64）及现有 Actions 流程，公开附件命名为 `DockShell-0.4.3-arm64.dmg`。实际发布状态与附件校验结果以工作流和公开下载验证为准。
+
 ## 2026-11-03：明确 Apple Silicon 支持范围
 
 用户明确产品仅面向 Apple Silicon（arm64），不考虑 Intel。移除发布说明生成器、README 及当前分发验收文档中把 Intel 列为待验目标的表述；系统要求统一为 Apple Silicon、macOS 14 或更高版本，继续如实保留 macOS 14 实机尚待验证的说明。早期技术比较与脚本中的多架构预留属于历史实现，不构成产品支持承诺。
