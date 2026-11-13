@@ -96,6 +96,8 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
     private let bridgeDelegate: BridgeDelegate
     private var configured: TerminalSettings
     private var focusNotification: Task<Void, Never>?
+    private var onReturn: (@MainActor () -> Bool)?
+    private var returnKeyMonitor: Any?
     private weak var logging: TerminalLogController?
     private var logCapture: TerminalTextCapture?
     private var logBoundaries = TerminalFeedBoundaries()
@@ -333,10 +335,39 @@ private final class DockShellTerminalView: SwiftTerm.TerminalView, TerminalSurfa
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        updateReturnKeyMonitor()
         if window != nil { focus() }
     }
 
+    func setReturnAction(_ action: (@MainActor () -> Bool)?) {
+        onReturn = action
+        updateReturnKeyMonitor()
+    }
+
+    private func updateReturnKeyMonitor() {
+        guard onReturn != nil, window != nil else {
+            if let returnKeyMonitor {
+                NSEvent.removeMonitor(returnKeyMonitor)
+                self.returnKeyMonitor = nil
+            }
+            return
+        }
+        guard returnKeyMonitor == nil else { return }
+        // Catch a physical Return before SwiftTerm translates it to terminal input.
+        // The window and responder checks keep text fields and other panes independent.
+        returnKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let window = self.window, event.window === window,
+                  window.firstResponder === self, !self.isHiddenOrHasHiddenAncestor,
+                  event.keyCode == 36 || event.keyCode == 76, // Return or keypad Enter
+                  event.modifierFlags.intersection([.shift, .control, .option, .command, .function]).isEmpty,
+                  !event.isARepeat, !self.hasMarkedText(),
+                  self.onReturn?() == true else { return event }
+            return nil
+        }
+    }
+
     func shutdown() {
+        setReturnAction(nil)
         logExportDestination.cancel()
         exportTask?.cancel()
         copyTask?.cancel()
@@ -454,14 +485,17 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
     public let onFocus: () -> Void
     public let logExportDestination: (any TerminalLogExportDestinationChoosing)?
     private let logCopyPasteboard: NSPasteboard?
+    private let onReturn: (@MainActor () -> Bool)?
 
     public init(controller: any TerminalViewController, settings: TerminalSettings, labels: TerminalMenuLabels,
                 logExportDestination: (any TerminalLogExportDestinationChoosing)? = nil,
                 logCopyPasteboard: NSPasteboard? = nil,
+                onReturn: (@MainActor () -> Bool)? = nil,
                 onFocus: @escaping () -> Void = {}) {
         self.controller = controller; self.settings = settings; self.labels = labels
         self.onFocus = onFocus; self.logExportDestination = logExportDestination
         self.logCopyPasteboard = logCopyPasteboard
+        self.onReturn = onReturn
     }
 
     public func makeCoordinator() -> any TerminalViewController { controller }
@@ -486,6 +520,7 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
                 source.surface = surface
                 controller.attach(surface)
             }
+            (view as? DockShellTerminalView)?.setReturnAction(onReturn)
             return view
         } catch {
             return NSTextField(labelWithString: labels.unavailable)
@@ -493,6 +528,7 @@ public struct TerminalViewRepresentable: NSViewRepresentable {
     }
 
     public func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? DockShellTerminalView)?.setReturnAction(onReturn)
         do { try TerminalViewBridge.apply(settings: settings, to: nsView) }
         catch { Task { @MainActor [weak controller] in controller?.settingsFailed() } }
         controller.logging?.apply(settings)

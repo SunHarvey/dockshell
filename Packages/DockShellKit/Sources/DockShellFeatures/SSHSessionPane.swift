@@ -10,6 +10,26 @@ struct SSHSessionPane: View {
     let l10n: L10n
     var onFocus: () -> Void = {}
 
+    private var canReconnect: Bool {
+        controller.profile != nil && (controller.phase == .disconnected || controller.phase == .failed)
+    }
+
+    private var connectionNotice: L10nKey? {
+        if let error = controller.error { return l10n.sshErrorKey(error) }
+        return canReconnect ? .sshDisconnected : nil
+    }
+
+    private var reconnectOnReturn: (@MainActor () -> Bool)? {
+        guard canReconnect else { return nil }
+        return { reconnectIfDisconnected() }
+    }
+
+    private func reconnectIfDisconnected() -> Bool {
+        guard canReconnect, prompts.hostRequest == nil, prompts.passwordRequest == nil else { return false }
+        controller.reconnect(settings: settings.settings)
+        return true
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if let logging = controller.logging { TerminalLogNotice(log: logging, l10n: l10n) }
@@ -22,17 +42,35 @@ struct SSHSessionPane: View {
                     Button(l10n.string(.ok)) { controller.dismissRecoveryNotice() }
                 }.padding(12).background(.tint.opacity(0.06))
             }
-            if let error = controller.error {
+            if let notice = connectionNotice {
+                let showsError = controller.error != nil
                 HStack(alignment: .top) {
-                    Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
-                    Text(verbatim: l10n.string(l10n.sshErrorKey(error))).font(.callout).textSelection(.enabled)
-                    Spacer()
-                    Button(l10n.string(.ok)) { controller.dismissError() }
-                }.padding(12).background(.orange.opacity(0.1))
+                    Image(systemName: showsError ? "exclamationmark.triangle" : "link")
+                        .foregroundStyle(showsError ? Color.orange : Color.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(verbatim: l10n.string(notice)).font(.callout).textSelection(.enabled)
+                        if canReconnect {
+                            Text(verbatim: l10n.string(.sshReconnectReturnHint))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }.fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    if showsError {
+                        Button(l10n.string(.ok)) { controller.dismissError() }
+                    }
+                    if canReconnect {
+                        Button(l10n.string(.sshReconnect)) {
+                            _ = reconnectIfDisconnected()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("dockshell.ssh.reconnect")
+                    }
+                }.padding(12).background(showsError ? Color.orange.opacity(0.1) : Color.secondary.opacity(0.06))
             }
             TerminalViewRepresentable(controller: controller,
                 settings: settings.settings,
-                labels: l10n.terminalMenuLabels, onFocus: onFocus)
+                labels: l10n.terminalMenuLabels,
+                onReturn: reconnectOnReturn, onFocus: onFocus)
                 .allowsHitTesting(prompts.hostRequest == nil && prompts.passwordRequest == nil)
                 .overlay {
                     // An overlay never increases the terminal's minimum height. A short

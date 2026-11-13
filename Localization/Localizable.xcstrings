@@ -5169,6 +5169,23 @@
         }
       }
     },
+    "ssh.reconnect.returnhint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press Enter in the terminal to reconnect."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在终端内按 Enter 重新连接。"
+          }
+        }
+      }
+    },
     "ssh.recovery.checking": {
       "extractionState": "manual",
       "localizations": {

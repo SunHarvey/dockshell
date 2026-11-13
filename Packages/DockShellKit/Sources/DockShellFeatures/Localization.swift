@@ -185,6 +185,7 @@ public enum L10nKey: String, CaseIterable, Sendable {
     case tabClose = "tab.close"
     case tabAttention = "tab.attention"
     case sshReconnect = "ssh.reconnect"
+    case sshReconnectReturnHint = "ssh.reconnect.returnhint"
     case sshPassphraseTitle = "ssh.passphrase.title"
     case sshPassphraseHelp = "ssh.passphrase.help"
     case sshWakeChecking = "ssh.recovery.checking"
