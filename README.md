@@ -9,7 +9,7 @@
 
 DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集中在一个窗口中，支持简体中文与英文。
 
-**v0.4.3** 新增终端日志一键复制，修复暂停后重新开始记录时的导出范围，并优化频繁启停时的日志分段。界面截图同步更新为当前服务器管理界面。[版本说明](Docs/ReleaseNotes/v0.4.3.md)
+**v0.4.4** 新增断线终端内按 **Enter** 重连，以及断线提示条中的 **重新连接** 按钮。关闭错误详情后仍可重连，连接在原标签中重新建立。[版本说明](Docs/ReleaseNotes/v0.4.4.md)
 
 [下载 DMG](https://github.com/SunHarvey/dockshell/releases/latest) · [功能](#功能) · [界面](#界面) · [安装](#安装) · [使用](#使用) · [从源码运行](#从源码运行)
 
@@ -26,7 +26,7 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 | SFTP | 右侧可收起面板，远程目录浏览、文件多选上传下载、进度、取消与传输队列 |
 | 批量命令 | 独立命令栏，将单行命令发送到全部已连接 SSH 标签，显示排队与跳过明细 |
 | 终端日志 | 默认记录，每连接保留最近 5 MB；容量可调，右键暂停、开始、导出或复制，重新开始后读取新一轮日志 |
-| 连接与信任 | 首次主机指纹确认、主机密钥变化拦截、心跳检测、断线提示与手动重连 |
+| 连接与信任 | 首次主机指纹确认、主机密钥变化拦截、心跳检测、断线提示，Enter 或鼠标重连 |
 | 本机 Shell | 使用当前用户默认交互式登录 Shell，从主目录启动 |
 | 设置 | 字体、字号、三套主题、滚屏历史和日志设置，保存后立即作用于已打开终端 |
 
@@ -45,7 +45,7 @@ DockShell 将服务器配置、SSH 终端标签、分屏和远程文件面板集
 ## 安装
 
 - **系统要求：Apple Silicon（arm64），macOS 14 或更高版本。** macOS 14 实机仍待验证。
-- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.3-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.3/DockShell-0.4.3-arm64.dmg)**。
+- 打开 [Releases](https://github.com/SunHarvey/dockshell/releases/latest)，在 **Assets** 下载 `DockShell-版本号-架构.dmg`，例如 **[DockShell-0.4.4-arm64.dmg](https://github.com/SunHarvey/dockshell/releases/download/v0.4.4/DockShell-0.4.4-arm64.dmg)**。
 - 打开 DMG，将左侧 **DockShell.app** 拖到右侧 **Applications（应用程序）**，复制完成后推出磁盘映像，再从应用程序启动。
 
 当前安装包采用 **ad-hoc 签名，尚未获得 Developer ID 签名和 Apple 公证**，首次启动可能被 macOS 拦截。分发状态及人工待验范围见 [分发说明](Docs/M6/分发准备.md) 与 [验收记录](Docs/M6/验收矩阵.md)。
@@ -102,6 +102,8 @@ db-01,192.0.2.13,22,ubuntu,key,~/.ssh/id_ed25519
 - **⋯**：设置、当前连接操作、手动重连与批量命令；悬停按钮可查看用途。
 
 网络恢复后，在断线终端内按 **Enter**，或点击提示条里的 **重新连接**，即可在原标签建立新的 SSH 会话。关闭错误详情后仍可用这两种方式重连。
+
+按键重连作用于当前获得焦点的断线终端，支持主键盘 Return 和数字键盘 Enter。重连会使用该标签的服务器配置重新认证并建立新的远端 Shell。睡眠唤醒后，已有连接由心跳判断是否断开；断线后可手动重连。[连接恢复说明](Docs/M5/私钥Agent与连接恢复.md)
 
 拖动标签调整顺序，编号始终从左到右自 1 开始。点击标签的 **×** 只关闭对应连接。分组管理位于侧栏“分组”标题右侧。
 
