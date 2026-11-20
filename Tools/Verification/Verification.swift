@@ -128,9 +128,17 @@ private enum DockShellVerification {
         print("PASS SwiftTerm resources: explicit application bundle, no build-path fallback")
         let helperURL = appURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")
         let environment = ProcessInfo.processInfo.environment
-        let specialModes = ["DOCKSHELL_CSV_IMPORT_TEST", "DOCKSHELL_SERVER_IMPORT_TEST", "DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
+        let specialModes = ["DOCKSHELL_CSV_IMPORT_TEST", "DOCKSHELL_SERVER_IMPORT_TEST", "DOCKSHELL_PERFORMANCE_TEST", "DOCKSHELL_NETWORK_RENDER_TEST", "DOCKSHELL_KEYCHAIN_RESTART_TEST", "DOCKSHELL_TABS_TEST", "DOCKSHELL_MIXED_TERMINALS_TEST", "DOCKSHELL_SPLIT_TEST", "DOCKSHELL_REORDER_TEST", "DOCKSHELL_LOCAL_TERMINAL_TEST", "DOCKSHELL_SFTP_TEST", "DOCKSHELL_SFTP_REMOTE_TEST", "DOCKSHELL_SFTP_BROWSER_TEST", "DOCKSHELL_SFTP_TRANSFER_TEST", "DOCKSHELL_TERMINAL_SETTINGS_TEST", "DOCKSHELL_TERMINAL_LOG_TEST", "DOCKSHELL_BATCH_COMMAND_TEST"]
             .filter { environment[$0] == "1" }
         try require(specialModes.count <= 1, "Run each optional verification mode in a separate process")
+        if environment["DOCKSHELL_MIXED_TERMINALS_TEST"] == "1" {
+            try await MixedTerminalTabsVerification.run()
+            if arguments.contains("--ui-smoke") {
+                try await MixedTerminalTabsVerification.runUI(l10n: chinese)
+                try await MixedTerminalTabsVerification.runUI(l10n: english)
+            }
+            return
+        }
         if environment["DOCKSHELL_CSV_IMPORT_TEST"] == "1" {
             try require(arguments.contains("--ui-smoke"), "CSV verification requires AppKit")
             try await M122CSVVerification.run()
@@ -279,6 +287,7 @@ private enum DockShellVerification {
         try await M6PersistenceSafetyVerification.run()
         try await M6KeychainRestartVerification.verifyScopeGuards()
         try await M7TabsVerification.run()
+        try await MixedTerminalTabsVerification.run()
         try TerminalGridLayoutVerification.run()
         try await M8SplitVerification.run()
         try await LocalTerminalControllerVerification.run()
@@ -298,6 +307,7 @@ private enum DockShellVerification {
             try await TerminalAdapterVerification.run()
             try await M7WorkspaceUIVerification.run(service: service, l10n: chinese)
             try await M7TabBarVerification.run()
+            try await MixedTerminalTabsVerification.runUI(l10n: chinese)
             try await M8SplitUIVerification.run(service: service, l10n: chinese)
             try await M91SFTPBrowserUIVerification.run(l10n: chinese)
             try await M92TransferUIVerification.run(l10n: chinese)
@@ -311,8 +321,7 @@ private enum DockShellVerification {
         let model = WorkspaceViewModel(service: service)
         await model.load()
         let settings = TerminalSettingsViewModel(service: SettingsService(repository: UserDefaultsSettingsRepository()))
-        let terminal = LocalTerminalController(factory: VerificationLocalTerminalFactory())
-        let view = NSHostingView(rootView: WorkspaceView(model: model, l10n: l10n, terminal: terminal,
+        let view = NSHostingView(rootView: WorkspaceView(model: model, l10n: l10n,
             settings: settings, tabs: TerminalTabsViewModel(factory: VerificationTerminalSessionFactory())))
         view.frame = NSRect(x: 0, y: 0, width: 1080, height: 720)
         view.layoutSubtreeIfNeeded()

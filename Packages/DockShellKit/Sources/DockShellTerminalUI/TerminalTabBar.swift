@@ -42,6 +42,11 @@ public struct TerminalTabBarRepresentable: NSViewRepresentable {
     /// Shared strip height for ordinary tabs and tiled terminal labels.
     public static let preferredHeight: CGFloat = 32
 
+    /// Content width lets a new-tab menu sit directly after the final visible label.
+    public static func preferredWidth(itemCount: Int) -> CGFloat {
+        NativeTerminalTabBar.preferredWidth(itemCount: itemCount)
+    }
+
     public let items: [TerminalTabBarItem]
     public let selectedID: UUID?
     public let labels: TerminalTabBarLabels
@@ -94,6 +99,9 @@ private final class NativeTerminalTabBar: NSView {
     private static let tabHeight: CGFloat = 28
     private static let spacing: CGFloat = 6
     private static let verticalInset: CGFloat = 2
+    static func preferredWidth(itemCount: Int) -> CGFloat {
+        16 + CGFloat(itemCount) * tabWidth + CGFloat(max(0, itemCount - 1)) * spacing
+    }
     private let scroll = NSScrollView()
     private let stack = NSStackView()
     private var cells: [UUID: NativeTerminalTabCell] = [:]

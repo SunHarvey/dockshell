@@ -2,20 +2,77 @@ import AppKit
 import DockShellTerminalUI
 import SwiftUI
 
+@MainActor
+private func terminalTabItem(_ tab: TerminalWorkspaceTab, ordinal: Int, l10n: L10n) -> TerminalTabBarItem {
+    switch tab.content {
+    case .ssh(let session):
+        let profile = session.controller.profile
+        let phase = l10n.string(l10n.sshPhaseKey(session.controller.phase))
+        let endpoint = profile.map { $0.username + "@" + $0.host + ":" + String($0.port) } ?? ""
+        return TerminalTabBarItem(id: tab.id, title: profile?.name ?? "", tooltip: endpoint + " · " + phase,
+            phase: session.controller.phase, needsAttention: session.needsAttention, ordinal: ordinal)
+    case .local(let controller):
+        let phase: SSHSessionPhase
+        let detail: L10nKey
+        switch controller.phase {
+        case .idle:
+            phase = .idle
+            detail = .localTerminalTitle
+        case .starting:
+            phase = .connecting
+            detail = .localTerminalStarting
+        case .running:
+            phase = .connected
+            detail = .localTerminalRunning
+        case .exited:
+            phase = .disconnected
+            detail = .localTerminalExited
+        case .failed:
+            phase = .failed
+            detail = .localTerminalExited
+        }
+        let title = l10n.string(.localTerminalTitle)
+        return TerminalTabBarItem(id: tab.id, title: title, tooltip: title + " · " + l10n.string(detail),
+                                  phase: phase, needsAttention: controller.error != nil, ordinal: ordinal)
+    }
+}
+
+/// The content branch is stable for the entire tab lifetime, including layout changes.
+@MainActor
+private struct TerminalTabBody: View {
+    let tab: TerminalWorkspaceTab
+    let settings: TerminalSettingsViewModel
+    let l10n: L10n
+    let onFocus: () -> Void
+
+    var body: some View {
+        switch tab.content {
+        case .ssh(let session):
+            SSHSessionPane(controller: session.controller, prompts: session.prompts,
+                           settings: settings, l10n: l10n, onFocus: onFocus)
+        case .local(let controller):
+            LocalTerminalPane(controller: controller, settings: settings, l10n: l10n, onFocus: onFocus)
+        }
+    }
+}
+
 /// Existing connections have one stable tab identity. Tiled modes change only their
 /// frames: it does not manufacture tabs, replace terminal views or start authentication.
 public struct TerminalTabsPane: View {
     @ObservedObject private var model: TerminalTabsViewModel
     @ObservedObject private var settings: TerminalSettingsViewModel
     private let l10n: L10n
+    private let newTerminalMenu: AnyView?
 
-    public init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n) {
+    public init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n,
+                newTerminalMenu: AnyView? = nil) {
         self.model = model; self.settings = settings; self.l10n = l10n
+        self.newTerminalMenu = newTerminalMenu
     }
 
     public var body: some View {
         FileWorkspaceRepresentable(model: model, settings: settings, l10n: l10n,
-            visibleSession: model.showsSelectedFiles ? model.selectedSession : nil)
+            visibleSession: model.showsSelectedFiles ? model.selectedSession : nil, newTerminalMenu: newTerminalMenu)
     }
 }
 
@@ -27,13 +84,14 @@ private struct FileWorkspaceRepresentable: NSViewRepresentable {
     let settings: TerminalSettingsViewModel
     let l10n: L10n
     let visibleSession: TerminalTabSession?
+    let newTerminalMenu: AnyView?
 
     func makeNSView(context: Context) -> NativeFileWorkspaceSplit {
-        NativeFileWorkspaceSplit(model: model, settings: settings, l10n: l10n)
+        NativeFileWorkspaceSplit(model: model, settings: settings, l10n: l10n, newTerminalMenu: newTerminalMenu)
     }
 
     func updateNSView(_ view: NativeFileWorkspaceSplit, context: Context) {
-        view.update(model: model, settings: settings, l10n: l10n, session: visibleSession)
+        view.update(model: model, settings: settings, l10n: l10n, session: visibleSession, newTerminalMenu: newTerminalMenu)
     }
 }
 
@@ -45,8 +103,9 @@ private final class NativeFileWorkspaceSplit: NSSplitView, NSSplitViewDelegate {
     private var preferredFileWidth: CGFloat = 380
     private var arranging = false
 
-    init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n) {
-        terminalHost = NSHostingView(rootView: TerminalTabsContent(model: model, settings: settings, l10n: l10n))
+    init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n, newTerminalMenu: AnyView?) {
+        terminalHost = NSHostingView(rootView: TerminalTabsContent(model: model, settings: settings, l10n: l10n,
+                                                                 newTerminalMenu: newTerminalMenu))
         super.init(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
         isVertical = true
         dividerStyle = .thin
@@ -59,8 +118,9 @@ private final class NativeFileWorkspaceSplit: NSSplitView, NSSplitViewDelegate {
     required init?(coder: NSCoder) { nil }
 
     func update(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel,
-                l10n: L10n, session: TerminalTabSession?) {
-        terminalHost.rootView = TerminalTabsContent(model: model, settings: settings, l10n: l10n)
+                l10n: L10n, session: TerminalTabSession?, newTerminalMenu: AnyView?) {
+        terminalHost.rootView = TerminalTabsContent(model: model, settings: settings, l10n: l10n,
+                                                   newTerminalMenu: newTerminalMenu)
         guard let session, let files = session.files else {
             if let fileHost {
                 removeArrangedSubview(fileHost)
@@ -122,9 +182,11 @@ private struct TerminalTabsContent: View {
     @ObservedObject private var model: TerminalTabsViewModel
     @ObservedObject private var settings: TerminalSettingsViewModel
     private let l10n: L10n
+    let newTerminalMenu: AnyView?
 
-    public init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n) {
+    init(model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n, newTerminalMenu: AnyView?) {
         self.model = model; self.settings = settings; self.l10n = l10n
+        self.newTerminalMenu = newTerminalMenu
     }
 
     public var body: some View {
@@ -132,17 +194,20 @@ private struct TerminalTabsContent: View {
             // A connection's existing tab appears either here or in its grid cell.
             // There is no second, grouped tab or duplicate row of connection labels.
             if !model.isTiled {
-                TerminalTabBarRepresentable(items: items, selectedID: model.selectedID,
-                    labels: TerminalTabBarLabels(close: l10n.string(.tabClose), select: l10n.string(.tabSelect),
-                                                 attention: l10n.string(.tabAttention)),
-                    reorderingID: model.reorderingID,
-                    onSelect: selectTerminal, onClose: { model.close(id: $0) },
-                    onMove: { model.move(id: $0, to: $1) })
-                    .frame(height: TerminalTabBarRepresentable.preferredHeight)
+                GeometryReader { geometry in
+                    HStack(spacing: 2) {
+                        tabBar.frame(width: newTerminalMenu == nil ? geometry.size.width : min(
+                            TerminalTabBarRepresentable.preferredWidth(itemCount: model.tabs.count),
+                            max(0, geometry.size.width - 36)))
+                        if let newTerminalMenu { newTerminalMenu.frame(width: 28, height: 28) }
+                        Spacer(minLength: 0)
+                    }
+                }
+                .frame(height: TerminalTabBarRepresentable.preferredHeight)
                 Divider()
             }
-            PersistentTerminalsRepresentable(sessionIDs: model.allSessions.map(\.id),
-                sessions: model.allSessions, selectedID: model.selectedID, arrangement: model.arrangement,
+            PersistentTerminalsRepresentable(sessionIDs: model.tabs.map(\.id),
+                sessions: model.tabs, selectedID: model.selectedID, arrangement: model.arrangement,
                 model: model, settings: settings, l10n: l10n)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if model.showsBatchCommands {
@@ -157,22 +222,20 @@ private struct TerminalTabsContent: View {
         model.select(id: id)
         // Reselecting the current label should return from a sidebar control to
         // its terminal. Pending authentication retains its own field-editor focus.
-        if wasSelected, let session = model.selectedSession,
-           session.prompts.hostRequest == nil, session.prompts.passwordRequest == nil {
-            session.controller.focusTerminal()
-        }
+        if wasSelected { model.selectedTab?.focusTerminal() }
+    }
+
+    private var tabBar: some View {
+        TerminalTabBarRepresentable(items: items, selectedID: model.selectedID,
+            labels: TerminalTabBarLabels(close: l10n.string(.tabClose), select: l10n.string(.tabSelect),
+                                         attention: l10n.string(.tabAttention)),
+            reorderingID: model.reorderingID,
+            onSelect: selectTerminal, onClose: { model.close(id: $0) },
+            onMove: { model.move(id: $0, to: $1) })
     }
 
     private var items: [TerminalTabBarItem] {
-        model.allSessions.enumerated().map { index, session in
-            let profile = session.controller.profile
-            let phase = l10n.string(l10n.sshPhaseKey(session.controller.phase))
-            let endpoint = profile.map { $0.username + "@" + $0.host + ":" + String($0.port) } ?? ""
-            return TerminalTabBarItem(id: session.id, title: profile?.name ?? "", tooltip: endpoint + " · " + phase,
-                phase: session.controller.phase,
-                needsAttention: session.needsAttention,
-                ordinal: index + 1)
-        }
+        model.tabs.enumerated().map { index, tab in terminalTabItem(tab, ordinal: index + 1, l10n: l10n) }
     }
 }
 
@@ -180,48 +243,39 @@ private struct TerminalTabsContent: View {
 /// not need to invalidate the native host's geometry or recreate its content.
 @MainActor
 private struct TerminalPaneTabStrip: View {
-    let session: TerminalTabSession
-    @ObservedObject var controller: SSHSessionController
-    @ObservedObject var prompts: SSHConnectionPrompts
+    let tab: TerminalWorkspaceTab
     @ObservedObject var model: TerminalTabsViewModel
     let l10n: L10n
 
     var body: some View {
-        let profile = controller.profile
-        let phase = l10n.string(l10n.sshPhaseKey(controller.phase))
-        let endpoint = profile.map { $0.username + "@" + $0.host + ":" + String($0.port) } ?? ""
-        let item = TerminalTabBarItem(id: session.id, title: profile?.name ?? "", tooltip: endpoint + " · " + phase,
-            phase: controller.phase, needsAttention: session.needsAttention,
-            ordinal: model.ordinal(for: session.id) ?? 1)
-        TerminalTabBarRepresentable(items: [item], selectedID: model.selectedID == session.id ? session.id : nil,
+        let item = terminalTabItem(tab, ordinal: model.ordinal(for: tab.id) ?? 1, l10n: l10n)
+        TerminalTabBarRepresentable(items: [item], selectedID: model.selectedID == tab.id ? tab.id : nil,
             labels: TerminalTabBarLabels(close: l10n.string(.sshClose), select: l10n.string(.tabSelect),
                                          attention: l10n.string(.tabAttention)),
             identifierPrefix: "dockshell.pane", fitsSingleTabToWidth: true,
             reorderingID: model.reorderingID,
             onSelect: { id in
                 model.activatePane(id: id)
-                if prompts.hostRequest == nil && prompts.passwordRequest == nil { controller.focusTerminal() }
+                tab.focusTerminal()
             }, onClose: { model.closePane(id: $0) }, onMove: { model.move(id: $0, to: $1) })
     }
 }
 
-/// Every terminal has this parent from initial mounting until its own connection closes.
-/// Mode changes expose the same connection label and resize the same SSH body host.
+/// Every local or remote terminal keeps its native parent until that tab closes.
 @MainActor
 private final class NativeTerminalPaneView: NSView {
-    let session: TerminalTabSession
-    let bodyHost: NSHostingView<SSHSessionPane>
+    let session: TerminalWorkspaceTab
+    let bodyHost: NSHostingView<TerminalTabBody>
     private let tabHost: NSHostingView<TerminalPaneTabStrip>
     private var showsTab = false
     private var activeInGrid = false
 
-    init(session: TerminalTabSession, model: TerminalTabsViewModel,
+    init(session: TerminalWorkspaceTab, model: TerminalTabsViewModel,
          settings: TerminalSettingsViewModel, l10n: L10n) {
         self.session = session
-        bodyHost = NSHostingView(rootView: SSHSessionPane(controller: session.controller, prompts: session.prompts,
-            settings: settings, l10n: l10n, onFocus: { [weak model] in model?.activatePane(id: session.id) }))
-        tabHost = NSHostingView(rootView: TerminalPaneTabStrip(session: session, controller: session.controller,
-            prompts: session.prompts, model: model, l10n: l10n))
+        bodyHost = NSHostingView(rootView: TerminalTabBody(tab: session, settings: settings, l10n: l10n,
+            onFocus: { [weak model] in model?.activatePane(id: session.id) }))
+        tabHost = NSHostingView(rootView: TerminalPaneTabStrip(tab: session, model: model, l10n: l10n))
         super.init(frame: NSRect(x: 0, y: 0, width: 640, height: 400))
         identifier = NSUserInterfaceItemIdentifier("dockshell.terminal-pane." + session.id.uuidString)
         bodyHost.identifier = NSUserInterfaceItemIdentifier("dockshell.terminal-body." + session.id.uuidString)
@@ -275,7 +329,7 @@ private final class NativeTerminalPaneView: NSView {
 private struct PersistentTerminalsRepresentable: NSViewRepresentable {
     // Explicit values make mode/order/selection updates observable despite stable models.
     let sessionIDs: [UUID]
-    let sessions: [TerminalTabSession]
+    let sessions: [TerminalWorkspaceTab]
     let selectedID: UUID?
     let arrangement: TerminalArrangement
     let model: TerminalTabsViewModel
@@ -315,7 +369,7 @@ private final class PersistentTerminalGridView: NSView {
     override var isFlipped: Bool { true }
     override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: NSView.noIntrinsicMetric) }
 
-    func update(ids: [UUID], sessions: [TerminalTabSession], selectedID nextID: UUID?, arrangement nextArrangement: TerminalArrangement,
+    func update(ids: [UUID], sessions: [TerminalWorkspaceTab], selectedID nextID: UUID?, arrangement nextArrangement: TerminalArrangement,
                 model: TerminalTabsViewModel, settings: TerminalSettingsViewModel, l10n: L10n) {
         let changed = selectedID != nextID || arrangement != nextArrangement || order != ids
         if selectedID != nextID {
@@ -370,10 +424,10 @@ private final class PersistentTerminalGridView: NSView {
         focusTask = Task { [weak self] in
             await Task.yield()
             guard !Task.isCancelled, let self, self.selectedID == id, let pane = self.panes[id], !pane.isHidden,
-                  pane.session.prompts.hostRequest == nil, pane.session.prompts.passwordRequest == nil else { return }
+                  !pane.session.isAwaitingAuthentication else { return }
             self.layoutSubtreeIfNeeded()
             if !Self.containsResponder(self.window?.firstResponder, in: pane.bodyHost) {
-                pane.session.controller.focusTerminal()
+                pane.session.focusTerminal()
             }
         }
     }

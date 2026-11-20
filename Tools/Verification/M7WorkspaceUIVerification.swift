@@ -162,17 +162,19 @@ enum M7WorkspaceUIVerification {
         await catalog.load()
         let settings = TerminalSettingsViewModel(service: SettingsService(repository: M7UISettings()))
         await settings.load()
-        let offline = LocalTerminalController(factory: VerificationLocalTerminalFactory())
         let root = NSHostingView(rootView: WorkspaceView(model: catalog, l10n: l10n,
-            terminal: offline, settings: settings, tabs: tabs))
+            settings: settings, tabs: tabs))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = root
-        window.alphaValue = interactive ? 1 : 0
-        window.orderFront(nil)
+        // List selection needs a visible, active target for the native pointer event.
+        window.alphaValue = 1
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate()
         let interactiveDeadline = ContinuousClock.now.advanced(by: .seconds(120))
-        defer { tabs.closeAll(); offline.stop(); window.orderOut(nil); window.contentView = nil; window.close() }
+        defer { tabs.closeAll(); window.orderOut(nil); window.contentView = nil; window.close() }
+        try await waitUntil("The sidebar test window did not become active") { window.isKeyWindow && NSApp.isActive }
         try await waitUntil("The native sidebar did not expose both disposable profiles") {
             root.layoutSubtreeIfNeeded()
             guard !catalog.isLoading, let table = sidebarTable(in: root) else { return false }
@@ -269,9 +271,8 @@ enum M7WorkspaceUIVerification {
                                          settings: TerminalSettingsViewModel, service: WorkspaceService,
                                          l10n: L10n) async throws -> Lifetimes {
         let catalog = WorkspaceViewModel(service: service)
-        let offline = LocalTerminalController(factory: VerificationLocalTerminalFactory())
         let root = NSHostingView(rootView: AnyView(WorkspaceView(model: catalog, l10n: l10n,
-            terminal: offline, settings: settings, tabs: tabs)))
+            settings: settings, tabs: tabs)))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 720),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -279,7 +280,6 @@ enum M7WorkspaceUIVerification {
         defer {
             window.makeFirstResponder(nil)
             tabs.closeAll()
-            offline.stop()
             // Explicitly unmount the hosted graph before the AppKit window is closed.
             // SwiftUI on older systems may retain a detached root until a later render.
             root.rootView = AnyView(EmptyView())
@@ -300,18 +300,18 @@ enum M7WorkspaceUIVerification {
         let a = tabs.open(profile: profile, settings: .defaults)
         try await waitUntil("The first workspace terminal did not connect") {
             root.layoutSubtreeIfNeeded()
-            return tabs.tabs.first?.controller.phase == .connected
+            return tabs.selectedSession?.controller.phase == .connected
         }
-        guard let first = tabs.tabs.first, let firstView = surfaceView(in: root, controller: first.controller) else {
+        guard let first = tabs.tabs.first?.session, let firstView = surfaceView(in: root, controller: first.controller) else {
             throw failure("The first workspace terminal surface was not mounted")
         }
         let firstIdentity = ObjectIdentifier(firstView)
         let b = tabs.open(profile: profile, settings: .defaults)
         try await waitUntil("The second independent terminal did not connect") {
             root.layoutSubtreeIfNeeded()
-            return tabs.tabs.count == 2 && tabs.tabs[1].controller.phase == .connected
+            return tabs.tabs.count == 2 && tabs.tabs[1].session?.controller.phase == .connected
         }
-        let second = tabs.tabs[1]
+        guard let second = tabs.tabs[1].session else { throw failure("SSH fixture lost its session") }
         guard let secondView = surfaceView(in: root, controller: second.controller) else {
             throw failure("The second workspace terminal surface was not mounted")
         }

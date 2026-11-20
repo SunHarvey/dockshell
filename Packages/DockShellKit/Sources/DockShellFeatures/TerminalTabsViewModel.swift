@@ -10,6 +10,12 @@ public protocol TerminalSessionFactory: AnyObject {
     func makeSession() -> TerminalTabSession
 }
 
+/// Supplies a fresh local shell presentation, including its independent log lifetime.
+@MainActor
+public protocol LocalTerminalSessionFactory: AnyObject {
+    func makeLocalTerminal() -> LocalTerminalController
+}
+
 /// One terminal and its optional independent file browser, with stable tab identity.
 /// Layout changes never replace their controllers, authentication decisions or transports.
 @MainActor
@@ -32,22 +38,63 @@ public final class TerminalTabSession: Identifiable {
     }
 }
 
-/// One tab owns one terminal session and its optional file browser, including while tiled.
-/// Keeping this wrapper preserves existing tab callers without introducing split groups.
+/// Owns one SSH or local terminal, with stable identity throughout tab and tiled layouts.
 @MainActor
 public final class TerminalWorkspaceTab: Identifiable {
+    public enum Content {
+        case ssh(TerminalTabSession)
+        case local(LocalTerminalController)
+    }
+
     public let id: UUID
-    public let session: TerminalTabSession
+    public let content: Content
 
-    fileprivate init(session: TerminalTabSession) { id = session.id; self.session = session }
+    fileprivate init(session: TerminalTabSession) { id = session.id; content = .ssh(session) }
+    fileprivate init(local: LocalTerminalController) { id = UUID(); content = .local(local) }
 
-    public var activeSession: TerminalTabSession { session }
-    public var controller: SSHSessionController { session.controller }
-    public var prompts: SSHConnectionPrompts { session.prompts }
+    public var session: TerminalTabSession? {
+        guard case .ssh(let session) = content else { return nil }
+        return session
+    }
+
+    public var localController: LocalTerminalController? {
+        guard case .local(let controller) = content else { return nil }
+        return controller
+    }
+
+    public var isAwaitingAuthentication: Bool {
+        session?.prompts.hostRequest != nil || session?.prompts.passwordRequest != nil
+    }
+
+    func setPresentationActive(_ active: Bool) {
+        switch content {
+        case .ssh(let session): session.controller.setPresentationActive(active)
+        case .local(let controller): controller.setPresentationActive(active)
+        }
+    }
+
+    func focusTerminal() {
+        guard !isAwaitingAuthentication else { return }
+        switch content {
+        case .ssh(let session): session.controller.focusTerminal()
+        case .local(let controller): controller.focusTerminal()
+        }
+    }
+
+    func close() {
+        setPresentationActive(false)
+        switch content {
+        case .ssh(let session):
+            session.prompts.cancelAll()
+            session.files?.close()
+            session.files?.transfers?.close()
+            session.controller.closePresentation()
+        case .local(let controller): controller.stop()
+        }
+    }
 }
 
-/// Owns the open connections and their presentation mode. Tiling only arranges existing
-/// sessions: it creates no tab, starts no authentication and never changes connection ownership.
+/// Owns open local and remote terminals. Layout changes preserve every existing controller.
 @MainActor
 public final class TerminalTabsViewModel: ObservableObject {
     /// Transient identity shared by this workspace's tab bars and tiled pane labels.
@@ -64,12 +111,15 @@ public final class TerminalTabsViewModel: ObservableObject {
     @Published public private(set) var batchCommandError: BatchCommandValidationError?
     private var drainingTabIDs: Set<UUID> = []
     private let factory: any TerminalSessionFactory
+    private let localFactory: (any LocalTerminalSessionFactory)?
     private var observations: [UUID: Set<AnyCancellable>] = [:]
     /// These Sendable MainActor handles can be transferred to cleanup from Swift 6's
     /// nonisolated deinit without reading an isolated @Published accessor there.
-    private var ownedSessions: [UUID: TerminalTabSession] = [:]
+    private var ownedTabs: [UUID: TerminalWorkspaceTab] = [:]
 
-    public init(factory: any TerminalSessionFactory) { self.factory = factory }
+    public init(factory: any TerminalSessionFactory, localFactory: (any LocalTerminalSessionFactory)? = nil) {
+        self.factory = factory; self.localFactory = localFactory
+    }
 
     public var selectedTab: TerminalWorkspaceTab? {
         guard let selectedID else { return nil }
@@ -77,7 +127,9 @@ public final class TerminalTabsViewModel: ObservableObject {
     }
 
     public var selectedSession: TerminalTabSession? { selectedTab?.session }
-    public var allSessions: [TerminalTabSession] { tabs.map(\.session) }
+    /// SSH sessions only. Local shells never receive remote batch commands or SFTP actions.
+    public var allSessions: [TerminalTabSession] { tabs.compactMap(\.session) }
+    public var canOpenLocalTerminal: Bool { localFactory != nil }
     public var canTile: Bool { tabs.count > 1 }
     public var isTiled: Bool { arrangement != .tabs }
     public var showsSelectedFiles: Bool { selectedID.map { fileBrowserIDs.contains($0) } ?? false }
@@ -89,7 +141,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     }
 
     public func toggleBatchCommands() {
-        guard !tabs.isEmpty else { return }
+        guard !allSessions.isEmpty else { return }
         if showsBatchCommands { hideBatchCommands() }
         else { showsBatchCommands = true; synchronizePresentationActivity() }
     }
@@ -97,9 +149,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     public func hideBatchCommands() {
         showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil
         synchronizePresentationActivity()
-        if let session = selectedSession, session.prompts.hostRequest == nil, session.prompts.passwordRequest == nil {
-            session.controller.focusTerminal()
-        }
+        selectedTab?.focusTerminal()
     }
 
     /// Explicit command-bar submission only. Typing in a terminal remains single-session.
@@ -108,10 +158,10 @@ public final class TerminalTabsViewModel: ObservableObject {
     public func sendBatchCommand(_ text: String) -> Bool {
         do {
             let command = try BatchCommand(text)
-            let recipients = tabs.enumerated().map { index, tab in
-                BatchCommandRecipient(id: tab.id, name: tab.controller.profile?.name ?? "", ordinal: index + 1,
-                    authenticationPending: tab.prompts.hostRequest != nil || tab.prompts.passwordRequest != nil,
-                    input: tab.controller)
+            let recipients = tabs.enumerated().compactMap { index, tab -> BatchCommandRecipient? in
+                guard let session = tab.session else { return nil }
+                return BatchCommandRecipient(id: tab.id, name: session.controller.profile?.name ?? "", ordinal: index + 1,
+                    authenticationPending: tab.isAwaitingAuthentication, input: session.controller)
             }
             let report = BatchCommandDispatcher().send(command, to: recipients)
             batchCommandError = nil; batchCommandReport = report
@@ -161,12 +211,30 @@ public final class TerminalTabsViewModel: ObservableObject {
             select(id: existing.id)
             return existing.id
         }
-        own(session)
-        tabs.append(TerminalWorkspaceTab(session: session))
+        let tab = TerminalWorkspaceTab(session: session)
+        own(tab)
+        tabs.append(tab)
         selectedID = session.id
         synchronizePresentationActivity()
         session.controller.connect(to: profile, settings: settings)
         return session.id
+    }
+
+    /// Opens an independent local shell alongside existing local and SSH terminals.
+    @discardableResult
+    public func openLocal(settings: TerminalSettings) -> UUID? {
+        guard let controller = localFactory?.makeLocalTerminal() else { return nil }
+        if let existing = tabs.first(where: { $0.localController === controller }) {
+            select(id: existing.id)
+            return existing.id
+        }
+        let tab = TerminalWorkspaceTab(local: controller)
+        own(tab)
+        tabs.append(tab)
+        selectedID = tab.id
+        synchronizePresentationActivity()
+        controller.start(settings: settings)
+        return tab.id
     }
 
     /// Changes only which existing terminal receives automatic focus and keyboard input.
@@ -196,8 +264,8 @@ public final class TerminalTabsViewModel: ObservableObject {
     /// Closes one tab/connection. Selection follows the existing right-then-left rule.
     public func close(id: UUID) {
         guard !drainingTabIDs.contains(id), let tab = tabs.first(where: { $0.id == id }) else { return }
-        if tab.session.files?.transfers?.hasUnfinished == true { transferCloseRequestID = id; return }
-        if tab.session.files?.transfers?.hasWarnings == true { transferWarningCloseID = id; return }
+        if tab.session?.files?.transfers?.hasUnfinished == true { transferCloseRequestID = id; return }
+        if tab.session?.files?.transfers?.hasWarnings == true { transferWarningCloseID = id; return }
         closeImmediately(id: id)
     }
 
@@ -208,7 +276,7 @@ public final class TerminalTabsViewModel: ObservableObject {
     /// visible until the user explicitly chooses to discard the tab's record.
     public func confirmTransferClose(id: UUID) {
         guard !drainingTabIDs.contains(id), let tab = tabs.first(where: { $0.id == id }),
-              let transfers = tab.session.files?.transfers else { return }
+              let transfers = tab.session?.files?.transfers else { return }
         transferCloseRequestID = nil
         drainingTabIDs.insert(id)
         Task { [weak self, transfers] in
@@ -223,7 +291,7 @@ public final class TerminalTabsViewModel: ObservableObject {
 
     public func discardTransferRecordAndClose(id: UUID) {
         guard !drainingTabIDs.contains(id), let tab = tabs.first(where: { $0.id == id }) else { return }
-        if tab.session.files?.transfers?.hasUnfinished == true {
+        if tab.session?.files?.transfers?.hasUnfinished == true {
             transferWarningCloseID = nil
             transferCloseRequestID = id
             return
@@ -237,84 +305,76 @@ public final class TerminalTabsViewModel: ObservableObject {
         if transferCloseRequestID == id { transferCloseRequestID = nil }
         if transferWarningCloseID == id { transferWarningCloseID = nil }
         drainingTabIDs.remove(id)
-        let closing = tabs[index].session
+        let closing = tabs[index]
         disown(closing)
         fileBrowserIDs.remove(id)
         tabs.remove(at: index)
-        if tabs.isEmpty { showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil }
+        if allSessions.isEmpty { showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil }
         if selectedID == id { selectedID = tabs.isEmpty ? nil : tabs[min(index, tabs.count - 1)].id }
         if !canTile && isTiled { arrangement = .tabs }
         synchronizePresentationActivity()
-        stop(closing)
+        closing.close()
     }
 
     /// Window teardown cancels every pending decision before ending all connections.
     public func closeAll() {
         showsBatchCommands = false; batchCommandReport = nil; batchCommandError = nil
         transferCloseRequestID = nil; transferWarningCloseID = nil; drainingTabIDs.removeAll()
-        let closing = Array(ownedSessions.values)
-        ownedSessions.removeAll(); observations.removeAll()
+        let closing = Array(ownedTabs.values)
+        ownedTabs.removeAll(); observations.removeAll()
         fileBrowserIDs.removeAll()
         if !tabs.isEmpty { tabs.removeAll() }
         if selectedID != nil { selectedID = nil }
         if isTiled { arrangement = .tabs }
-        for session in closing { stop(session) }
+        for tab in closing { tab.close() }
     }
 
     private func owner(ofCandidate candidate: TerminalTabSession) -> TerminalWorkspaceTab? {
         tabs.first {
-            $0.session.id == candidate.id || $0.controller === candidate.controller || $0.prompts === candidate.prompts
-                || (candidate.files != nil && $0.session.files === candidate.files)
-                || (candidate.files != nil && $0.session.files?.prompts === candidate.files?.prompts)
+            $0.id == candidate.id || $0.session?.controller === candidate.controller
+                || $0.session?.prompts === candidate.prompts
+                || (candidate.files != nil && $0.session?.files === candidate.files)
+                || (candidate.files != nil && $0.session?.files?.prompts === candidate.files?.prompts)
         }
     }
 
-    private func own(_ session: TerminalTabSession) {
-        ownedSessions[session.id] = session
+    private func own(_ tab: TerminalWorkspaceTab) {
+        ownedTabs[tab.id] = tab
         var tokens = Set<AnyCancellable>()
-        // Only state changes are forwarded. Raw terminal output is deliberately unpublished.
-        session.controller.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
-        session.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
-        if let files = session.files {
-            files.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
-            files.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
-            if let transfers = files.transfers {
-                transfers.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
-                transfers.$conflict.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+        switch tab.content {
+        case .local(let controller):
+            controller.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+        case .ssh(let session):
+            // Only state changes are forwarded. Raw terminal output is deliberately unpublished.
+            session.controller.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+            session.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+            if let files = session.files {
+                files.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+                files.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+                if let transfers = files.transfers {
+                    transfers.prompts.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+                    transfers.$conflict.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &tokens)
+                }
             }
         }
-        observations[session.id] = tokens
+        observations[tab.id] = tokens
     }
 
-    private func disown(_ session: TerminalTabSession) {
-        observations.removeValue(forKey: session.id)
-        ownedSessions.removeValue(forKey: session.id)
+    private func disown(_ tab: TerminalWorkspaceTab) {
+        observations.removeValue(forKey: tab.id)
+        ownedTabs.removeValue(forKey: tab.id)
     }
 
     private func synchronizePresentationActivity() {
         // Explicit terminal clicks/input remain independent. Suppress only automatic
         // terminal focus while a batch draft may be in progress, including on reconnect.
-        for tab in tabs { tab.controller.setPresentationActive(!showsBatchCommands && tab.id == selectedID) }
-    }
-
-    private func stop(_ session: TerminalTabSession) {
-        session.controller.setPresentationActive(false)
-        session.prompts.cancelAll()
-        session.files?.close()
-        session.files?.transfers?.close()
-        session.controller.closePresentation()
+        for tab in tabs { tab.setPresentationActive(!showsBatchCommands && tab.id == selectedID) }
     }
 
     deinit {
-        let closing = ownedSessions
+        let closing = ownedTabs
         Task { @MainActor in
-            for session in closing.values {
-                session.controller.setPresentationActive(false)
-                session.prompts.cancelAll()
-                session.files?.close()
-                session.files?.transfers?.close()
-                session.controller.closePresentation()
-            }
+            for tab in closing.values { tab.close() }
         }
     }
 }

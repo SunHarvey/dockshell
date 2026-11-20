@@ -2687,6 +2687,23 @@
         }
       }
     },
+    "local.running": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "运行中"
+          }
+        }
+      }
+    },
     "local.title": {
       "extractionState": "manual",
       "localizations": {
@@ -3163,6 +3180,23 @@
         }
       }
     },
+    "menu.about": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About DockShell"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关于 DockShell"
+          }
+        }
+      }
+    },
     "menu.servers": {
       "extractionState": "manual",
       "localizations": {
@@ -3329,6 +3363,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "搜索服务器"
+          }
+        }
+      }
+    },
+    "servers.opensaved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Saved Server"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "打开已保存服务器"
           }
         }
       }
@@ -5356,6 +5407,40 @@
         }
       }
     },
+    "tab.new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New terminal tab"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建终端标签"
+          }
+        }
+      }
+    },
+    "tab.newhelp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open a local terminal or connect to a saved server in a new tab."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新标签中打开本机终端或连接已保存的服务器。"
+          }
+        }
+      }
+    },
     "tab.select": {
       "extractionState": "manual",
       "localizations": {
@@ -5804,13 +5889,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "New server (⌘N), connect selected server (⌘T), or open the local terminal."
+            "value": "Open a local terminal, connect to a saved server, or create (⌘N) and import servers."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "新建服务器（⌘N）、连接选中服务器（⌘T）或打开本机终端。"
+            "value": "打开本机终端、连接已保存的服务器，或新建（⌘N）和导入服务器。"
           }
         }
       }

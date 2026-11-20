@@ -23,24 +23,21 @@ private enum DeletionTarget {
     case group(ServerGroup)
 }
 
-/// Saved-server catalog and independent remote tabs, with protocol-backed connection state.
+/// Saved-server catalog and independent local/remote terminal tabs.
 public struct WorkspaceView: View {
     @ObservedObject private var model: WorkspaceViewModel
     private let l10n: L10n
-    private let terminal: LocalTerminalController
     @ObservedObject private var settings: TerminalSettingsViewModel
     @ObservedObject private var tabs: TerminalTabsViewModel
-    @ViewState<Bool> private var showTerminal = false
     @ViewState<ServerEditorRoute?> private var editor: ServerEditorRoute?
     @ViewState<GroupEditorRoute?> private var groupEditor: GroupEditorRoute?
     @ViewState<DeletionTarget?> private var deletion: DeletionTarget?
     @ViewState<ServerImportRoute?> private var importRoute: ServerImportRoute?
 
-    public init(model: WorkspaceViewModel, l10n: L10n, terminal: LocalTerminalController,
+    public init(model: WorkspaceViewModel, l10n: L10n,
                 settings: TerminalSettingsViewModel, tabs: TerminalTabsViewModel) {
         self.model = model
         self.l10n = l10n
-        self.terminal = terminal
         self.settings = settings
         self.tabs = tabs
     }
@@ -144,40 +141,65 @@ public struct WorkspaceView: View {
             if let error = model.operationError { Text(verbatim: l10n.string(l10n.errorKey(error))) }
         }
         .task { await model.load(); await settings.load() }
-        .onChange(of: showTerminal) { _, value in if !value { terminal.stop() } }
-        .onDisappear { terminal.stop(); tabs.closeAll() }
+        .onDisappear { tabs.closeAll() }
     }
 
     private var newConnectionMenu: some View {
         Menu {
-            Button { editor = ServerEditorRoute(profile: nil) } label: {
-                Label(l10n.string(.serverNew), systemImage: "plus")
+            terminalLaunchChoices
+            if tabs.tabs.isEmpty {
+                Divider()
+                Button { editor = ServerEditorRoute(profile: nil) } label: {
+                    Label(l10n.string(.serverNew), systemImage: "plus")
+                }
+                .disabled(model.isMutating || model.isLoading || model.hasLoadError)
+                Button { importRoute = ServerImportRoute(kind: .sshConfiguration) } label: {
+                    Label(l10n.string(.importTitle), systemImage: "square.and.arrow.down")
+                }
+                .disabled(!model.canImportServers || model.isMutating || model.isLoading || model.hasLoadError)
+                Button { importRoute = ServerImportRoute(kind: .csv) } label: {
+                    Label(l10n.string(.csvTitle), systemImage: "tablecells")
+                }
+                .disabled(!model.canImportCSV || model.isMutating || model.isLoading || model.hasLoadError)
+                Button {
+                    if let profile = model.selectedProfile { connect(profile) }
+                } label: {
+                    Label(l10n.string(.tabConnect), systemImage: "plus.rectangle.on.rectangle")
+                }
+                .disabled(model.selectedProfile == nil || model.isLoading || model.isMutating || model.hasLoadError)
             }
-            .disabled(model.isMutating || model.isLoading || model.hasLoadError)
-            Button { importRoute = ServerImportRoute(kind: .sshConfiguration) } label: {
-                Label(l10n.string(.importTitle), systemImage: "square.and.arrow.down")
-            }
-            .disabled(!model.canImportServers || model.isMutating || model.isLoading || model.hasLoadError)
-            Button { importRoute = ServerImportRoute(kind: .csv) } label: {
-                Label(l10n.string(.csvTitle), systemImage: "tablecells")
-            }
-            .disabled(!model.canImportCSV || model.isMutating || model.isLoading || model.hasLoadError)
-            Button {
-                if let profile = model.selectedProfile { connect(profile) }
-            } label: {
-                Label(l10n.string(.tabConnect), systemImage: "plus.rectangle.on.rectangle")
-            }
-            .disabled(model.selectedProfile == nil || model.isLoading || model.isMutating || model.hasLoadError)
-            Divider()
-            Button { toggleLocalTerminal() } label: {
-                Label(l10n.string(showTerminal ? .terminalClose : .terminalOpen), systemImage: "terminal")
-            }
-            .disabled(!tabs.tabs.isEmpty || (!showTerminal && !settings.isLoaded))
         } label: {
             WorkspaceToolbarIcon(title: l10n.string(.toolbarNew), symbol: "plus")
         }
-        .help(l10n.string(.toolbarNewHelp))
+        .help(l10n.string(tabs.tabs.isEmpty ? .toolbarNewHelp : .tabNewHelp))
         .accessibilityIdentifier("dockshell.workspace.new-menu")
+    }
+
+    private var terminalLaunchChoices: some View {
+        TerminalLaunchMenuItems(profiles: model.profiles, groups: model.groups,
+            canOpenLocal: settings.isLoaded && tabs.canOpenLocalTerminal,
+            canConnect: canConnectSavedServers,
+            l10n: l10n, openLocal: openLocalTerminal,
+            connect: connectSavedServer)
+    }
+
+    private var canConnectSavedServers: Bool {
+        settings.isLoaded && !model.isLoading && !model.isMutating && !model.hasLoadError
+    }
+
+    private var savedServerChoices: some View {
+        SavedServerMenuItems(profiles: model.profiles, groups: model.groups,
+                             canConnect: canConnectSavedServers, connect: connectSavedServer)
+    }
+
+    private var newTabMenu: some View {
+        Menu { terminalLaunchChoices } label: {
+            Image(systemName: "plus").frame(width: 24, height: 24)
+        }
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).buttonStyle(.plain).fixedSize()
+        .help(l10n.string(.tabNewHelp))
+        .accessibilityLabel(Text(verbatim: l10n.string(.tabNew)))
+        .accessibilityIdentifier("dockshell.workspace.new-tab-menu")
     }
 
     private var layoutMenu: some View {
@@ -250,12 +272,19 @@ public struct WorkspaceView: View {
                 }
                 Button(l10n.string(.sshClose)) { tabs.closePane(id: session.id) }
                 Divider()
+            } else if let tab = tabs.selectedTab, let local = tab.localController {
+                Text(verbatim: l10n.string(.localTerminalTitle))
+                if local.phase == .exited || local.phase == .failed {
+                    Button(l10n.string(.localTerminalRestart)) { local.start(settings: settings.settings) }
+                }
+                Button(l10n.string(.terminalClose)) { tabs.close(id: tab.id) }
+                Divider()
             }
             Button { tabs.toggleBatchCommands() } label: {
                 Label(l10n.string(tabs.showsBatchCommands ? .batchClose : .batchOpen), systemImage: "arrow.triangle.branch")
             }
             .help(l10n.string(.batchExecuteHelp))
-            .disabled(tabs.tabs.isEmpty)
+            .disabled(tabs.allSessions.isEmpty)
             .accessibilityIdentifier("dockshell.batch.toggle")
             Divider()
             SettingsLink { Label(l10n.string(.settingsOpen), systemImage: "gearshape") }
@@ -384,10 +413,7 @@ public struct WorkspaceView: View {
                 }.padding(12).background(.orange.opacity(0.08))
             }
             if !tabs.tabs.isEmpty {
-                TerminalTabsPane(model: tabs, settings: settings, l10n: l10n)
-            } else if showTerminal {
-                LocalTerminalPane(controller: terminal, settings: settings, l10n: l10n,
-                                  close: { showTerminal = false })
+                TerminalTabsPane(model: tabs, settings: settings, l10n: l10n, newTerminalMenu: AnyView(newTabMenu))
             } else {
                 Spacer(minLength: 16)
                 if let error = model.loadError {
@@ -458,8 +484,12 @@ public struct WorkspaceView: View {
             HStack {
                 Button(l10n.string(.serverNew)) { editor = ServerEditorRoute(profile: nil) }
                     .buttonStyle(.borderedProminent).disabled(model.isLoading || model.isMutating || model.hasLoadError)
-                Button(l10n.string(.terminalOpen)) { toggleLocalTerminal() }
-                    .buttonStyle(.bordered).disabled(!settings.isLoaded)
+                Menu(l10n.string(.serverOpenSaved)) { savedServerChoices }
+                    .buttonStyle(.bordered)
+                    .disabled(!canConnectSavedServers || model.profiles.isEmpty)
+                    .accessibilityIdentifier("dockshell.workspace.open-saved-menu")
+                Button(l10n.string(.terminalOpen)) { openLocalTerminal() }
+                    .buttonStyle(.bordered).disabled(!settings.isLoaded || !tabs.canOpenLocalTerminal)
             }.padding(.top, 22)
             TerminalPlaceholder(l10n: l10n).frame(maxWidth: 480).padding(.top, 26)
         }.padding(.horizontal, 32)
@@ -467,14 +497,19 @@ public struct WorkspaceView: View {
 
     private func connect(_ profile: ServerProfile) {
         guard !model.isLoading, !model.isMutating, !model.hasLoadError else { return }
-        terminal.stop(); showTerminal = false
+        guard settings.isLoaded else { return }
+        model.selectedProfileID = profile.id
         tabs.open(profile: profile, settings: settings.settings)
     }
 
-    private func toggleLocalTerminal() {
-        guard tabs.tabs.isEmpty else { return }
-        guard showTerminal || settings.isLoaded else { return }
-        showTerminal.toggle()
+    private func connectSavedServer(_ id: UUID) {
+        guard let profile = model.profiles.first(where: { $0.id == id }) else { return }
+        connect(profile)
+    }
+
+    private func openLocalTerminal() {
+        guard settings.isLoaded else { return }
+        tabs.openLocal(settings: settings.settings)
     }
 }
 

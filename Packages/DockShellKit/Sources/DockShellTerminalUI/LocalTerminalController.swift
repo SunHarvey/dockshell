@@ -19,6 +19,7 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
     @Published public private(set) var size = TerminalSize(columns: 80, rows: 24)
     /// Parser throughput is intentionally not @Published.
     public private(set) var deliveredBytes: UInt64 = 0
+    public private(set) var isPresentationActive = true
 
     private let factory: any LocalTerminalFactory
     public let logging: TerminalLogController?
@@ -74,7 +75,7 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
                 guard self?.generation == token else { return }
                 self?.phase = .running
                 self?.logging?.start()
-                self?.surface?.focus()
+                self?.focusTerminal()
                 self?.startPump(channel, token: token)
                 self?.drainInput()
             } catch is CancellationError {
@@ -113,6 +114,14 @@ public final class LocalTerminalController: ObservableObject, TerminalViewContro
     }
 
     public func isAttached(to source: any TerminalSurface) -> Bool { surface === source }
+
+    /// Selecting a workspace tab controls automatic focus, including delayed shell startup.
+    public func setPresentationActive(_ active: Bool) { isPresentationActive = active }
+
+    public func focusTerminal() {
+        guard isPresentationActive else { return }
+        surface?.focus()
+    }
 
     private func startPump(_ channel: any LocalTerminalChannel, token: UUID) {
         pumpTask = Task { [weak self, channel] in

@@ -11,7 +11,6 @@ final class AppContainer {
     let l10n: L10n
     let workspace: WorkspaceViewModel
     let settings: TerminalSettingsViewModel
-    let terminal: LocalTerminalController
     let tabs: TerminalTabsViewModel
 
     init(l10n: L10n, service: WorkspaceService, settingsService: SettingsService,
@@ -20,13 +19,30 @@ final class AppContainer {
         workspace = WorkspaceViewModel(service: service, configurationReader: OpenSSHConfigurationReader(), csvReader: CSVServerReader())
         settings = TerminalSettingsViewModel(service: settingsService)
         let logStorage = FileTerminalLogStorage()
-        terminal = LocalTerminalController(factory: SystemLocalTerminalFactory(
-            helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper")),
-            logging: TerminalLogController(storage: logStorage, labels: l10n.terminalLogLabels))
         tabs = TerminalTabsViewModel(factory: OpenSSHTerminalSessionFactory(
             credentials: credentials, hostKeys: OpenSSHHostKeyStore(url: knownHostsURL),
             helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper"),
-            logStorage: logStorage, logLabels: l10n.terminalLogLabels))
+            logStorage: logStorage, logLabels: l10n.terminalLogLabels),
+            localFactory: SystemLocalTerminalSessionFactory(
+                helperURL: Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/dockshell-ssh-helper"),
+                logStorage: logStorage, logLabels: l10n.terminalLogLabels))
+    }
+}
+
+@MainActor
+private final class SystemLocalTerminalSessionFactory: LocalTerminalSessionFactory {
+    private let factory: any LocalTerminalFactory
+    private let logStorage: any TerminalLogStorage
+    private let logLabels: TerminalLogLabels
+
+    init(helperURL: URL, logStorage: any TerminalLogStorage, logLabels: TerminalLogLabels) {
+        factory = SystemLocalTerminalFactory(helperURL: helperURL)
+        self.logStorage = logStorage; self.logLabels = logLabels
+    }
+
+    func makeLocalTerminal() -> LocalTerminalController {
+        LocalTerminalController(factory: factory,
+            logging: TerminalLogController(storage: logStorage, labels: logLabels))
     }
 }
 

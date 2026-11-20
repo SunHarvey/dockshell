@@ -16,7 +16,7 @@ struct DockShellApp: App {
             Group {
                 if let container = bootstrap.container {
                     WorkspaceView(model: container.workspace, l10n: container.l10n,
-                                  terminal: container.terminal, settings: container.settings,
+                                  settings: container.settings,
                                   tabs: container.tabs)
                 } else if let startupError = bootstrap.errorDescription {
                     ContentUnavailableView {
@@ -79,6 +79,11 @@ private struct BootstrapWorkspaceCommands: Commands {
     @ObservedObject var bootstrap: AppBootstrap
 
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button(bootstrap.container?.l10n.string(.menuAbout) ?? "About DockShell") {
+                NSApp.orderFrontStandardAboutPanel(options: [.version: ""])
+            }
+        }
         if let container = bootstrap.container {
             WorkspaceCommands(model: container.workspace, l10n: container.l10n)
         }

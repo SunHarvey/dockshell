@@ -142,9 +142,8 @@ enum M8SplitUIVerification {
                                          settings: TerminalSettingsViewModel, service: WorkspaceService,
                                          l10n: L10n, manual: Bool) async throws -> [SplitUIWeakView] {
         let catalog = WorkspaceViewModel(service: service)
-        let offline = LocalTerminalController(factory: VerificationLocalTerminalFactory())
         let root = NSHostingView(rootView: WorkspaceView(model: catalog, l10n: l10n,
-            terminal: offline, settings: settings, tabs: model))
+            settings: settings, tabs: model))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1080, height: 760),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -152,7 +151,7 @@ enum M8SplitUIVerification {
         window.alphaValue = manual ? 1 : 0
         if manual { window.title = "DockShell Layout Verification" }
         window.orderFront(nil)
-        defer { model.closeAll(); offline.stop(); window.orderOut(nil); window.contentView = nil; window.close() }
+        defer { model.closeAll(); window.orderOut(nil); window.contentView = nil; window.close() }
         root.layoutSubtreeIfNeeded()
         return try await exercise(model: model, factory: factory, root: root, window: window, l10n: l10n, manual: manual)
     }
