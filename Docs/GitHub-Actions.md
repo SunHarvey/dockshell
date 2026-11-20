@@ -51,9 +51,9 @@ GitHub 自动生成的 **Source code (zip)** 和 **Source code (tar.gz)** 是源
 
 发布工作流要求标签已经存在于远端，且标签指向的提交包含本轮工作流、CI 发布脚本和 DMG 打包代码。工作流不会自动创建、移动或强制覆盖标签。
 
-当前源码为 `0.4.4 / build 29`，新增断线终端的 Enter 与鼠标重连，更新内容见 [v0.4.4 发布说明](ReleaseNotes/v0.4.4.md)。已发布版本以 Release 页面为准，历史版本保留各自的标签和安装附件。
+当前源码的版本号和构建号记录在 [Info.plist](../Packaging/Info.plist)。最新公开版本及安装包见 [最新 Release](https://github.com/SunHarvey/dockshell/releases/latest)。
 
-先推送 `main` 并等待 CI，再下载该次 CI 的实际 DMG，在 Finder 中检查安装窗口。确认产物后，为同一提交创建 `0.4.4` 的标准版本标签：
+先推送 `main` 并等待 CI，再下载该次 CI 的 DMG，在 Finder 中检查安装窗口。确认产物后，为同一提交创建与应用版本一致的新标签。以下以已发布的 `v0.4.4` 为例。
 
 ```sh
 git switch main
@@ -79,8 +79,8 @@ GitHub 的草稿和 Pre-release 不能设为 Latest。只有预览版本时，�
 版本规则：
 
 - 使用 `v主版本.次版本.修订版本`，例如 `v0.4.4`；预览版本使用 `-preview.编号` 后缀。
-- 标签的核心版本必须与 [Info.plist](../Packaging/Info.plist) 的 `CFBundleShortVersionString` 一致；当前为 `0.4.4`。
-- `CFBundleVersion` 是构建号，当前为 `29`，由发布准备提交更新。
+- 标签去掉 `v` 前缀和预览后缀后，必须与 `CFBundleShortVersionString` 一致。
+- `CFBundleVersion` 是构建号，由发布准备提交更新。
 - 打包时的 `HEAD` 必须就是该标签对应的提交。不存在的标签、分支名、错误版本和不安全输入会被拒绝。
 - 工作区必须干净，不能存在未提交修改或未忽略的新文件，确保打包内容与标签对应的提交一致。
 
